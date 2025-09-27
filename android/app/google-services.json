@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1081547088552",
+    "project_id": "smart-okul",
+    "storage_bucket": "smart-okul.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1081547088552:android:e2f266e1e78a392014d89d",
+        "android_client_info": {
+          "package_name": "com.smartokul.smart_okul_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBWOE34ZfGX6RzCsHE8HMgRlGLK1BBv7k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

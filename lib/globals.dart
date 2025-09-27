@@ -1,0 +1,26 @@
+library globals;
+
+var globalKullaniciAdi ="";
+var globalOkulAdi      ="";
+var kullaniciTCKN   ="";
+var globalKullaniciTipi ="";
+var globalOgrenciAdi    ="";
+var globalStatusCode    ="";
+var globalErrMsg        ="";
+var globalSchoolId      ="";
+var globalKonumEnlem    ="";
+var globalKonumBoylam   ="";
+var mevcutEnlem         ="";
+var mevcutBoylam        ="";
+var meslek              ="";
+var hobi                ="";
+var alerji              ="";
+var ilac                ="";
+bool duyuruVar          =false;
+var fotoVersion         =0;
+String serverAdrr       =//"http://192.168.1.107:5000";
+   "https://schoolserver20250719161913-dedagwd7c2hvhag7.canadacentral-01.azurewebsites.net";
+int mesafeLimit         =150;
+List<Map<String, dynamic>> globalOgrenciListesi = [];
+List<Map<String, dynamic>> globalSinifListesi = [];
+List<String> menuListesi= [];
