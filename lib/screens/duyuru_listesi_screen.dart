@@ -19,7 +19,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
     _loadDuyurular();
   }
 
-  Future<void> _loadDuyurular() async {
+ /* Future<void> _loadDuyurular() async {
     try {
       final data = await ApiService().getDuyuruList(globals.kullaniciTCKN);
       setState(() {
@@ -30,12 +30,37 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       print('Hata _loadDuyurular: $e');
     }
   }
+*/
+  Future<void> _loadDuyurular() async {
+    try {
+      final data = await ApiService().getDuyuruList(globals.kullaniciTCKN);
+
+      bool okunmamisVarMi = false;
+
+      if (data.isNotEmpty) {
+        // Okunmamış duyuru var mı kontrol et
+        okunmamisVarMi = data.any((duyuru) => duyuru['Okundu'] != 1);
+      }
+
+      setState(() {
+        duyurular = data;
+        isLoading = false;
+      });
+
+      // Global değişkeni güncelle (liste boşsa false olur)
+      globals.duyuruVar = okunmamisVarMi as ValueNotifier<bool>;
+      print("globals.duyuruVar = ${globals.duyuruVar}");
+    } catch (e) {
+      print('Hata _loadDuyurular: $e');
+      globals.duyuruVar = false as ValueNotifier<bool>; // hata durumunda da false olsun
+    }
+  }
 
   Future<void> _duyuruyaTiklandi(int duyuruId, String detay, bool okundu) async {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Duyuru Detayı'),
+        title: Text('Mesaj Detayı'),
         content: Text(detay),
         actions: [
           TextButton(
@@ -52,7 +77,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
         bool okunduMu = await ApiService().setDuyuruOkundu(duyuruId);
         _loadDuyurular();
       } catch (e) {
-        print('Duyuru okundu güncelleme hatası: $e');
+        print('Mesaj okundu güncelleme hatası: $e');
       }
     }
   }
@@ -61,7 +86,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Duyuru Listesi'),
+        title: Text('Mesaj Listesi'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -86,24 +111,41 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
             final renk = okundu ? Colors.grey : Colors.blue[900];
             var tarih = DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(duyuru['InsertDate']));
 
-            return ListTile(
-              title: Text(
-                duyuru['Baslik'],
-                style: TextStyle(color: renk, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Gönderen: ${duyuru['GonderenAdi']}', style: TextStyle(color: renk)),
-                  Text('Tarih: $tarih', style: TextStyle(color: renk)),
-                ],
-              ),
-              onTap: () => _duyuruyaTiklandi(
-                duyuru['Id'],
-                duyuru['Data'],
-                okundu,
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16), // oval köşeler
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 6,
+                      offset: Offset(0, 3), // gölge efekti
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  title: Text(
+                    duyuru['Baslik'],
+                    style: TextStyle(color: renk, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Gönderen: ${duyuru['GonderenAdi']}', style: TextStyle(color: renk)),
+                      Text('Tarih: $tarih', style: TextStyle(color: renk)),
+                    ],
+                  ),
+                  onTap: () => _duyuruyaTiklandi(
+                    duyuru['Id'],
+                    duyuru['Data'],
+                    okundu,
+                  ),
+                ),
               ),
             );
+
           },
         ),
       ),

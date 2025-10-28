@@ -1,16 +1,167 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
+import 'package:logger/logger.dart';
 import '../models/user.dart';
 import '../globals.dart' as globals;
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static String baseUrl = globals.serverAdrr;
+  static final String baseUrl = globals.serverAdrr;
+  final logger = Logger();
 
+  /// ------------------------------------------------------------
+  /// TOKEN YÖNETİMİ
+  /// ------------------------------------------------------------
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  /// ------------------------------------------------------------
+  /// ORTAK İSTEK GÖNDERİCİ
+  /// ------------------------------------------------------------
+  Future<Map<String, dynamic>> _sendRequest(
+      String method,
+      String endpoint, {
+        Map<String, String>? headers,
+        dynamic body,
+      }) async {
+    final token = await _getToken();
+    final fullHeaders = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+      ...?headers,
+    };
+
+    final url = Uri.parse('$baseUrl$endpoint');
+    http.Response response;
+
+    logger.i('API çağrısı: $method $endpoint');
+
+    try {
+      switch (method.toUpperCase()) {
+        case 'GET':
+          response =
+          await http.get(url, headers: fullHeaders).timeout(const Duration(seconds: 15));
+          break;
+        case 'POST':
+          response = await http
+              .post(url, headers: fullHeaders, body: jsonEncode(body))
+              .timeout(const Duration(seconds: 15));
+          break;
+        case 'PUT':
+          response = await http
+              .put(url, headers: fullHeaders, body: jsonEncode(body))
+              .timeout(const Duration(seconds: 15));
+          break;
+        default:
+          throw Exception('Desteklenmeyen HTTP metodu: $method');
+      }
+
+      // Token süresi dolmuşsa, yeniden login veya refresh token tetiklenebilir.
+      if (response.statusCode == 401) {
+        logger.e('401 - Token geçersiz veya süresi dolmuş.');
+        return {'success': false, 'message': 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.'};
+      }
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final jsonBody =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+        logger.i('Başarılı: ${response.statusCode} ${response.request?.url}');
+        return {'success': true, 'data': jsonBody};
+      } else {
+        logger.e('Hata: ${response.statusCode} - ${response.body}');
+        return {
+          'success': false,
+          'message': 'Sunucu hatası: ${response.statusCode}',
+          'details': response.body
+        };
+      }
+    } on SocketException {
+      logger.e('İnternet bağlantısı yok.');
+      return {'success': false, 'message': 'İnternet bağlantısı yok.'};
+    } on TimeoutException {
+      logger.e('İstek zaman aşımına uğradı.');
+      return {'success': false, 'message': 'Sunucu yanıt vermiyor (timeout).'};
+    } on FormatException {
+      logger.e('JSON parse hatası.');
+      return {'success': false, 'message': 'Veri formatı hatalı.'};
+    } catch (e) {
+      logger.e('Beklenmeyen hata: $e');
+      return {'success': false, 'message': 'Beklenmeyen hata: $e'};
+    }
+  }
+
+
+  /// ------------------------------------------------------------
+  /// ORTAK GET METODU
+  /// ------------------------------------------------------------
+  Future<Map<String, dynamic>> getRequest(
+      String endpoint, {
+        Map<String, String>? headers,
+      }) async {
+    return await _sendRequest('GET', endpoint, headers: headers);
+  }
+
+  /// ------------------------------------------------------------
+  /// ORTAK POST METODU
+  /// ------------------------------------------------------------
+  Future<Map<String, dynamic>> postRequest(
+      String endpoint, {
+        Map<String, String>? headers,
+        dynamic body,
+      }) async {
+    return await _sendRequest('POST', endpoint, headers: headers, body: body);
+  }
+
+  /// ------------------------------------------------------------
+  /// ORTAK PUT METODU
+  /// ------------------------------------------------------------
+  Future<Map<String, dynamic>> putRequest(
+      String endpoint, {
+        Map<String, String>? headers,
+        dynamic body,
+      }) async {
+    return await _sendRequest('PUT', endpoint, headers: headers, body: body);
+  }
+/*
+* Kullanım örnekleri
+1️⃣ GET isteği
+final result = await apiService.getRequest('/api/school/get-gallery?tckn=$tckn');
+
+if (result['success']) {
+  print(result['data']);
+} else {
+  print('Hata: ${result['message']}');
+}
+
+2️⃣ POST isteği
+final result = await apiService.postRequest(
+  '/api/Duyuru/SendDuyuru',
+  body: {
+    'GonderenTckn': globals.kullaniciTCKN,
+    'AlanTcknList': ['11111111111', '22222222222'],
+    'Baslik': 'Yeni Duyuru',
+    'Data': 'Öğrenciler için önemli duyuru!',
+  },
+);
+
+if (result['success']) {
+  print('Bildirim gönderildi.');
+} else {
+  print('Hata: ${result['message']}');
+}
+
+3️⃣ PUT isteği
+await apiService.putRequest(
+  '/api/user/update',
+  body: {'name': 'Yeni Ad', 'email': 'yeni@mail.com'},
+);*/
   // Kullanıcı doğrulama
   Future<User> validatePerson(String tckn, String pin) async {
     final url = "${ApiService.baseUrl}/school/validate-person";
@@ -21,7 +172,7 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: body,
     );
-
+    logger.i("validatePerson response"+response.body);
     if (response.statusCode == 200) {
       return User.fromJson(jsonDecode(response.body));
     } else {
@@ -32,20 +183,20 @@ class ApiService {
   // Devam durumu listesi
   Future<List<dynamic>> getDevamDurumu(String tckn) async {
     final url = "${ApiService.baseUrl}/api/yoklama/has-month?tckn=$tckn";
-    print("getDevamDurumu url: $url");
+    logger.i("getDevamDurumu url: $url");
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        print("Devam durumu listesi alındı body: "+response.body);
+        logger.i("Devam durumu listesi alındı body: "+response.body);
         return jsonDecode(response.body);
       } else {
-        print("API Hatası: ${response.statusCode}");
-        debugPrint("API Hatası: ${response.statusCode}");
+        logger.e("API Hatası: ${response.statusCode}");
+      //  debugprint("API Hatası: ${response.statusCode}");
         return [];
       }
     } catch (e) {
-      print("API çağrı hatası: $e");
-      debugPrint("API çağrı hatası: $e");
+      logger.e("API çağrı hatası: $e");
+     // debugprint("API çağrı hatası: $e");
       return [];
     }
   }
@@ -67,14 +218,14 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(responseBody);
-        print("✅ ${decoded['message']}");
+        logger.i("✅ ${decoded['message']}");
         return true;
       } else {
-        print("⚠️ Yoklama bulk-add başarısız: ${response.statusCode}, $responseBody");
+        logger.e("⚠️ Yoklama bulk-add başarısız: ${response.statusCode}, $responseBody");
         return false;
       }
     } catch (e) {
-      print("❌ yoklamaBulkAdd hatası: $e");
+      logger.e("❌ yoklamaBulkAdd hatası: $e");
       return false;
     }
   }
@@ -96,7 +247,6 @@ class ApiService {
   }
 
 
-
   Future<bool> yoklamaSil(String tckn, DateTime date) async {
     try {
       final formattedDate =
@@ -108,27 +258,43 @@ class ApiService {
       final response = await http.delete(url);
 
       if (response.statusCode == 200) {
-        print("✅ Yoklama kaydı silindi.");
+        logger.i("✅ Yoklama kaydı silindi.");
         return true;
       } else {
-        print("⚠️ Silme başarısız: ${response.statusCode}");
+        logger.e("⚠️ Silme başarısız: ${response.statusCode}");
         return false;
       }
     } catch (e) {
-      print("❌ yoklamaSil hatası: $e");
+      logger.e("❌ yoklamaSil hatası: $e");
       return false;
     }
   }
 
+  // Kvkk ekleme
+  Future<String> kvkkEkle(String tckn) async {
+    final url = "${ApiService.baseUrl}/api/kvkk/approve?tckn=$tckn";
 
-  // Çoklu öğrenciye bildirim
-  Future<void> sendNotificationToOgrenciler(
-      String kullaniciTckn, List<String> ogrenciTcknList, String title, String message) async {
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return "ok";
+    } else {
+      throw Exception('KVKK eklenemedi: ${response.body}');
+    }
+  }
+
+
+  // Çoklu öğrenciye/öğretmene bildirim
+  Future<void> sendNotificationToKisiler(
+      String kullaniciTckn, List<String> tcknList, String title, String message) async {
     final url = "${ApiService.baseUrl}/api/Duyuru/SendDuyuru";
 
     final body = {
       'GonderenTckn': kullaniciTckn,
-      'AlanTcknList': ogrenciTcknList,
+      'AlanTcknList': tcknList,
       'Baslik': title,
       'Data': message,
     };
@@ -144,36 +310,11 @@ class ApiService {
     }
   }
 
-/*
-  // Sınıf bazlı bildirim
-  Future<void> sendNotificationToSiniflar(
-      String kullaniciTckn, List<String> sinifList, String title, String message) async {
-    final url = "${ApiService.baseUrl}/api/Duyuru/SendDuyuruByClass";
-   print("${ApiService.baseUrl}/api/Duyuru/SendDuyuruByClass");
-    final body = {
-      'GonderenTckn': kullaniciTckn,
-      'AlanSinifList': sinifList,
-      'Baslik': title,
-      'Data': message,
-    };
-
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
-    print("sendNotificationToSiniflar url: $url");
-    print("sendNotificationToSiniflar body: $body");
-    print("sendNotificationToSiniflar response: $response.body");
-    if (response.statusCode != 200) {
-      throw Exception('Bildirim gönderilemedi: ${response.body}');
-    }
-  }*/
 // Sınıf bazlı bildirim
   Future<void> sendNotificationToSiniflar(
       String kullaniciTckn, List<int> sinifList, String title, String message) async {
     final url = "${ApiService.baseUrl}/api/Duyuru/SendDuyuruByClass";
-    print("URL: $url");
+    logger.i("URL: $url");
 
     final body = {
       'GonderenTckn': kullaniciTckn,
@@ -188,8 +329,8 @@ class ApiService {
       body: jsonEncode(body),
     );
 
-    print("sendNotificationToSiniflar body: ${jsonEncode(body)}");
-    print("sendNotificationToSiniflar response: ${response.body}");
+    logger.i("sendNotificationToSiniflar body: ${jsonEncode(body)}");
+    logger.i("sendNotificationToSiniflar response: ${response.body}");
 
     if (response.statusCode != 200) {
       throw Exception('Bildirim gönderilemedi: ${response.body}');
@@ -202,8 +343,19 @@ class ApiService {
         "&TCKN=" +
         globals.kullaniciTCKN;
     Uri uri = Uri.parse(baseUrl);
-    print("_bildirimGonder çağırıldı");
-    http.Response response = await http.get(uri);
+    logger.i("_bildirimGonder çağırıldı");
+    //http.Response response = await http.get(uri);
+    http.Response response;
+
+    try {
+      response = await http
+          .get(uri, headers: {"Connection": "keep-alive"})
+          .timeout(const Duration(seconds: 6));
+    } catch (e) {
+      globals.globalStatusCode = "0";
+      globals.globalErrMsg = "Bildirim için Sunucuya bağlanılamadı ($e)";
+      return globals.globalErrMsg;
+    }
     return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
   }
 
@@ -230,14 +382,14 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(responseBody);
-        print("✅ Bildirim gönderildi: ${decoded['message']}");
+        logger.i("✅ Bildirim gönderildi: ${decoded['message']}");
         return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
       } else {
-        print("⚠️ Bildirim gönderme başarısız: ${response.statusCode}, $responseBody");
+        logger.e("⚠️ Bildirim gönderme başarısız: ${response.statusCode}, $responseBody");
         return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
       }
     } catch (e) {
-      print("❌ sendStudentNotification hatası: $e");
+      logger.e("❌ sendStudentNotification hatası: $e");
       return "";
     }
   }
@@ -251,11 +403,11 @@ class ApiService {
       if (response.statusCode == 200) {
         return true;
       } else {
-        print("Fotoğraf silme başarısız: ${response.statusCode}");
+        logger.e("Fotoğraf silme başarısız: ${response.statusCode}");
         return false;
       }
     } catch (e) {
-      print("deleteGalleryPhoto hatası: $e");
+      logger.e("deleteGalleryPhoto hatası: $e");
       return false;
     }
   }
@@ -271,20 +423,20 @@ class ApiService {
       throw Exception("Duyuru listesi alınamadı: ${response.statusCode}");
     }
   }
-
+/*
   Future<String> kullaniciBilgileriniCek(String tckn, String pswd) async {
     final String baseUrl = globals.serverAdrr +"/api/school/validate-person?tckn=${tckn}&pin=${pswd}";
     // "https://schoolserver20250719161913-dedagwd7c2hvhag7.canadacentral-01.azurewebsites.net/api/school/validate-person?tckn=${_tcNoController.text}&pin=${_passwordController.text}";
     //   "http://212.154.74.47:5000/api/school/validate-person?tckn=${_tcNoController.text}&pin=${_passwordController.text}";
     // "http://api.exchangeratesapi.io/v1/latest?access_key=";
-    print("baseUrl:$baseUrl");
+    logger.i("baseUrl:$baseUrl");
     Uri uri = Uri.parse(baseUrl );
     http.Response response = await http.get(uri);
-    print("response:$response");
-    print("response.body:${response.body}");
+    logger.i("response:$response");
+    logger.i("response.body:${response.body}");
 
     globals.globalStatusCode =    response.statusCode.toString()??"0";
-    print("globalStatusCode"+globals.globalStatusCode);
+    logger.i("globalStatusCode"+globals.globalStatusCode);
 
     globals.globalErrMsg  = response.body.toString()??"";
     if(globals.globalStatusCode!="200"){
@@ -293,13 +445,15 @@ class ApiService {
     Map<String, dynamic> parsedResponse =  jsonDecode(response.body);
 
     //Map<String, dynamic> rates = parsedResponse["rates"];
-    print('MAP YAZIYOR DİKKAT$parsedResponse');
+    logger.i('MAP YAZIYOR DİKKAT$parsedResponse');
 
 
     globals.globalKullaniciAdi = parsedResponse["Name"];
     globals.globalOkulAdi = parsedResponse["SchoolName"];
     globals.kullaniciTCKN = parsedResponse["TCKN"];
     globals.globalKullaniciTipi = parsedResponse["Type"];
+   logger.i("kullanıcı tipi:"+globals.globalKullaniciTipi );
+
     globals.fotoVersion     = parsedResponse["FotoVersion"];
     if (parsedResponse["UnreadDuyuruCount"]==0){
       globals.duyuruVar= false;
@@ -329,11 +483,11 @@ class ApiService {
       }).toList();
     }
     if (globals.globalOgrenciListesi != null && globals.globalOgrenciListesi!.isNotEmpty) {
-      print("öğrenci listesi DOLU");
+      logger.i("öğrenci listesi DOLU");
     } else {
-      print("öğrenci listesi BOŞ");
+      logger.i("öğrenci listesi BOŞ");
     }
-    //Future.delayed(const Duration(seconds: 5), () => print('Large Latte'));
+    //Future.delayed(const Duration(seconds: 5), () => logger.i('Large Latte'));
 
     globals.globalSinifListesi = [];
     if (parsedResponse.containsKey("Classes") && parsedResponse["Classes"] != null) {
@@ -344,6 +498,23 @@ class ApiService {
       }).toList();
     }
 
+    // Öğretmen listesi parse
+    globals.globalOgretmenListesi = [];
+    if (parsedResponse.containsKey("Teachers") && parsedResponse["Teachers"] != null) {
+      final students = parsedResponse["Teachers"] as List;
+      globals.globalOgretmenListesi = students.map((e) => {
+        "TeacherName": e["TeacherName"] ?? "",
+        "TeacherTCKN": e["TeacherTCKN"] ?? "",
+        "StudentTCKN": e["StudentTCKN"] ?? "",
+        "StudentName": e["StudentName"] ?? ""
+      }).toList();
+    }
+    if (globals.globalOgretmenListesi != null && globals.globalOgretmenListesi!.isNotEmpty) {
+      logger.i("öğretmen listesi DOLU");
+    } else {
+      logger.i("öğretmen listesi BOŞ");
+    }
+
     globals.menuListesi = [];
 
     try {
@@ -352,11 +523,11 @@ class ApiService {
         globals.menuListesi = rawMenu.split(",").map((e) => e.trim()).toList();
       }
     } catch (e) {
-      print("Hata oldu menu listesi $e");
+      logger.i("Hata oldu menu listesi $e");
     }
 
-    print("menu listesi uzunluğu "+globals.menuListesi.length.toString());
-    print("KULLANICI ADI "+globals.globalKullaniciAdi);
+    logger.i("menu listesi uzunluğu "+globals.menuListesi.length.toString());
+    logger.i("KULLANICI ADI "+globals.globalKullaniciAdi);
     return Future.delayed(Duration(seconds: 2), () => "Veri indirildi!");
 
 
@@ -371,12 +542,108 @@ class ApiService {
     }*/
 
   }
+ */
+  Future<String> kullaniciBilgileriniCek(String tckn, String pswd) async {
+    final String baseUrl = "${globals.serverAdrr}/api/school/validate-person?tckn=$tckn&pin=$pswd";
+    logger.i("baseUrl:$baseUrl");
+
+    final uri = Uri.parse(baseUrl);
+    http.Response response;
+    try {
+      response = await http
+          .get(uri, headers: {"Connection": "keep-alive"})
+          .timeout(const Duration(seconds: 12));
+      logger.i("kullaniciBilgileriniCek çağırıldı resp:${response.body}");
+
+    } catch (e) {
+      globals.globalStatusCode = "0";
+      globals.globalErrMsg = "Sunucuya bağlanılamadı ($e)";
+      return globals.globalErrMsg;
+    }
+
+    globals.globalStatusCode = response.statusCode.toString();
+    globals.globalErrMsg = response.body;
+
+    if (response.statusCode != 200) {
+      return globals.globalErrMsg;
+    }
+
+    final parsedResponse = jsonDecode(response.body);
+    globals.globalKullaniciAdi = parsedResponse["Name"];
+    globals.globalOkulAdi = parsedResponse["SchoolName"];
+    globals.kullaniciTCKN = parsedResponse["TCKN"];
+    globals.globalKullaniciTipi = parsedResponse["Type"];
+    globals.fotoVersion = parsedResponse["FotoVersion"];
+
+    globals.duyuruVar = ValueNotifier((parsedResponse["UnreadDuyuruCount"] ?? 0) > 0);
+    globals.anketVar = ValueNotifier((parsedResponse["SurveyCount"] ?? 0) > 0);
+    globals.etkinlikVar = ValueNotifier((parsedResponse["ActivityCount"] ?? 0) > 0);
+
+    globals.globalSchoolId = parsedResponse["SchoolId"].toString();
+    globals.globalKonumEnlem = parsedResponse["KonumEnlem"].toString();
+    globals.globalKonumBoylam = parsedResponse["KonumBoylam"].toString();
+    globals.mesafeLimit = parsedResponse["MesafeLimit"];
+    globals.meslek = parsedResponse["Meslek"];
+    globals.hobi = parsedResponse["Hobi"];
+    globals.kvkk = parsedResponse["Kvkk"].toString()??"0";
+
+
+    // Öğrenciler
+    globals.globalOgrenciListesi = [];
+    final students = parsedResponse["Students"] as List?;
+    if (students != null) {
+      for (var e in students) {
+        globals.globalOgrenciListesi.add({
+          "Name": e["Name"] ?? "",
+          "TCKN": e["TCKN"] ?? "",
+          "FotoVersion": e["FotoVersion"] ?? "",
+          "Alerji": e["Alerji"] ?? "",
+          "Ilac": e["Ilac"] ?? "",
+        });
+      }
+    }
+
+    // Öğretmen listesi parse
+    globals.globalOgretmenListesi = [];
+    if (parsedResponse.containsKey("Teachers") && parsedResponse["Teachers"] != null) {
+      final students = parsedResponse["Teachers"] as List;
+      globals.globalOgretmenListesi = students.map((e) => {
+        "TeacherName": e["TeacherName"] ?? "",
+        "TeacherTCKN": e["TeacherTCKN"] ?? "",
+        "StudentTCKN": e["StudentTCKN"] ?? "",
+        "StudentName": e["StudentName"] ?? ""
+      }).toList();
+    }
+    if (globals.globalOgretmenListesi != null && globals.globalOgretmenListesi!.isNotEmpty) {
+      logger.i("öğretmen listesi DOLU");
+    } else {
+      logger.i("öğretmen listesi BOŞ");
+    }
+    // Menü
+    globals.menuListesi = [];
+    if (parsedResponse["MenuTanim"] != null) {
+      globals.menuListesi =
+          parsedResponse["MenuTanim"].toString().split(",").map((e) => e.trim()).toList();
+    }
+
+    globals.globalSinifListesi = [];
+    if (parsedResponse.containsKey("Classes") && parsedResponse["Classes"] != null) {
+      final classes = parsedResponse["Classes"] as List;
+      globals.globalSinifListesi = classes.map((e) => {
+        "Id": e["Id"] ?? "",
+        "Ad": e["Ad"] ?? "",
+      }).toList();
+    }
+
+    return "Veri indirildi!";
+  }
+
   // Duyuruyu okundu olarak işaretleme
   Future<bool> setDuyuruOkundu(int duyuruId) async {
     final url = "${ApiService.baseUrl}/api/Duyuru/MarkAsRead?duyuruId=$duyuruId";
     final response = await http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'duyuruId': duyuruId}));
 
-    if (response.statusCode == 200) globals.duyuruVar = false;
+    if (response.statusCode == 200) globals.duyuruVar = false as ValueNotifier<bool>;
     return response.statusCode == 200;
   }
 
@@ -390,14 +657,14 @@ class ApiService {
       final uri = Uri.parse(
         "${ApiService.baseUrl}/api/yoklama/bulk-has?tcknList=$tcknQuery&date=$date",
       );
-      print("getYoklamaList çağırıldı");
+      logger.i("getYoklamaList çağırıldı");
 
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
         // API'den dönen JSON örneği artık List<dynamic>
         List<dynamic> data = json.decode(response.body);
-        print("data: $data");
+        logger.i("data: $data");
         return data;
       } else {
         throw Exception("Yoklama listesi alınamadı! StatusCode: ${response.statusCode}");
@@ -406,6 +673,39 @@ class ApiService {
       throw Exception("Hata getYoklamaList: $e");
     }
   }
+
+  Future<int> checkCurrentTime(int schoolId, String personType) async {
+    final url = "${ApiService.baseUrl}/api/doortime/check-time?schoolId=$schoolId&personType=$personType";
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      final body = response.body.trim();
+
+      logger.i("checkCurrentTime response body: $body");
+
+      if (response.statusCode == 200) {
+        // JSON mu kontrol et
+        if (body.startsWith("{")) {
+          final jsonBody = jsonDecode(body);
+          final isInRange = jsonBody["isInRange"];
+          if (isInRange is int) return isInRange;
+          if (isInRange is bool) return isInRange ? 1 : 0;
+        } else {
+          // HTML gelmiş demektir
+          logger.e("checkCurrentTime: JSON bekleniyordu ama HTML geldi");
+          return 0;
+        }
+      } else {
+        throw Exception(
+            "Saat kontrolü başarısız. StatusCode: ${response.statusCode}, Body: ${response.body}");
+      }
+    } catch (e) {
+      logger.e("checkCurrentTime hatası: $e");
+      rethrow;
+    }
+    return 0;
+  }
+
 
   /// Galeri listesini alır
   /// take: kaç fotoğraf alınacak, skip: kaç fotoğraf atlanacak
@@ -431,14 +731,15 @@ class ApiService {
           return jsonList.map((e) => e.toString()).toList();
         } else {
           // Virgülle ayrılmış string
+          logger.i("galeri listesi "+body.split(',').map((e) => e.trim()).toList().toString());
           return body.split(',').map((e) => e.trim()).toList();
         }
       } else {
-        print("⚠️ GetGallery başarısız: ${response.statusCode}");
+        logger.e("⚠️ GetGallery başarısız: ${response.statusCode}");
         return [];
       }
     } catch (e) {
-      print("❌ getGallery hatası: $e");
+      logger.e("❌ getGallery hatası: $e");
       return [];
     }
   }
@@ -459,16 +760,121 @@ class ApiService {
         if (body.isEmpty) return [];
         return body.split(',');
       } else {
-        print("⚠️ GetGallery başarısız: ${response.statusCode}");
+        logger.i("⚠️ GetGallery başarısız: ${response.statusCode}");
         return [];
       }
     } catch (e) {
-      print("❌ getGallery hatası: $e");
+      logger.i("❌ getGallery hatası: $e");
       return [];
     }
   }*/
+  Future<List<Map<String, String>>> getGalleryWithThumbnails(
+      String tckn, {int skip = 0, int take = 18}) async {
+    final url = "${ApiService.baseUrl}/api/school/get-gallery?tckn=$tckn&skip=$skip&take=$take";
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception("StatusCode: ${response.statusCode}, Body: ${response.body}");
+      }
+
+      final body = response.body.trim();
+      if (body.isEmpty) return [];
+
+      final urls = body.split(',').map((e) => e.trim()).toList();
+
+      // Sadece _K ve _B eşlemesini yap
+      final Map<String, String> thumbs = {};
+      final Map<String, String> fulls = {};
+
+      for (var url in urls) {
+        if (url.contains("_K")) {
+          final key = url.split("_K")[0];
+          thumbs[key] = url;
+        } else if (url.contains("_B")) {
+          final key = url.split("_B")[0];
+          fulls[key] = url;
+        }
+      }
+
+      final List<Map<String, String>> images = [];
+      for (var key in thumbs.keys) {
+        images.add({
+          "thumb": thumbs[key]!,
+          "full": fulls[key] ?? thumbs[key]!, // _B yoksa _K kullan
+        });
+      }
+
+      logger.i("getGalleryWithThumbnails images: $images");
+      return images;
+    } catch (e, st) {
+      logger.e("getGalleryWithThumbnails error: $e");
+      rethrow;
+    }
+  }
+
+
+  // Tamamen yeni fonksiyon: thumbnail + full URL döndürüyor
+ /* Future<List<Map<String, String>>> getGalleryWithThumbnails(
+      String tckn, {int skip = 0, int take = 18}) async {
+    final url = "${ApiService.baseUrl}/api/school/get-gallery?tckn=$tckn&skip=$skip&take=$take";
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode != 200) {
+        throw Exception(
+            "StatusCode: ${response.statusCode}, Body: ${response.body}");
+      }
+
+      // JSON decode yok, virgülle ayrılmış string
+      final body = response.body.trim();
+
+      if (body.isEmpty) return [];
+
+      final urls = body.split(',');
+
+      final images = urls.map((fullUrl) {
+        fullUrl = fullUrl.trim();
+        String thumbUrl = fullUrl.contains("?") ? "$fullUrl&width=200" : "$fullUrl?width=200";
+        return {
+          "thumb": thumbUrl,
+          "full": fullUrl,
+        };
+      }).toList();
+      logger.i("getGalleryWithThumbnails images:"+images.toString());
+      return images;
+    } catch (e, st) {
+      logger.e("getGalleryWithThumbnails error: $e");
+      rethrow;
+    }
+  }*/
+
   // Galeri fotoğraflarını getir
   Future<List<String>> getGalleryImages() async {
+    final url = "${ApiService.baseUrl}/gallery";
+    logger.i("Galeri fotoğrafları isteniyor: $url");
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      logger.d("Galeri response status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> decoded = jsonDecode(response.body);
+        final images = decoded.cast<String>();
+        logger.i("Galeri fotoğrafları başarıyla alındı (${images.length} adet)");
+        return images;
+      } else {
+        logger.e("Galeri isteği başarısız oldu! StatusCode: ${response.statusCode}");
+        throw Exception("Fotoğraflar alınamadı! StatusCode: ${response.statusCode}");
+      }
+    } catch (e, stackTrace) {
+      logger.e("Galeri fotoğrafları alınırken hata oluştu: $e");
+      rethrow;
+    }
+  }
+ /* Future<List<String>> getGalleryImages() async {
     final url = "${ApiService.baseUrl}/gallery";
     final response = await http.get(Uri.parse(url));
 
@@ -477,7 +883,7 @@ class ApiService {
     } else {
       throw Exception("Fotoğraflar alınamadı! StatusCode: ${response.statusCode}");
     }
-  }
+  }*/
 
   // Çoklu fotoğraf yükleme
   Future<void> uploadGalleryImages(List<dynamic> images) async {
@@ -506,6 +912,7 @@ class ApiService {
     final response = await request.send();
     if (response.statusCode != 200 && response.statusCode != 201) {
       final respStr = await response.stream.bytesToString();
+      logger.e("Etkinlik oluşturma response:$respStr");
       throw Exception("Etkinlik oluşturulamadı: $respStr");
     }
   }
@@ -527,10 +934,21 @@ class ApiService {
     // TODO: API çağrısı buraya eklenecek
     final String baseUrl =
         globals.serverAdrr+"/api/school/open-door/"+globals.globalSchoolId;
-    print("baseUrl:$baseUrl");
+    logger.i("baseUrl:$baseUrl");
     Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("gate status:"+response.statusCode.toString());
+    //http.Response response = await http.get(uri);
+    http.Response response;
+
+    try {
+      response = await http
+          .get(uri, headers: {"Connection": "keep-alive"})
+          .timeout(const Duration(seconds: 6));
+    } catch (e) {
+      globals.globalStatusCode = "0";
+      globals.globalErrMsg = "Kapı açılısı için Sunucuya bağlanılamadı ($e)";
+      return globals.globalErrMsg;
+    }
+    logger.i("gate status:"+response.statusCode.toString());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Ana Kapı Kontrol çağrıldı')),
     );
@@ -541,10 +959,21 @@ class ApiService {
     // TODO: API çağrısı buraya eklenecek
     final String baseUrl =
         globals.serverAdrr+"/api/school/open-park/"+globals.globalSchoolId;
-    print("baseUrl:$baseUrl");
+    logger.i("baseUrl:$baseUrl");
     Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("otopark status:"+response.statusCode.toString());
+    //http.Response response = await http.get(uri);
+    http.Response response;
+
+    try {
+      response = await http
+          .get(uri, headers: {"Connection": "keep-alive"})
+          .timeout(const Duration(seconds: 6));
+    } catch (e) {
+      globals.globalStatusCode = "0";
+      globals.globalErrMsg = "Park Kapısı için Sunucuya bağlanılamadı ($e)";
+      return globals.globalErrMsg;
+    }
+    logger.i("otopark status:"+response.statusCode.toString());
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Otopark Kontrol çağrıldı')),
@@ -580,7 +1009,7 @@ class ApiService {
         "answer": answer,
       },
     );
-    print("submitSurvey cagirildi");
+    logger.i("submitSurvey cagirildi");
     if (response.statusCode != 200) {
       throw Exception("Cevap gönderilemedi");
     }
@@ -593,7 +1022,7 @@ class ApiService {
     required String classes, // comma-separated class IDs
   }) async {
     final uri = Uri.parse("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
-    print("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
+    logger.i("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
     final response = await http.get(uri);
 
     if (response.statusCode == 200) {
@@ -603,37 +1032,7 @@ class ApiService {
       throw Exception("Summary alınamadı");
     }
   }
-/*  Future<bool> uploadGallery(String tckn, List<XFile> files) async {
-    try {
-      var uri = Uri.parse("${ApiService.baseUrl}/api/school/upload-gallery");
-      var request = http.MultipartRequest('POST', uri);
-      request.fields['tckn'] = tckn;
 
-      for (var xfile in files) {
-        final mimeType = lookupMimeType(xfile.path) ?? 'image/jpeg';
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'files',
-            xfile.path,
-            contentType: MediaType.parse(mimeType),
-          ),
-        );
-      }
-
-      var response = await request.send();
-
-      if (response.statusCode == 200) {
-        print("✅ Galeriye ${files.length} fotoğraf yüklendi.");
-        return true;
-      } else {
-        print("⚠️ Yükleme başarısız: ${response.statusCode}");
-        return false;
-      }
-    } catch (e) {
-      print("❌ uploadGallery hatası: $e");
-      return false;
-    }
-  }*/
 
   Future<bool> uploadGallery(String tckn, List<File> files) async {
     try {
@@ -655,464 +1054,15 @@ class ApiService {
       var response = await request.send();
 
       if (response.statusCode == 200) {
-        print("✅ Galeriye ${files.length} fotoğraf yüklendi.");
+        logger.i("✅ Galeriye ${files.length} fotoğraf yüklendi.");
         return true;
       } else {
-        print("⚠️ Yükleme başarısız: ${response.statusCode}");
+        logger.e("⚠️ Yükleme başarısız: ${response.statusCode}");
         return false;
       }
     } catch (e) {
-      print("❌ uploadGallery hatası: $e");
+      logger.e("❌ uploadGallery hatası: $e");
       return false;
     }
   }
 }
-/*import 'dart:convert';
-import 'dart:ffi';
-
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:http/http.dart' as http;
-import '../models/user.dart';
-import '../globals.dart' as globals;
-import 'package:flutter/material.dart';
-
-
-class ApiService {
-  static String baseUrl = globals.serverAdrr;//'http://212.154.74.47:5000/api';
-
-  Future<User> validatePerson(String tckn, String pin) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/school/validate-person'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'tckn': tckn,
-          'pin': pin,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return User.fromJson(data);
-      } else {
-        throw Exception('Giriş başarısız: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Bağlantı hatası: $e');
-    }
-  }
-
-  Future<void> sendNotification(String title, String message) async {
-    // TODO: Implement actual API call to send notification
-    await Future.delayed(const Duration(seconds: 2)); // Simulating API call
-  }
-
-  Future<void> sendNotification2(String title, String message, {required String tckn}) async {
-    final url = Uri.parse('$baseUrl/notification/send'); // Gerçek endpoint burada olmalı
-
-    final body = {
-      'title': title,
-      'message': message,
-      'tckn': tckn, // Hedef öğrenci TCKN'si
-    };
-
-    final headers = {
-      'Content-Type': 'application/json',
-      // Eğer token gerekiyorsa:
-      // 'Authorization': 'Bearer your_token',
-    };
-
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(body),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Bildirim gönderilemedi (TCKN: $tckn): ${response.body}');
-    }
-  }
-
-  Future<void> sendNotificationToOgrenci(String ogrenciId, String baslik, String mesaj) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/notification/send'),
-      body: jsonEncode({
-        'ogrenciId': ogrenciId,
-        'title': baslik,
-        'message': mesaj,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Bildirim gönderilemedi');
-    }
-  }
-
-  Future<void> sendNotificationToOgrenciler(
-      String kullaniciTckn,
-      List<String> ogrenciTcknList,
-      String title,
-      String message,
-      ) async {
-    final url = Uri.parse(globals.serverAdrr+'/api/Duyuru/SendDuyuru');
-
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'GonderenTckn': kullaniciTckn,
-        'AlanTcknList': ogrenciTcknList,
-        'Baslik': title,
-        'Data': message,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Bildirim gönderilemedi: ${response.body}');
-    }
-  }
-
-  Future<void> sendNotificationToSiniflar(
-      String kullaniciTckn,
-      List<String> sinifList,
-      String title,
-      String message,
-      ) async {
-    final url = Uri.parse(globals.serverAdrr+'/api/Duyuru/SendDuyuruByClass');
-
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'GonderenTckn': kullaniciTckn,
-        'AlanSinifList': sinifList,
-        'Baslik': title,
-        'Data': message,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Bildirim gönderilemedi: ${response.body}');
-    }
-  }
-
-  // Devam durumu listesi çekme
-  Future<List<dynamic>> getDevamDurumu(String tckn) async {
-    try {
-      final response = await http.get(
-        Uri.parse("${globals.serverAdrr}/has-month?tckn=$tckn"),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        debugPrint("API Hatası: ${response.statusCode}");
-        return [];
-      }
-    } catch (e) {
-      debugPrint("API çağrı hatası: $e");
-      return [];
-    }
-  }
-}
-
-  // Duyuru listesi alma
-  Future<List<Map<String, dynamic>>> getDuyuruList(String kullaniciTCKN) async {
-    try {
-      final response = await http.get(Uri.parse(globals.serverAdrr+"/api/Duyuru/GetDuyurular?tckn="+kullaniciTCKN));
-      if (response.statusCode == 200) {
-        List<dynamic> jsonList = json.decode(response.body);
-        return jsonList.cast<Map<String, dynamic>>();
-      } else {
-        throw Exception("Duyuru listesi alınamadı: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Hata: $e");
-      return [];
-    }
-  }
-
-  // Duyuruyu okundu olarak işaretleme
-  Future<bool> setDuyuruOkundu(int duyuruId) async {
-    try {
-      final response = await http.post(
-        Uri.parse(globals.serverAdrr+"/api/Duyuru/MarkAsRead?duyuruId="+duyuruId.toString()),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode({"duyuruId": duyuruId}),
-      );
-
-      if (response.statusCode == 200){
-        globals.duyuruVar = false;
-      }
-      return response.statusCode == 200;
-    } catch (e) {
-      print("Hata: $e");
-      return false;
-    }
-  }
-  /// Galeri fotoğraflarını getirir
-  Future<List<String>> getGalleryImages() async {
-    try {
-      final response = await http.get(Uri.parse("$baseUrl/gallery"));
-
-      if (response.statusCode == 200) {
-        // API'den dönen JSON örneği: ["https://.../image1.jpg", "https://.../image2.jpg"]
-        List<dynamic> data = json.decode(response.body);
-        return data.cast<String>();
-      } else {
-        throw Exception("Fotoğraflar alınamadı! StatusCode: ${response.statusCode}");
-      }
-    } catch (e) {
-      throw Exception("Hata getGalleryImages: $e");
-    }
-  }
-
-  /// Çoklu fotoğraf yükleme örneği
-  Future<void> uploadGalleryImages(List<dynamic> images) async {
-    var uri = Uri.parse("$baseUrl/gallery/upload");
-    var request = http.MultipartRequest('POST', uri);
-
-    for (var image in images) {
-      // image.path XFile'dan geliyor
-      request.files.add(await http.MultipartFile.fromPath('photos', image.path));
-    }
-
-    var response = await request.send();
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception("Fotoğraf yüklenemedi! StatusCode: ${response.statusCode}");
-    }
-  }
-
-  Future<void> createEtkinlik(Map<String, dynamic> etkinlikData) async {
-    final uri = Uri.parse('$baseUrl/api/activity/add');
-
-    final request = http.MultipartRequest('POST', uri);
-
-    // Form verilerini ekle
-    etkinlikData.forEach((key, value) {
-      if (value != null) {
-        request.fields[key] = value.toString();
-      }
-    });
-
-    try {
-      final response = await request.send();
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final respStr = await response.stream.bytesToString();
-        print("Etkinlik başarıyla eklendi: $respStr");
-      } else {
-        final respStr = await response.stream.bytesToString();
-        print("Etkinlik oluşturulamadı: $respStr");
-        throw Exception('Etkinlik oluşturulamadı: $respStr');
-      }
-    } catch (e) {
-      print("API Hatası: $e");
-      throw Exception('API Hatası: $e');
-    }
-  }
-
-  // Etkinlik listesi alma
-  Future<List<Map<String, dynamic>>> getEtkinlikList(String kullaniciTCKN) async {
-    try {
-      final response = await http.get(
-        Uri.parse("${globals.serverAdrr}/api/activity/list-by-tckn?tckn=$kullaniciTCKN"),
-      );
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        print("etkinlik listesi geldi");
-        if (decoded is List) {
-          return decoded.cast<Map<String, dynamic>>();
-        } else {
-          throw Exception("Beklenmeyen JSON formatı: ${decoded.runtimeType}");
-        }
-      } else {
-        throw Exception("Etkinlik listesi alınamadı: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Hata getEtkinlikList: $e");
-      return [];
-    }
-  }
-
-
-  Future<void> yoklamaEkle(String tckn, DateTime gun) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/yoklama/add'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'tckn': tckn,
-          'date': gun.toIso8601String(), // string olarak gönder
-        },
-      );
-
-      if (response.statusCode == 200) {
-        print('Yoklama eklendi.');
-      } else {
-        throw Exception('Giriş başarısız: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Bağlantı hatası: $e');
-    }
-  }
-
-  /// Günlük yoklama listesini getirir
-  Future<List<dynamic>> getYoklamaList(List<String> tcknList, String date) async {
-    try {
-      // TCKN listesini virgülle birleştir
-      final tcknQuery = tcknList.join(',');
-
-      // API URL'sini oluştur
-      final uri = Uri.parse(
-        "$baseUrl/api/yoklama/bulk-has?tcknList=$tcknQuery&date=$date",
-      );
-      print("getYoklamaList çağırıldı");
-
-      final response = await http.get(uri);
-
-      if (response.statusCode == 200) {
-        // API'den dönen JSON örneği artık List<dynamic>
-        List<dynamic> data = json.decode(response.body);
-        print("data: $data");
-        return data;
-      } else {
-        throw Exception("Yoklama listesi alınamadı! StatusCode: ${response.statusCode}");
-      }
-    } catch (e) {
-      throw Exception("Hata getYoklamaList: $e");
-    }
-  }
-
-
-  Future<String> kullaniciBilgileriniCek(String tckn, String pswd) async {
-    final String baseUrl = globals.serverAdrr +"/api/school/validate-person?tckn=${tckn}&pin=${pswd}";
-    // "https://schoolserver20250719161913-dedagwd7c2hvhag7.canadacentral-01.azurewebsites.net/api/school/validate-person?tckn=${_tcNoController.text}&pin=${_passwordController.text}";
-    //   "http://212.154.74.47:5000/api/school/validate-person?tckn=${_tcNoController.text}&pin=${_passwordController.text}";
-    // "http://api.exchangeratesapi.io/v1/latest?access_key=";
-    print("baseUrl:$baseUrl");
-    Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("response:$response");
-    print("response.body:${response.body}");
-
-    globals.globalStatusCode =    response.statusCode.toString()??"0";
-    print("globalStatusCode"+globals.globalStatusCode);
-
-    globals.globalErrMsg  = response.body.toString()??"";
-    if(globals.globalStatusCode!="200"){
-      return Future.delayed(Duration(seconds: 2), () => globals.globalErrMsg);
-    }
-    Map<String, dynamic> parsedResponse =  jsonDecode(response.body);
-
-    //Map<String, dynamic> rates = parsedResponse["rates"];
-    print('MAP YAZIYOR DİKKAT$parsedResponse');
-
-
-    globals.globalKullaniciAdi = parsedResponse["Name"];
-    globals.globalOkulAdi = parsedResponse["SchoolName"];
-    globals.kullaniciTCKN = parsedResponse["TCKN"];
-    globals.globalKullaniciTipi = parsedResponse["Type"];
-    globals.fotoVersion     = parsedResponse["FotoVersion"];
-    if (parsedResponse["UnreadDuyuruCount"]==0){
-      globals.duyuruVar= false;
-    } else{
-      globals.duyuruVar= true;
-    }
-
-    globals.globalSchoolId = parsedResponse["SchoolId"].toString();
-    globals.globalKonumEnlem = parsedResponse["KonumEnlem"].toString();
-    globals.globalKonumBoylam= parsedResponse["KonumBoylam"].toString();
-    globals.mesafeLimit = parsedResponse["MesafeLimit"];
-    globals.meslek= parsedResponse["Meslek"];
-    globals.hobi= parsedResponse["Hobi"];
-    // Eğer yalnızca tek bir öğrenci adı dönerse eski field'ı yedekliyoruz
-    globals.globalOgrenciAdi = parsedResponse["StudentName"] ?? "";
-
-// Öğrenci listesi parse
-    globals.globalOgrenciListesi = [];
-    if (parsedResponse.containsKey("Students") && parsedResponse["Students"] != null) {
-      final students = parsedResponse["Students"] as List;
-      globals.globalOgrenciListesi = students.map((e) => {
-        "Name": e["Name"] ?? "",
-        "TCKN": e["TCKN"] ?? "",
-        "FotoVersion": e["FotoVersion"] ?? "",
-        "Alerji": e["Alerji"] ?? "",
-        "Ilac": e["Ilac"] ?? "",
-      }).toList();
-    }
-    if (globals.globalOgrenciListesi != null && globals.globalOgrenciListesi!.isNotEmpty) {
-      print("öğrenci listesi DOLU");
-    } else {
-      print("öğrenci listesi BOŞ");
-    }
-    //Future.delayed(const Duration(seconds: 5), () => print('Large Latte'));
-
-    globals.globalSinifListesi = [];
-    if (parsedResponse.containsKey("Classes") && parsedResponse["Classes"] != null) {
-      final classes = parsedResponse["Classes"] as List;
-      globals.globalSinifListesi = classes.map((e) => {
-        "Id": e["Id"] ?? "",
-        "Ad": e["Ad"] ?? "",
-      }).toList();
-    }
-
-    print("KULLANICI ADI "+globals.globalKullaniciAdi);
-    return Future.delayed(Duration(seconds: 2), () => "Veri indirildi!");
-
-
-    /*if (baseTlKuru != null) {
-      for (String ulkeKuru in rates.keys) {
-        double? baseKur = double.tryParse(rates[ulkeKuru].toString());
-        if (baseKur != null) {
-          double tlKuru = baseTlKuru / baseKur;
-         // _oranlar[ulkeKuru] = tlKuru;
-        }
-      }
-    }*/
-
-  }
-
-  Future<void> registerToken(String tckn, String? token) async{
-    String tokenRequest ;
-
-    FirebaseMessaging.instance.getToken().then((token){
-      print("token:"+token.toString());
-      tokenRequest = globals.serverAdrr+"/api/school/register-fcm-token?tckn="+tckn+"&fcmToken="+token.toString();
-      print("tokenRequest "+tokenRequest);
-      http.post(Uri.parse(tokenRequest) as Uri);
-    });
-  }
-
-  Future<String> onGatePressed(BuildContext context) async{
-    // TODO: API çağrısı buraya eklenecek
-    final String baseUrl =
-        globals.serverAdrr+"/api/school/open-door/"+globals.globalSchoolId;
-    print("baseUrl:$baseUrl");
-    Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("gate status:"+response.statusCode.toString());
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ana Kapı Kontrol çağrıldı')),
-    );
-    return Future.delayed(Duration(seconds: 2), () => response.statusCode.toString()??"0");
-  }
-
-  Future<String>  onParkingPressed(BuildContext context) async{
-    // TODO: API çağrısı buraya eklenecek
-    final String baseUrl =
-        globals.serverAdrr+"/api/school/open-park/"+globals.globalSchoolId;
-    print("baseUrl:$baseUrl");
-    Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("otopark status:"+response.statusCode.toString());
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Otopark Kontrol çağrıldı')),
-    );
-    return Future.delayed(Duration(seconds: 2), () => response.statusCode.toString()??"0");
-  }
-
-}*/

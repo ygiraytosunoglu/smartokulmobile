@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
+import 'package:smart_okul_mobile/screens/kvkk_screen.dart';
 import '../services/api_service.dart';
+import 'package:logger/logger.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,11 +20,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false; // loading durumu eklendi
+  late Future<SharedPreferences> _prefs;
 
   @override
   void initState() {
     super.initState();
-    _initializeFirebaseMessaging();
+    //_initializeFirebaseMessaging();
+    _prefs = SharedPreferences.getInstance();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _kullaniciAdiniKontrolEt(context);
     });
@@ -62,6 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
       print('Message data: ${message.data}');
     });
   }
+
 
   void _kullaniciAdiniKontrolEt(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -104,10 +110,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    /*child: const Icon(
                       Icons.school,
                       size: 80,
                       color: Colors.blue,
+                    ),*/
+                    child: Image.asset(
+                      'assets/smartokul.png',
+                      width: 80,   // istediğiniz boyut
+                      height: 80,  // istediğiniz boyut
+                      fit: BoxFit.contain,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -146,8 +158,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.number,
                             maxLength: 11,
                             decoration: InputDecoration(
-                              labelText: 'TC Kimlik No',
-                              hintText: '11 haneli TC Kimlik No giriniz',
+                              labelText: 'Kullanıcı No',
+                              hintText: '11 haneli Kullanıcı No giriniz',
                               prefixIcon: const Icon(Icons.person_outline),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -270,15 +282,25 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true; // loading aktif
     });
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString("kullaniciAdi", _tcNoController.text);
-    await prefs.setString("sifre", _passwordController.text);
+   // SharedPreferences prefs = await SharedPreferences.getInstance();
+    /*await prefs.setString("kullaniciAdi", _tcNoController.text);
+    await prefs.setString("sifre", _passwordController.text);*/
+    final prefs = await _prefs; // aynı instance kullanılır
+    final logger = Logger();
+
+    await Future.wait([
+      prefs.setString("kullaniciAdi", _tcNoController.text),
+      prefs.setString("sifre", _passwordController.text),
+    ]);
 
     try {
+      logger.i("Kullanıcı bilgileri öncesi");
+
       String sonuc = await ApiService().kullaniciBilgileriniCek(
         _tcNoController.text,
         _passwordController.text,
       );
+      logger.i("Kullanıcı bilgilerini çektik: $sonuc");
 
       if (globals.globalStatusCode != "200") {
         _pencereAc(context, globals.globalErrMsg);
@@ -287,26 +309,52 @@ class _LoginScreenState extends State<LoginScreen> {
         });
         return;
       }
+      logger.i("Kullanıcı bilgileri sonrasi");
 
       // Giriş başarılı ise HomeScreen’e yönlendir
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      if (globals.kvkk=="1"){
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+        logger.i("home screen sonrasi");
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const KvkkScreen()),
+        );
+        logger.i("kvkk screen sonrasi");
+      }
+
+      _initializeFirebaseMessaging();
+      logger.i("_initializeFirebaseMessaging sonrasi");
+
     } catch (e) {
-      _pencereAc(context, "Bir hata oluştu. Tekrar deneyin.");
+      _pencereAc(context, "Bir hata oluştu. Tekrar deneyin. $e");
+      logger.e("Hata oluştu: $e");
       setState(() {
         _isLoading = false; // hata olursa buton eski haline dönsün
       });
     }
   }
 
-  Future _pencereAc(BuildContext context, String mesaj) {
+  /*Future _pencereAc(BuildContext context, String mesaj) {
     return showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(title: Text(mesaj));
       },
+    );
+  }*/
+  //performans acısından bu hale getirildi
+  Future<void> _pencereAc(BuildContext context, String mesaj) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mesaj),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.blue, // İstersen burada rengi değiştirebilirsin
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 }

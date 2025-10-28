@@ -73,7 +73,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Duyuru(lar) başarıyla gönderildi')),
+          const SnackBar(content: Text('Mesaj(lar) başarıyla gönderildi')),
         );
 
         _titleController.clear();
@@ -142,7 +142,8 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Duyuru Gönder'),
+        title: const Text('Mesaj Gönder'),
+
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -175,7 +176,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                       const Icon(Icons.campaign, size: 64, color: AppColors.primary),
                       const SizedBox(height: 24),
                       Text(
-                        'Yeni Duyuru',
+                        'Yeni Mesaj',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -233,7 +234,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
 
                       const SizedBox(height: 16),
 
-                      // Duyuru Gönder butonu
+                      // Mesaj Gönder butonu
                       ElevatedButton(
                         onPressed: _isSending ? null : _sendNotificationM,
                         style: ElevatedButton.styleFrom(
@@ -243,7 +244,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                           foregroundColor: AppColors.onPrimary,
                         ),
                         child: Text(
-                          _isSending ? 'Duyuru Gönderiliyor...' : 'Duyuru Gönder',
+                          _isSending ? 'Mesaj Gönderiliyor...' : 'Mesaj Gönder',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import 'package:http/http.dart' as http;
@@ -51,7 +52,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   Future<void> _sendNotification() async {
     if (_formKey.currentState!.validate() && selectedOgrenciler.isNotEmpty) {
       try {
-        await _apiService.sendNotificationToOgrenciler(
+        await _apiService.sendNotificationToKisiler(
           globals.kullaniciTCKN,
           selectedOgrenciler,
           _titleController.text,
@@ -59,8 +60,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Duyuru(lar) başarıyla gönderildi')),
+          const SnackBar(content: Text('Mesaj(lar) başarıyla gönderildi')),
         );
+
+
 
         _titleController.clear();
         _messageController.clear();
@@ -68,6 +71,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           selectedOgrenciler.clear();
           isAllSelected = false;
         });
+
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => HomeScreen()));
+
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: ${e.toString()}')),
@@ -84,7 +91,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Duyuru Gönder'),
+        title: const Text('Mesaj Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -117,7 +124,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                       const Icon(Icons.campaign, size: 64, color: AppColors.primary),
                       const SizedBox(height: 24),
                       Text(
-                        'Yeni Duyuru',
+                        'Yeni Mesaj',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -181,7 +188,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                           foregroundColor: AppColors.onPrimary,
                         ),
                         child: const Text(
-                          'Duyuru Gönder',
+                          'Mesaj Gönder',
                           style: TextStyle(fontSize: 16),
                         ),
                       ),

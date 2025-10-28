@@ -26,7 +26,13 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
       final data = await ApiService().getEtkinlikList(globals.kullaniciTCKN);
       setState(() {
         etkinlikler = data ?? []; // null gelirse boş liste ata
-        isLoading = false;
+        print("etkinlikler:");
+        for (var etkinlik in etkinlikler) {
+          etkinlik.forEach((key, value) {
+            print("$key: $value");
+          });
+        }
+         isLoading = false;
       });
     } catch (e) {
       print('Hata _loadEtkinlikler: $e');
@@ -37,22 +43,254 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
     }
   }
 
-  Future<void> _etkinligeTiklandi(String? detay) async {
+  Future<void> _etkinligeTiklandi(String? data) async {
+    String aciklamaMetni = "";
+
+    try {
+      if (data != null && (data.startsWith('{') || data.startsWith('['))) {
+        final parsed = jsonDecode(data);
+        if (parsed is Map && parsed.containsKey('aciklama')) {
+          aciklamaMetni = parsed['aciklama'] ?? "";
+        } else {
+          aciklamaMetni = data.toString();
+        }
+      } else {
+        aciklamaMetni = data ?? "";
+      }
+    } catch (e) {
+      aciklamaMetni = data ?? "";
+    }
+
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Etkinlik Detayı'),
-        content: Text(detay ?? ""), // null ise boş bırak
+        title: const Text('Etkinlik Detayı'),
+        content: Text(
+          "Açıklama: ${aciklamaMetni.isNotEmpty ? aciklamaMetni : 'Yok'}",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Tamam'),
+            child: const Text('Tamam'),
           ),
         ],
       ),
     );
   }
+  Future<void> _showEtkinlikForm() async {
+    final TextEditingController tarihController = TextEditingController();
+    final TextEditingController saatController = TextEditingController();
+    final TextEditingController yerController = TextEditingController();
+    final TextEditingController aciklamaController = TextEditingController();
 
+    Map<int, bool> seciliSiniflar = {
+      for (var s in globals.globalSinifListesi) s['Id'] as int: true
+    };
+
+    bool isSubmitting = false; // 👈 Gönderim durumu
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Yeni Etkinlik Oluştur'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // 📅 Etkinlik Günü
+                    TextField(
+                      controller: tarihController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Etkinlik Günü',
+                        border: OutlineInputBorder(),
+                      ),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2100),
+                        );
+                        if (date != null) {
+                          tarihController.text =
+                              DateFormat('dd.MM.yyyy').format(date);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    // ⏰ Etkinlik Saati
+                    TextField(
+                      controller: saatController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Etkinlik Saati',
+                        border: OutlineInputBorder(),
+                      ),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          saatController.text = time.format(context);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    // 📍 Etkinlik Yeri
+                    TextField(
+                      controller: yerController,
+                      decoration: const InputDecoration(
+                        labelText: 'Etkinlik Yeri',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // 📝 Açıklama
+                    TextField(
+                      controller: aciklamaController,
+                      decoration: const InputDecoration(
+                        labelText: 'Açıklama',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    // 🎓 Sınıf seçimleri
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: const Text(
+                        "Sınıflar:",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Column(
+                      children: globals.globalSinifListesi.map<Widget>((sinif) {
+                        int id = sinif['Id'];
+                        String ad = sinif['Ad'] ?? "Sınıf";
+                        return CheckboxListTile(
+                          title: Text(ad),
+                          value: seciliSiniflar[id],
+                          onChanged: (value) {
+                            setState(() {
+                              seciliSiniflar[id] = value ?? false;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  child: const Text('İptal'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                    if (tarihController.text.isEmpty ||
+                        saatController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Etkinlik gün ve saati seçiniz.')),
+                      );
+                      return;
+                    }
+
+                    if (yerController.text.isEmpty ||
+                        aciklamaController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                            Text('Etkinlik yeri ve açıklama boş olamaz.')),
+                      );
+                      return;
+                    }
+
+                    var secilenler = seciliSiniflar.entries
+                        .where((e) => e.value)
+                        .map((e) => e.key)
+                        .toList();
+                    if (secilenler.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('En az bir sınıf seçmelisiniz.')),
+                      );
+                      return;
+                    }
+
+                    setState(() {
+                      isSubmitting = true; // 👈 Buton devre dışı
+                    });
+
+                    try {
+                      final selectedDate = DateFormat('dd.MM.yyyy')
+                          .parse(tarihController.text);
+                      final parts = saatController.text.split(':');
+                      final selectedTime = TimeOfDay(
+                        hour: int.parse(parts[0]),
+                        minute: int.parse(parts[1].split(' ')[0]),
+                      );
+
+                      final etkinlikTarihi = DateTime(
+                        selectedDate.year,
+                        selectedDate.month,
+                        selectedDate.day,
+                        selectedTime.hour,
+                        selectedTime.minute,
+                      );
+
+                      for (var sinifId in secilenler) {
+                        await ApiService().createEtkinlik({
+                          'ownerTckn': globals.kullaniciTCKN,
+                          'sinifIds': sinifId.toString(),
+                          'data': jsonEncode({
+                            'yer': yerController.text,
+                            'aciklama': aciklamaController.text,
+                          }),
+                          'expireDate': etkinlikTarihi.toIso8601String(),
+                        });
+                      }
+
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                            Text('Etkinlik başarıyla oluşturuldu.')),
+                      );
+                      _loadEtkinlikler();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content:
+                            Text('Etkinlik oluşturulamadı: $e')),
+                      );
+                      setState(() {
+                        isSubmitting = false;
+                      });
+                    }
+                  },
+                  child: Text(
+                    isSubmitting ? 'Oluşuturuluyor...' : 'Oluştur',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+/*
   Future<void> _showEtkinlikForm() async {
     final TextEditingController tarihController = TextEditingController();
     final TextEditingController saatController = TextEditingController();
@@ -211,12 +449,13 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                         selectedTime.hour,
                         selectedTime.minute,
                       );
-
                       // Seçilen her sınıf için API çağrısı
                       for (var sinifId in secilenler) {
+                        print("sinifId.toString():"+sinifId.toString());
+
                         await ApiService().createEtkinlik({
                           'ownerTckn': globals.kullaniciTCKN,
-                          'sinifId': sinifId.toString(),
+                          'sinifIds': sinifId.toString(),
                           'data': jsonEncode({
                             'yer': yerController.text,
                             'aciklama': aciklamaController.text,
@@ -245,7 +484,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
       },
     );
   }
-
+*/
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -268,7 +507,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
         child: Column(
           children: [
             // Öğretmen ise buton göster
-            if (globals.globalKullaniciTipi == "T")
+            if (globals.globalKullaniciTipi == "T"|| globals.globalKullaniciTipi == "M"  )
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: SizedBox(
@@ -344,6 +583,16 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     }
                   }
 
+                  String sinifAdlari='';
+                  if (etkinlik['SinifAdlari'] != null &&
+                      etkinlik['SinifAdlari'].toString().isNotEmpty) {
+                    try {
+                      sinifAdlari = etkinlik['SinifAdlari'].toString();
+                    } catch (e) {
+                      sinifAdlari = "";
+                    }
+                  }
+
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     shape: RoundedRectangleBorder(
@@ -358,11 +607,12 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (sinifAdlari.isNotEmpty) Text('Sınıf/lar: $sinifAdlari', style: TextStyle(color: renk)),
                           if (yer.isNotEmpty) Text('Yer: $yer', style: TextStyle(color: renk)),
                           if (tarih.isNotEmpty) Text('Tarih: $tarih', style: TextStyle(color: renk)),
                         ],
                       ),
-                      onTap: () => _etkinligeTiklandi(etkinlik['Data']),
+                      onTap: () => null,//_etkinligeTiklandi(etkinlik['Data']),
                     ),
                   );
                 },

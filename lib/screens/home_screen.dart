@@ -8,11 +8,14 @@ import 'package:smart_okul_mobile/screens/door_control_page.dart';
 import 'package:smart_okul_mobile/screens/etkinlik_screen.dart';
 import 'package:smart_okul_mobile/screens/meal_list_screen_new.dart';
 import 'package:smart_okul_mobile/screens/photo_gallery_screen.dart';
+import 'package:smart_okul_mobile/screens/send_notification_screen_p.dart';
 import 'package:smart_okul_mobile/screens/survey_screen.dart';
 import 'package:smart_okul_mobile/screens/user_profile_screen.dart';
 import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen_m.dart';
+import 'package:logger/logger.dart';
+
 import 'package:smart_okul_mobile/screens/teacher_students_meal_screen.dart';
 import 'package:smart_okul_mobile/screens/parent_student_meal_screen.dart';
 import 'package:smart_okul_mobile/screens/login_screen.dart'; // LoginScreen import edildi
@@ -26,9 +29,10 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final cardHeight = screenHeight / 5 - 32; // 5 satır, padding 16
 
+    final screenHeight = MediaQuery.of(context).size.height;
+    final cardHeight = screenHeight / 6 - 24; // 6 satır, padding 16
+    print("home screen "+cardHeight.toString());
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false, // geri butonu kapatıldı
@@ -107,38 +111,68 @@ class HomeScreen extends StatelessWidget {
                   AppColors.primary,
                       () => _bildirim(context),
                 ),
-              if(globals.menuListesi.contains("YemekList"))
-              _buildMenuCard(
-                context,
-                'Yemek Listesi',
-                Icons.restaurant_menu,
-                AppColors.primary,
-                    () {
-                  _yemekListesiSayfasiniAc(context);
-                },
-              ),
-
               if(globals.menuListesi.contains("AnaKapi")|| globals.menuListesi.contains("Otopark"))
-              _buildMenuCard(
-                context,
-                'Kapı Kontrol',
-                Icons.door_front_door,
-                AppColors.primary,
-                    () {
-                  kapiKontrol(context);
-                },
-              ),
-              //if (globals.globalKullaniciTipi != 'M')
-              if(globals.menuListesi.contains("GelenDuyurular"))
                 _buildMenuCard(
-                context,
-                'Gelen Duyurular',
-                Icons.notifications_active,
-                globals.duyuruVar ? Colors.red : AppColors.primary,
-                    () {
-                  _duyuruListesiSayfasiniAc(context);
-                },
-              ),
+                  context,
+                  'Kapı Kontrol',
+                  Icons.door_front_door,
+                  AppColors.primary,
+                      () {
+                    kapiKontrol(context);
+                  },
+                ),
+              //if (globals.globalKullaniciTipi != 'M')
+              if (globals.menuListesi.contains("GelenMesajlar"))
+                ValueListenableBuilder<bool>(
+                  valueListenable: globals.duyuruVar,
+                  builder: (context, duyuruVar, _) {
+                    return _buildMenuCard(
+                      context,
+                      'Gelen Mesajlar',
+                      Icons.notifications_active,
+                      duyuruVar ? Colors.red : AppColors.primary,
+                          () {
+                        _duyuruListesiSayfasiniAc(context);
+                      },
+                    );
+                  },
+                ),
+              //if (["M", "T"].contains(globals.globalKullaniciTipi))
+              if(globals.menuListesi.contains("MesajGonder"))
+                _buildMenuCard(
+                  context,
+                  'Mesaj Gönder',
+                  Icons.message ,
+                  AppColors.primary,
+                      () {
+                    _bildirimGonderSayfasiniAc(context);
+                  },
+                ),
+              if(globals.menuListesi.contains("Galeri"))
+                _buildMenuCard(
+                  context,
+                  'Galeri',
+                  Icons.photo_library,
+                  AppColors.primary,
+                      () {
+                    _galeriSayfasiniAc(context);
+                  },
+                ),
+              if(globals.menuListesi.contains("Etkinlikler"))
+                ValueListenableBuilder<bool>(
+                  valueListenable: globals.etkinlikVar,
+                  builder: (context, etkinlikVar, _) {
+                    return _buildMenuCard(
+                      context,
+                      'Etkinlikler',
+                      Icons.event,
+                      etkinlikVar ? Colors.red : AppColors.primary,
+                          () {
+                        _etkinlikSayfasiniAc(context);
+                      },
+                    );
+                  },
+                ),
               //if (["P", "T"].contains(globals.globalKullaniciTipi))
               if(globals.menuListesi.contains("YemekUykuBilgisi"))
                 _buildMenuCard(
@@ -150,65 +184,50 @@ class HomeScreen extends StatelessWidget {
                     _gunlukOgrYemekSayfaAc(context);
                   },
                 ),
-              if(globals.menuListesi.contains("Etkinlikler"))
-                _buildMenuCard(
-                context,
-                'Etkinlikler',
-                Icons.event,
-                AppColors.primary,
-                    () {
-                  _etkinlikSayfasiniAc(context);
-                },
-              ),
-              if(globals.menuListesi.contains("Galeri"))
-                _buildMenuCard(
-                context,
-                'Galeri',
-                Icons.photo_library,
-                AppColors.primary,
-                    () {
-                  _galeriSayfasiniAc(context);
-                },
-              ),
-              if(globals.menuListesi.contains("Anketler"))
-                _buildMenuCard(
-                context,
-                'Anketler',
-                Icons.bar_chart,
-                AppColors.primary,
-                    () {
-                  _anketSayfasiniAc(context);
-                },
-              ),
-              //if (["M", "T"].contains(globals.globalKullaniciTipi))
-              if(globals.menuListesi.contains("DuyuruGonder"))
+              if(globals.menuListesi.contains("YemekList"))
                 _buildMenuCard(
                   context,
-                  'Duyuru Gönder',
-                  Icons.campaign,
+                  'Yemek Listesi',
+                  Icons.restaurant_menu,
                   AppColors.primary,
                       () {
-                    _bildirimGonderSayfasiniAc(context);
+                    _yemekListesiSayfasiniAc(context);
                   },
                 ),
+              if(globals.menuListesi.contains("Anketler"))
+                ValueListenableBuilder<bool>(
+                  valueListenable: globals.anketVar,
+                  builder: (context, anketVar, _) {
+                    return _buildMenuCard(
+                      context,
+                      'Anketler',
+                      Icons.bar_chart,
+                      anketVar ? Colors.red : AppColors.primary,
+                          () {
+                        _anketSayfasiniAc(context);
+                      },
+                    );
+                  },
+                ),
+
               if(globals.menuListesi.contains("Profil"))
                 _buildMenuCard(
-                context,
-                //'Profil/Yoklama'
+                  context,
+                  //'Profil/Yoklama'
                   globals.globalKullaniciTipi == "M" ? 'Profil' : 'Profil/Yoklama',
-                Icons.person,
-                AppColors.primary,
-                    () => _profilSayfasiniAc(context),
-              ),
+                  Icons.person,
+                  AppColors.primary,
+                      () => _profilSayfasiniAc(context),
+                ),
               //if (["P"].contains(globals.globalKullaniciTipi))
               if(globals.menuListesi.contains("DevamBilgisi"))
                 _buildMenuCard(
-                context,
-                'Devam Durumu',
-                Icons.assignment_turned_in,
-                AppColors.primary,
-                    () => _devamDurumuSayfasiniAc(context),
-              ),
+                  context,
+                  'Devam Durumu',
+                  Icons.assignment_turned_in,
+                  AppColors.primary,
+                      () => _devamDurumuSayfasiniAc(context),
+                ),
             ],
           ),
         ),
@@ -252,12 +271,12 @@ class HomeScreen extends StatelessWidget {
                     size: 48,
                     color: iconColor,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
                   Text(
                     title,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),
@@ -280,8 +299,13 @@ class HomeScreen extends StatelessWidget {
     Navigator.push(context, MaterialPageRoute(builder: (context) => EtkinlikScreen()));
   }
 
-  void _galeriSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => PhotoGalleryScreen()));
+  Future<void> _galeriSayfasiniAc(BuildContext context) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PhotoGalleryScreen(),
+      ),
+    );
   }
 
   void _anketSayfasiniAc(BuildContext context) {
@@ -379,7 +403,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _bildirimGonderSayfasiniAc(BuildContext context) {
-    if (["M", "T"].contains(globals.globalKullaniciTipi)) {
+    if (["M", "T", "P"].contains(globals.globalKullaniciTipi)) {
       if (globals.globalKullaniciTipi == 'T') {
         Navigator.push(context,
             MaterialPageRoute(builder: (context) => SendNotificationScreen()));
@@ -389,16 +413,26 @@ class HomeScreen extends StatelessWidget {
         Navigator.push(context,
             MaterialPageRoute(builder: (context) => SendNotificationScreenM()));
       }
+
+      if (globals.globalKullaniciTipi == 'P') {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => SendNotificationScreenP()));
+      }
     } else {
       _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
     }
   }
 
+
   void _bildirim(BuildContext context) async {
+    print("kullanıcı tipi: ${globals.globalKullaniciTipi}");
+
     final ogrenciler = globals.globalOgrenciListesi;
 
-    if (globals.globalKullaniciTipi != "P" && globals.globalKullaniciTipi != "S") {
-      await _pencereAc(context, "Sadece öğrenci ve veliler öğretmene bildirim gönderebilir!");
+    if (globals.globalKullaniciTipi != "P" &&
+        globals.globalKullaniciTipi != "S" &&
+        globals.globalKullaniciTipi != "H") {
+      await _pencereAc(context, "Sadece öğrenci, veli ve hostes öğretmene bildirim gönderebilir!");
       return;
     }
 
@@ -409,54 +443,106 @@ class HomeScreen extends StatelessWidget {
       print("$tckn için yoklama eklendi");
 
       final cevap = await ApiService().bildirimGonder();
-      /*  await (globals.globalKullaniciTipi == "P"
-          ? _bildirimGonder()
-          : globals.globalKullaniciTipi == "H"
-          ? _bildirimGonderHostes()
-          : Future.value(null));*/
 
-      await _pencereAc(context, cevap == "200"
-          ? "Öğretmeninize Bildirim gönderildi"
-          : "Bildirim gönderilemedi");
+      await _pencereAc(
+        context,
+        cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
+      );
     } else {
-      // Birden fazla öğrenci varsa pop-up aç
+      // Çoklu öğrenci seçimi için popup
+      int? secilenDurum; // 🔹 artık burada tanımlı
+      List<bool> secilen = List.generate(ogrenciler.length, (index) => true);
+
       showDialog(
         context: context,
         builder: (context) {
           return StatefulBuilder(
             builder: (context, setState) {
-              // Başta tüm öğrenciler seçili
-              List<bool> secilen = List.generate(ogrenciler.length, (index) => true);
-
               return AlertDialog(
-                title: const Text("Öğrenci Seçiniz"),
+                title: Text(
+                  globals.globalKullaniciTipi == "H"
+                      ? "Öğretmene/Veliye Bildir"
+                      : "Öğretmene Bildir",
+                ),
                 content: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.6,
-                    minWidth: MediaQuery.of(context).size.width * 0.7,
+                    maxHeight: MediaQuery.of(context).size.height * 0.7,
+                    minWidth: MediaQuery.of(context).size.width * 0.8,
                   ),
                   child: SingleChildScrollView(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
-                      children: List.generate(ogrenciler.length, (index) {
-                        final ogrenci = ogrenciler[index];
-                        return CheckboxListTile(
-                          title: Text(
-                            ogrenci['Name'],
+                      children: [
+                        // Eğer kullanıcı hostes ise radio butonlar başta gözüksün
+                        if (globals.globalKullaniciTipi == "H") ...[
+                          const Text(
+                            "Durum Seçiniz",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
                               fontSize: 16,
                             ),
                           ),
-                          value: secilen[index],
-                          onChanged: (bool? value) {
-                            setState(() {
-                              secilen[index] = value ?? false;
-                            });
-                          },
-                        );
-                      }),
+                          RadioListTile<int>(
+                            title: const Text("Okula bıraktım"),
+                            value: 1,
+                            groupValue: secilenDurum,
+                            visualDensity: const VisualDensity(vertical: -4),
+                            dense: true,
+                            onChanged: (value) {
+                              setState(() {
+                                secilenDurum = value;
+                              });
+                            },
+                          ),
+                          RadioListTile<int>(
+                            title: const Text("Okuldan aldım"),
+                            value: 2,
+                            groupValue: secilenDurum,
+                            visualDensity: const VisualDensity(vertical: -4),
+                            dense: true,
+                            onChanged: (value) {
+                              setState(() {
+                                secilenDurum = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+
+                        // Öğrenci listesi başlığı
+                        const Text(
+                          "Öğrenci Seçiniz",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Öğrenci listesi
+                        ...List.generate(ogrenciler.length, (index) {
+                          final ogrenci = ogrenciler[index];
+                          return CheckboxListTile(
+                            title: Text(
+                              ogrenci['Name'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade700,
+                                fontSize: 15,
+                              ),
+                            ),
+                            value: secilen[index],
+                            visualDensity: const VisualDensity(vertical: -4),
+                            dense: true,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                secilen[index] = value ?? false;
+                              });
+                            },
+                          );
+                        }),
+                      ],
                     ),
                   ),
                 ),
@@ -468,26 +554,6 @@ class HomeScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () async {
                       // Seçili öğrenciler
-                    /* final secilenOgrenciler = <Map<String, dynamic>>[];
-                      for (int i = 0; i < ogrenciler.length; i++) {
-                        if (secilen[i]) {
-                          secilenOgrenciler.add(ogrenciler[i]);
-                        }
-                      }
-
-                      if (secilenOgrenciler.isEmpty) {
-                        await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
-                        return;
-                      }
-
-                      Navigator.pop(context); // popup kapat
-
-                      // Seçili öğrenciler için yoklama ekle ve bildirim gönder
-                      for (var ogrenci in secilenOgrenciler) {
-                        await ApiService().yoklamaEkle(ogrenci['TCKN'], DateTime.now());
-                        print("${ogrenci['TCKN']} için yoklama eklendi");
-                      }*/
-// Seçili öğrencilerin sadece TCKN’lerini listeye ekle
                       final secilenOgrenciler = <String>[];
                       for (int i = 0; i < ogrenciler.length; i++) {
                         if (secilen[i]) {
@@ -500,24 +566,30 @@ class HomeScreen extends StatelessWidget {
                         return;
                       }
 
+                      // Eğer hostes ise radio kontrolü
+                      if (globals.globalKullaniciTipi == "H" && secilenDurum == null) {
+                        await _pencereAc(context, "Lütfen durum seçiniz!");
+                        return;
+                      }
+
                       Navigator.pop(context); // popup kapat
 
-                      // Seçili öğrenciler için yoklama ekle ve bildirim gönder
-                      /*for (var tckn in secilenOgrenciler) {
-                        await ApiService().yoklamaEkle(tckn, DateTime.now());
-                        print("$tckn için yoklama eklendi");
-                      }*/
+                      // Yoklama ekleme (toplu)
                       await ApiService().yoklamaBulkAdd(secilenOgrenciler, DateTime.now());
-                      print("seçilen öğrenciler için yoklama eklendi");
+                      print("Seçilen öğrenciler için yoklama eklendi");
 
-                      final cevap = //await _bildirimGonder();
-                      await ApiService().sendStudentNotification
-                        (schoolId: int.parse(globals.globalSchoolId),
-                          senderTckn:  globals.kullaniciTCKN,
-                          studentTcknList: secilenOgrenciler, durum: 0) ;
-                      await _pencereAc(context, cevap == "200"
-                          ? "Öğretmeninize Bildirim gönderildi"
-                          : "Bildirim gönderilemedi");
+                      // Bildirim gönderme
+                      final cevap = await ApiService().sendStudentNotification(
+                        schoolId: int.parse(globals.globalSchoolId),
+                        senderTckn: globals.kullaniciTCKN,
+                        studentTcknList: secilenOgrenciler,
+                        durum: globals.globalKullaniciTipi == "H" ? secilenDurum! : 0,
+                      );
+
+                      await _pencereAc(
+                        context,
+                        cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
+                      );
                     },
                     child: const Text("Bildir"),
                   ),
@@ -580,6 +652,7 @@ class HomeScreen extends StatelessWidget {
   }*/
   void kapiKontrol(BuildContext context) async {
     String konum = await konumAlYeni();
+    final logger = Logger();
 
     if (globals.mevcutBoylam != null && globals.mevcutEnlem != null) {
       double mesafe = mesafeHesapla(
@@ -588,12 +661,23 @@ class HomeScreen extends StatelessWidget {
           double.parse(globals.mevcutEnlem),
           double.parse(globals.mevcutBoylam));
 
-      print("okula mesafe " + mesafe.toString());
-      _kapiKontrolSayfasiniAc(context);
+      logger.i("okula mesafe " + mesafe.toString());
+      if (globals.globalKullaniciTipi=='M' || mesafe < globals.mesafeLimit) {
+        int saatKontrol= await ApiService().checkCurrentTime(int.parse(globals.globalSchoolId), globals.globalKullaniciTipi);
+        if(saatKontrol==1){
+          _kapiKontrolSayfasiniAc(context);
+        } else {
+          _pencereAc(context, "Kapıyı açmak için saat aralığı uygun değil!");
+        }
+      }else{
+        _pencereAc(context, "Kapıyı açmak için konumunuz uygun değil!");
+      }
     } else {
       _pencereAc(context, "Mevcut konum bulunamadı. Konum ayarlarınızı kontrol ediniz!");
     }
   }
+
+
 
   Future<String> konumAlYeni() async {
     String _konumBilgisi = "Konum bilgisi bekleniyor...";
@@ -628,4 +712,5 @@ class HomeScreen extends StatelessWidget {
 
     return _konumBilgisi;
   }
+
 }
