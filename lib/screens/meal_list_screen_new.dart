@@ -9,6 +9,7 @@ class MealListScreenNew extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String formattedDate = DateFormat('yyyyMMdd').format(DateTime.now());
+    print('yemek menusu:'+'${globals.serverAdrr}/api/school/get-daily-menu?schoolId=${globals.globalSchoolId}&date=$formattedDate');
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
@@ -37,7 +38,7 @@ class MealListScreenNew extends StatelessWidget {
                       context,
                       'Menü ${DateFormat('dd/MM/yyyy').format(DateTime.now())}',
                       Icons.breakfast_dining,
-                      '${globals.serverAdrr}/api/school/get-daily-menu?date=$formattedDate',
+                      '${globals.serverAdrr}/api/school/get-daily-menu?schoolId=${globals.globalSchoolId}&date=$formattedDate',
                       ' ',
                     ),
                   ],

@@ -3,6 +3,7 @@ import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:smart_okul_mobile/screens/course_schedule_screen.dart';
 import 'package:smart_okul_mobile/screens/devam_durumu_screen.dart';
 import 'package:smart_okul_mobile/screens/door_control_page.dart';
 import 'package:smart_okul_mobile/screens/etkinlik_screen.dart';
@@ -192,6 +193,16 @@ class HomeScreen extends StatelessWidget {
                   AppColors.primary,
                       () {
                     _yemekListesiSayfasiniAc(context);
+                  },
+                ),
+             if(globals.menuListesi.contains("DersProgrami"))
+                _buildMenuCard(
+                  context,
+                  'Ders Programı',
+                  Icons.table_chart,
+                  AppColors.primary,
+                      () {
+                    _dersProgramiSayfasiniAc(context);
                   },
                 ),
               if(globals.menuListesi.contains("Anketler"))
@@ -401,6 +412,73 @@ class HomeScreen extends StatelessWidget {
   void _yemekListesiSayfasiniAc(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => MealListScreenNew()));
   }
+
+  void _dersProgramiSayfasiniAc(BuildContext context) async {
+    final sinifListesi = globals.globalSinifListesi;
+
+    if (sinifListesi.isEmpty) {
+      // Hiç sınıf yoksa uyarı mesajı
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Uyarı"),
+          content: const Text("Tanımlı sınıf bulunamadı. Lütfen yönetici ile iletişime geçiniz."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Tamam"),
+            ),
+          ],
+        ),
+      );
+    }
+    else if (sinifListesi.length == 1) {
+      // Tek sınıf varsa direkt geçiş
+      final sinifId = sinifListesi[0]["Id"];
+      print("1 sınıf tanımlı sinifId:"+sinifId.toString());
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CourseScheduleScreen(sinifId: sinifId),
+        ),
+      );
+    }
+    else {
+      // Birden fazla sınıf varsa seçim popup'ı
+      final secilenSinif = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Sınıf Seçiniz"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: sinifListesi.map<Widget>((sinif) {
+                return ListTile(
+                  title: Text(sinif["Ad"]),
+                  onTap: () {
+                    Navigator.pop(context, sinif);
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      );
+
+      if (secilenSinif != null) {
+        final sinifId = secilenSinif["Id"];
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CourseScheduleScreen(sinifId: sinifId),
+          ),
+        );
+      }
+    }
+  }
+  /*void _dersProgramiSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => CourseScheduleScreen()));
+  }*/
 
   void _bildirimGonderSayfasiniAc(BuildContext context) {
     if (["M", "T", "P"].contains(globals.globalKullaniciTipi)) {

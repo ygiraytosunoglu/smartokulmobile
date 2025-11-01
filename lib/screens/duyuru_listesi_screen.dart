@@ -1,8 +1,12 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
 
 class DuyuruListesiScreen extends StatefulWidget {
   @override
@@ -31,6 +35,55 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
     }
   }
 */
+
+  List<TextSpan> _parseTextWithLinks(String text) {
+    final regex = RegExp(
+        r'(https?:\/\/[^\s]+)',
+        caseSensitive: false);
+
+    final matches = regex.allMatches(text);
+    if (matches.isEmpty) return [TextSpan(text: text)];
+
+    List<TextSpan> spans = [];
+    int lastMatchEnd = 0;
+
+    for (final match in matches) {
+      final url = match.group(0)!;
+
+      // Link öncesi metin
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
+      }
+
+      // Tıklanabilir link
+      spans.add(
+        TextSpan(
+          text: url,
+          style: TextStyle(
+            color: Colors.blue,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+        ),
+      );
+
+      lastMatchEnd = match.end;
+    }
+
+    // Son kısım
+    if (lastMatchEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastMatchEnd)));
+    }
+
+    return spans;
+  }
+
   Future<void> _loadDuyurular() async {
     try {
       final data = await ApiService().getDuyuruList(globals.kullaniciTCKN);
@@ -61,6 +114,59 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text('Mesaj Detayı'),
+        content: SingleChildScrollView(
+          child: GestureDetector(
+            // Uzun basarak tamamını kopyalayabilmek için
+            onLongPress: () {
+              Clipboard.setData(ClipboardData(text: detay));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Mesaj kopyalandı')),
+              );
+            },
+            child: Linkify(
+              text: detay,
+              style: TextStyle(color: Colors.black87, fontSize: 16),
+              linkStyle: TextStyle(
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+              ),
+              onOpen: (link) async {
+                final uri = Uri.parse(link.url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Bağlantı açılamadı')),
+                  );
+                }
+              },
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+
+    if (!okundu) {
+      try {
+        await ApiService().setDuyuruOkundu(duyuruId);
+        _loadDuyurular();
+      } catch (e) {
+        print('Mesaj okundu güncelleme hatası: $e');
+      }
+    }
+  }
+
+  /* Future<void> _duyuruyaTiklandi(int duyuruId, String detay, bool okundu) async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Mesaj Detayı'),
         content: Text(detay),
         actions: [
           TextButton(
@@ -80,7 +186,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
         print('Mesaj okundu güncelleme hatası: $e');
       }
     }
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
