@@ -78,7 +78,7 @@ class ApiService {
         logger.e('Hata: ${response.statusCode} - ${response.body}');
         return {
           'success': false,
-          'message': 'Sunucu hatası: ${response.statusCode}',
+          'message': 'Sunucu hatası',//: ${response.statusCode}',
           'details': response.body
         };
       }
@@ -93,7 +93,7 @@ class ApiService {
       return {'success': false, 'message': 'Veri formatı hatalı.'};
     } catch (e) {
       logger.e('Beklenmeyen hata: $e');
-      return {'success': false, 'message': 'Beklenmeyen hata: $e'};
+      return {'success': false, 'message': 'Beklenmeyen hata oluştu. '};//$e
     }
   }
 
@@ -353,7 +353,7 @@ await apiService.putRequest(
           .timeout(const Duration(seconds: 6));
     } catch (e) {
       globals.globalStatusCode = "0";
-      globals.globalErrMsg = "Bildirim için Sunucuya bağlanılamadı ($e)";
+      globals.globalErrMsg = "Bildirim için Sunucuya bağlanılamadı";
       return globals.globalErrMsg;
     }
     return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
@@ -557,7 +557,7 @@ await apiService.putRequest(
 
     } catch (e) {
       globals.globalStatusCode = "0";
-      globals.globalErrMsg = "Sunucuya bağlanılamadı ($e)";
+      globals.globalErrMsg = "Sunucuya bağlanılamadı";
       return globals.globalErrMsg;
     }
 
@@ -945,12 +945,19 @@ await apiService.putRequest(
           .timeout(const Duration(seconds: 6));
     } catch (e) {
       globals.globalStatusCode = "0";
-      globals.globalErrMsg = "Kapı açılısı için Sunucuya bağlanılamadı ($e)";
+      globals.globalErrMsg = "Kapı açılısı için Sunucuya bağlanılamadı";
       return globals.globalErrMsg;
     }
     logger.i("gate status:"+response.statusCode.toString());
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ana Kapı Kontrol çağrıldı')),
+      const SnackBar(
+        content: Text(
+          'Ana Kapı Kontrol çağrıldı',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.green,
+      ),
     );
     return Future.delayed(Duration(seconds: 2), () => response.statusCode.toString()??"0");
   }
@@ -970,13 +977,19 @@ await apiService.putRequest(
           .timeout(const Duration(seconds: 6));
     } catch (e) {
       globals.globalStatusCode = "0";
-      globals.globalErrMsg = "Park Kapısı için Sunucuya bağlanılamadı ($e)";
+      globals.globalErrMsg = "Park Kapısı için Sunucuya bağlanılamadı";
       return globals.globalErrMsg;
     }
     logger.i("otopark status:"+response.statusCode.toString());
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Otopark Kontrol çağrıldı')),
+      const SnackBar(
+        content: Text(
+          'Otopark Kontrol çağrıldı',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.green,
+      ),
     );
     return Future.delayed(Duration(seconds: 2), () => response.statusCode.toString()??"0");
   }

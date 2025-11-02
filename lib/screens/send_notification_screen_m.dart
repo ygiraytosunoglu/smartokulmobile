@@ -73,7 +73,13 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mesaj(lar) başarıyla gönderildi')),
+          const SnackBar(
+            content: Text(
+              'Mesaj(lar) başarıyla gönderildi',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+          ),
         );
 
         _titleController.clear();

@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
 
     final screenHeight = MediaQuery.of(context).size.height;
-    final cardHeight = screenHeight / 6 - 24; // 6 satır, padding 16
+    final cardHeight = screenHeight / 6 - 30; // 6 satır, padding 16
     print("home screen "+cardHeight.toString());
     return Scaffold(
       appBar: AppBar(
@@ -269,17 +269,17 @@ class HomeScreen extends StatelessWidget {
           ),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             splashColor: Colors.blue.withOpacity(0.3),
             highlightColor: Colors.blue.withOpacity(0.15),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     icon,
-                    size: 48,
+                    size: 42,
                     color: iconColor,
                   ),
                   const SizedBox(height: 6),

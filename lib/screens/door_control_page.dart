@@ -100,8 +100,15 @@ class DoorControlPage extends StatelessWidget {
                         await ApiService().yoklamaEkle(entry.key, DateTime.now());
                       }
                     }
+
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Yoklamalar kaydedildi!")),
+                      const SnackBar(
+                        content: Text(
+                          'Yoklamalar Kaydedildi',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
                     );
                   },
                   child: const Text("Geldiğimizi Bildir"),
