@@ -91,7 +91,7 @@ class _MyAppState extends State<MyApp> {
 
     // Uygulama ön plandayken gelen bildirimleri yakala
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      globals.duyuruVar = true as ValueNotifier<bool>;
+      globals.duyuruVar.value = true ;//as ValueNotifier<bool>;
       print('🔔 Uygulama açıkken bildirim alındı: ${message.notification?.title}');
       _showLocalNotification(message);
     });
