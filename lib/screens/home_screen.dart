@@ -2,19 +2,23 @@
 import 'dart:ffi';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:smart_okul_mobile/screens/course_schedule_screen.dart';
 import 'package:smart_okul_mobile/screens/devam_durumu_screen.dart';
 import 'package:smart_okul_mobile/screens/door_control_page.dart';
 import 'package:smart_okul_mobile/screens/etkinlik_screen.dart';
 import 'package:smart_okul_mobile/screens/meal_list_screen_new.dart';
 import 'package:smart_okul_mobile/screens/photo_gallery_screen.dart';
+import 'package:smart_okul_mobile/screens/plan_screen.dart';
+import 'package:smart_okul_mobile/screens/qr_or_code_create_screen.dart';
+import 'package:smart_okul_mobile/screens/qr_scan_or_manuel_screen.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen_p.dart';
 import 'package:smart_okul_mobile/screens/survey_screen.dart';
 import 'package:smart_okul_mobile/screens/user_profile_screen.dart';
 import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen_m.dart';
+import 'package:smart_okul_mobile/screens/student_notification_screen.dart';
+
 import 'package:logger/logger.dart';
 
 import 'package:smart_okul_mobile/screens/teacher_students_meal_screen.dart';
@@ -110,7 +114,7 @@ class HomeScreen extends StatelessWidget {
                   'Öğrenci Anons',
                   Icons.campaign,
                   AppColors.primary,
-                      () => _bildirim(context),
+                      () => _bildirimYeni(context),
                 ),
               if(globals.menuListesi.contains("AnaKapi")|| globals.menuListesi.contains("Otopark"))
                 _buildMenuCard(
@@ -157,6 +161,16 @@ class HomeScreen extends StatelessWidget {
                   AppColors.primary,
                       () {
                     _galeriSayfasiniAc(context);
+                  },
+                ),
+              if(globals.menuListesi.contains("Plan"))
+                _buildMenuCard(
+                  context,
+                  'Planlar',
+                  Icons.task,
+                  AppColors.primary,
+                      () {
+                    _planSayfasiniAc(context);
                   },
                 ),
               if(globals.menuListesi.contains("Etkinlikler"))
@@ -239,6 +253,22 @@ class HomeScreen extends StatelessWidget {
                   AppColors.primary,
                       () => _devamDurumuSayfasiniAc(context),
                 ),
+              if(globals.menuListesi.contains("KarekodOlustur"))
+                _buildMenuCard(
+                  context,
+                  'Karekod Oluştur',
+                  Icons.qr_code,
+                  AppColors.primary,
+                      () => _qrOlusturSayfasiniAc(context),
+                ),
+              if(globals.menuListesi.contains("KarekodGoster"))
+                _buildMenuCard(
+                  context,
+                  'Karekod Okut',
+                  Icons.qr_code_scanner,
+                  AppColors.primary,
+                      () => _qrOkutSayfasiniAc(context),
+                ),
             ],
           ),
         ),
@@ -319,6 +349,15 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _planSayfasiniAc(BuildContext context) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlanScreen(),
+      ),
+    );
+  }
+
   void _anketSayfasiniAc(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => SurveyScreen()));
   }
@@ -339,6 +378,14 @@ class HomeScreen extends StatelessWidget {
 
   void _profilSayfasiniAc(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => UserProfileScreen()));
+  }
+
+  void _qrOlusturSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => QrOrCodeCreateScreen()));
+  }
+
+  void _qrOkutSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanOrManualScreen()));
   }
 
   void _devamDurumuSayfasiniAc(BuildContext context) {
@@ -500,8 +547,13 @@ class HomeScreen extends StatelessWidget {
       _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
     }
   }
-
-
+  void _bildirimYeni(BuildContext context) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StudentNotificationScreen()),
+    );
+  }
+/*
   void _bildirim(BuildContext context) async {
     print("kullanıcı tipi: ${globals.globalKullaniciTipi}");
 
@@ -514,7 +566,7 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
-    if (ogrenciler.length == 1) {
+   /* if (ogrenciler.length == 1) {
       // Tek öğrenci varsa direkt gönder
       String tckn = ogrenciler.first['TCKN'];
       await ApiService().yoklamaEkle(tckn, DateTime.now());
@@ -526,7 +578,7 @@ class HomeScreen extends StatelessWidget {
         context,
         cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
       );
-    } else {
+    } else {*/
       // Çoklu öğrenci seçimi için popup
       int? secilenDurum; // 🔹 artık burada tanımlı
       List<bool> secilen = List.generate(ogrenciler.length, (index) => true);
@@ -553,7 +605,7 @@ class HomeScreen extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Eğer kullanıcı hostes ise radio butonlar başta gözüksün
-                        if (globals.globalKullaniciTipi == "H") ...[
+                       /* if (["H", "P"].contains(globals.globalKullaniciTipi)) ...[
                           const Text(
                             "Durum Seçiniz",
                             style: TextStyle(
@@ -562,7 +614,8 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                           RadioListTile<int>(
-                            title: const Text("Okula bıraktım"),
+                            title: Text(globals.globalKullaniciTipi == "H"
+                                ? "Okula bıraktım":"Okula yaklaştım"),
                             value: 1,
                             groupValue: secilenDurum,
                             visualDensity: const VisualDensity(vertical: -4),
@@ -574,7 +627,8 @@ class HomeScreen extends StatelessWidget {
                             },
                           ),
                           RadioListTile<int>(
-                            title: const Text("Okuldan aldım"),
+                            title: Text(globals.globalKullaniciTipi == "H"
+                                ? "Okuldan aldım":"Okula geldim"),
                             value: 2,
                             groupValue: secilenDurum,
                             visualDensity: const VisualDensity(vertical: -4),
@@ -586,7 +640,7 @@ class HomeScreen extends StatelessWidget {
                             },
                           ),
                           const SizedBox(height: 8),
-                        ],
+                        ],*/
 
                         // Öğrenci listesi başlığı
                         const Text(
@@ -629,6 +683,194 @@ class HomeScreen extends StatelessWidget {
                     onPressed: () => Navigator.pop(context),
                     child: const Text("İptal"),
                   ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final secilenOgrenciler = <String>[];
+                            for (int i = 0; i < ogrenciler.length; i++) {
+                              if (secilen[i]) secilenOgrenciler.add(ogrenciler[i]['TCKN']);
+                            }
+
+                            if (secilenOgrenciler.isEmpty) {
+                              await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
+                              return;
+                            }
+
+
+                            Navigator.pop(context); // popup kapat
+
+                            if(globals.globalKullaniciTipi=="P"){
+                                String konum = await ApiService().konumAlYeni();
+                                final logger = Logger();
+                                double mesafe=100000000;
+                                if (globals.mevcutBoylam != null &&
+                                    globals.mevcutEnlem != null) {
+                                  mesafe = ApiService().mesafeHesapla(
+                                  double.parse(globals.globalKonumEnlem),
+                                  double.parse(globals.globalKonumBoylam),
+                                  double.parse(globals.mevcutEnlem),
+                                  double.parse(globals.mevcutBoylam));
+                                }
+
+                                if (mesafe > globals.mesafeLimit) {
+                                    _pencereAc(context, "Okula mesafeniz uygun değil!");
+                                } else{
+                                  bool eklendi = await ApiService().yoklamaBulkAdd(
+                                      secilenOgrenciler, DateTime.now());
+                                  final cevap = await ApiService()
+                                      .sendStudentNotification(
+                                    schoolId: int.parse(globals.globalSchoolId),
+                                    senderTckn: globals.kullaniciTCKN,
+                                    studentTcknList: secilenOgrenciler,
+                                    durum: 1,
+                                  );
+                                  print("yaklaştı notification parent");
+
+                                  if (cevap == "200")
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Öğretmeninize Bildirim gönderildi',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+
+                                  await _pencereAc(
+                                    context,
+                                    cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
+                                  );
+                                }
+                            }
+                            else {
+                              bool eklendi = await ApiService().yoklamaBulkAdd(
+                                  secilenOgrenciler, DateTime.now());
+                              final cevap = await ApiService()
+                                  .sendStudentNotification(
+                                schoolId: int.parse(globals.globalSchoolId),
+                                senderTckn: globals.kullaniciTCKN,
+                                studentTcknList: secilenOgrenciler,
+                                durum: 1,
+                              );
+
+                              print("aldım notification hostes");
+                              if (cevap == "200")
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Öğretmeninize Bildirim gönderildi',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              /*
+                              if (!context.mounted) return;
+                              if (context.mounted) {
+                                await _pencereAc(
+                                  context,
+                                  cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
+                                );
+                              }*/
+                            }
+
+
+                          },
+                          child: Text(globals.globalKullaniciTipi == "H" ? "Bıraktım" : "Yaklaştım"),
+                        ),
+                      ),
+                      const SizedBox(width: 12), // Butonlar arası boşluk
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final secilenOgrenciler = <String>[];
+                            for (int i = 0; i < ogrenciler.length; i++) {
+                              if (secilen[i]) secilenOgrenciler.add(ogrenciler[i]['TCKN']);
+                            }
+
+                            if (secilenOgrenciler.isEmpty) {
+                              await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
+                              return;
+                            }
+
+                            Navigator.pop(context); // popup kapat
+                            bool eklendi = await ApiService().yoklamaBulkAdd(secilenOgrenciler, DateTime.now());
+                            final cevap = await ApiService().sendStudentNotification(
+                              schoolId: int.parse(globals.globalSchoolId),
+                              senderTckn: globals.kullaniciTCKN,
+                              studentTcknList: secilenOgrenciler,
+                              durum: 2,
+                            );
+                            print("geldi notification");
+                            if (cevap == "200")
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Öğretmeninize Bildirim gönderildi',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            if (!context.mounted) return;
+                            if (context.mounted) {
+                              await _pencereAc(
+                                context,
+                                cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
+                              );
+                            }
+                          },
+                          child: Text(globals.globalKullaniciTipi == "H" ? "Aldım" : "Geldim"),
+                        ),
+                      ),
+                    ],
+                  )
+
+                  /* ElevatedButton(
+                    onPressed: () async {
+                      // Seçili öğrenciler
+                      final secilenOgrenciler = <String>[];
+                      for (int i = 0; i < ogrenciler.length; i++) {
+                        if (secilen[i]) {
+                          secilenOgrenciler.add(ogrenciler[i]['TCKN']);
+                        }
+                      }
+
+                      if (secilenOgrenciler.isEmpty) {
+                        await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
+                        return;
+                      }
+
+                      // Eğer hostes ise radio kontrolü
+                     /* if (globals.globalKullaniciTipi == "H" && secilenDurum == null) {
+                        await _pencereAc(context, "Lütfen durum seçiniz!");
+                        return;
+                      }*/
+
+                      Navigator.pop(context); // popup kapat
+
+                      // Yoklama ekleme (toplu)
+                      await ApiService().yoklamaBulkAdd(secilenOgrenciler, DateTime.now());
+                      print("Seçilen öğrenciler için yoklama eklendi");
+
+                      // Bildirim gönderme
+                      final cevap = await ApiService().sendStudentNotification(
+                        schoolId: int.parse(globals.globalSchoolId),
+                        senderTckn: globals.kullaniciTCKN,
+                        studentTcknList: secilenOgrenciler,
+                        durum: 1,//globals.globalKullaniciTipi == "H" ? secilenDurum! : 0,
+                      );
+
+                      await _pencereAc(
+                        context,
+                        cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
+                      );
+                    },
+                    child:  Text(globals.globalKullaniciTipi == "H"?"Bıraktım":"Yaklaştım"),
+                  ),
                   ElevatedButton(
                     onPressed: () async {
                       // Seçili öğrenciler
@@ -645,10 +887,10 @@ class HomeScreen extends StatelessWidget {
                       }
 
                       // Eğer hostes ise radio kontrolü
-                      if (globals.globalKullaniciTipi == "H" && secilenDurum == null) {
+                    /*  if (globals.globalKullaniciTipi == "H" && secilenDurum == null) {
                         await _pencereAc(context, "Lütfen durum seçiniz!");
                         return;
-                      }
+                      }*/
 
                       Navigator.pop(context); // popup kapat
 
@@ -661,7 +903,7 @@ class HomeScreen extends StatelessWidget {
                         schoolId: int.parse(globals.globalSchoolId),
                         senderTckn: globals.kullaniciTCKN,
                         studentTcknList: secilenOgrenciler,
-                        durum: globals.globalKullaniciTipi == "H" ? secilenDurum! : 0,
+                        durum: 2,//globals.globalKullaniciTipi == "H" ? secilenDurum! : 0,
                       );
 
                       await _pencereAc(
@@ -669,17 +911,17 @@ class HomeScreen extends StatelessWidget {
                         cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
                       );
                     },
-                    child: const Text("Bildir"),
-                  ),
+                    child:  Text(globals.globalKullaniciTipi == "H"?"Aldım":"Geldim"),
+                  ),*/
                 ],
               );
             },
           );
         },
       );
-    }
+    //}
   }
-
+*/
 /*  void _bildirim(BuildContext context) async {
     if (globals.globalKullaniciTipi == "P" || globals.globalKullaniciTipi == "S") {
       for (var ogrenci in globals.globalOgrenciListesi) {
@@ -701,19 +943,18 @@ class HomeScreen extends StatelessWidget {
     }
   }
 */
+
   Future _pencereAc(BuildContext context, String mesaj) {
     return showDialog<String>(
       context: context,
+      useRootNavigator: true,
       builder: (context) {
         return AlertDialog(title: Text(mesaj));
       },
     );
   }
 
-  double mesafeHesapla(double enlem1, double boylam1, double enlem2, double boylam2) {
-    double mesafe = Geolocator.distanceBetween(enlem1, boylam1, enlem2, boylam2);
-    return mesafe;
-  }
+
 
 
 
@@ -729,15 +970,15 @@ class HomeScreen extends StatelessWidget {
     return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
   }*/
   void kapiKontrol(BuildContext context) async {
-    String konum = await konumAlYeni();
+    String konum = await ApiService().konumAlYeni();
     final logger = Logger();
 
     if (globals.mevcutBoylam != null && globals.mevcutEnlem != null) {
-      double mesafe = mesafeHesapla(
+      double mesafe = 0;/* ACILACAK ApiService().mesafeHesapla(
           double.parse(globals.globalKonumEnlem),
           double.parse(globals.globalKonumBoylam),
           double.parse(globals.mevcutEnlem),
-          double.parse(globals.mevcutBoylam));
+          double.parse(globals.mevcutBoylam));*/
 
       logger.i("okula mesafe " + mesafe.toString());
       if (globals.globalKullaniciTipi=='M' || mesafe < globals.mesafeLimit) {
@@ -755,40 +996,5 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
-
-
-  Future<String> konumAlYeni() async {
-    String _konumBilgisi = "Konum bilgisi bekleniyor...";
-
-    bool servisAktif = await Geolocator.isLocationServiceEnabled();
-    if (!servisAktif) {
-      _konumBilgisi = "Konum servisi kapalı.";
-      return _konumBilgisi;
-    }
-
-    LocationPermission izinDurumu = await Geolocator.checkPermission();
-    if (izinDurumu == LocationPermission.denied) {
-      izinDurumu = await Geolocator.requestPermission();
-      if (izinDurumu == LocationPermission.denied) {
-        _konumBilgisi = "Konum izni reddedildi.";
-        return _konumBilgisi;
-      }
-    }
-
-    if (izinDurumu == LocationPermission.deniedForever) {
-      _konumBilgisi = "Konum izni kalıcı olarak reddedildi.";
-      return _konumBilgisi;
-    }
-
-    Position konum = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-    globals.mevcutEnlem = konum.latitude.toString();
-    globals.mevcutBoylam = konum.longitude.toString();
-
-    _konumBilgisi = "Enlem: ${konum.latitude}, Boylam: ${konum.longitude}";
-
-    return _konumBilgisi;
-  }
 
 }

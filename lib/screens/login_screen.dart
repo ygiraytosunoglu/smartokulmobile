@@ -301,6 +301,17 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       logger.i("Kullanıcı bilgilerini çektik: $sonuc");
+      // Firebase token al
+      String? token = await FirebaseMessaging.instance.getToken();
+
+      bool success = await ApiService().registerFcmToken(globals.kullaniciTCKN, token!);
+
+      if (success) {
+        logger.i("🔥 FCM token server'a başarıyla gönderildi");
+      } else {
+        logger.i("⚠️ FCM token gönderilemedi");
+      }
+
 
       if (globals.globalStatusCode != "200") {
         _pencereAc(context, globals.globalErrMsg);

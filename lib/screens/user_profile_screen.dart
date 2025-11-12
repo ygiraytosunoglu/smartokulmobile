@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import '../services/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UserProfileScreen extends StatefulWidget {
   @override
@@ -143,6 +144,36 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  /*Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Arama başlatılamadı: $phoneNumber')),
+      );
+    }
+  }*/
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    // Boşlukları ve gereksiz karakterleri temizle
+    String sanitizedNumber = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+
+    final Uri launchUri = Uri.parse('tel:$sanitizedNumber');
+
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(
+        launchUri,
+        mode: LaunchMode.externalApplication, // 🔹 Android için zorunlu
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Arama başlatılamadı: $phoneNumber')),
+      );
+    }
+  }
+
+
+
   void _showParentsListPopup(List<dynamic> parents) {
     showDialog(
       context: context,
@@ -168,7 +199,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       Text("Ad Soyad: $name"),
                       Text("Meslek: $meslek"),
                       Text("Hobi: $hobi"),
-                      if (tel.isNotEmpty) Text("Telefon: $tel"),
+                    if (tel.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => _makePhoneCall(tel),
+                          child: Text(
+                            "Telefon: $tel",
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
                       const Divider(),
                     ],
                   ),

@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 class ApiService {
   static final String baseUrl = globals.serverAdrr;
@@ -543,6 +544,12 @@ await apiService.putRequest(
 
   }
  */
+  //mesafe cinsinden olcer
+  double mesafeHesapla(double enlem1, double boylam1, double enlem2, double boylam2) {
+    double mesafe = Geolocator.distanceBetween(enlem1, boylam1, enlem2, boylam2);
+    return mesafe;
+  }
+
   Future<String> kullaniciBilgileriniCek(String tckn, String pswd) async {
     final String baseUrl = "${globals.serverAdrr}/api/school/validate-person?tckn=$tckn&pin=$pswd";
     logger.i("baseUrl:$baseUrl");
@@ -1076,6 +1083,167 @@ await apiService.putRequest(
     } catch (e) {
       logger.e("❌ uploadGallery hatası: $e");
       return false;
+    }
+  }
+
+  static Future<String?> generateOtp(String tckn, String name) async {
+    final url = Uri.parse('${ApiService.baseUrl}/api/otp/generate');
+    print("OTP Generate URL: $url");
+
+    try {
+      var request = http.MultipartRequest('POST', url)
+        ..fields['tckn'] = tckn
+        ..fields['name'] = name;
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        var body = await response.stream.bytesToString();
+        var data = jsonDecode(body);
+
+        if (data['otp'] != null) {
+          print("OTP başarıyla alındı: ${data['otp']}");
+          return data['otp'].toString();
+        } else {
+          print("OTP alanı bulunamadı. Sunucu yanıtı: $data");
+          return null;
+        }
+      } else {
+        print("Sunucu hatası: ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      print("GenerateOtp hatası: $e");
+      return null;
+    }
+  }
+
+  // 🔹 OTP doğrulama servisi
+  static Future<List<dynamic>?> verifyOtp(String tckn, String otp) async {
+    final url = Uri.parse('${ApiService.baseUrl}/api/otp/verify');
+    print("OTP Verify URL: $url");
+
+    try {
+      var request = http.MultipartRequest('POST', url)
+        ..fields['tckn'] = tckn
+        ..fields['otp'] = otp;
+
+      var response = await request.send();
+      var body = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(body);
+        print("OTP doğrulama sonucu: $data");
+
+        if (data is List) {
+          return data; // ✅ Liste döndür
+        } else {
+          return [data]; // ✅ Tek obje dönerse listeye sar
+        }
+      } else {
+        print("Doğrulama hatası: ${response.statusCode}, Body: $body");
+        return [
+          {"success": false, "message": "Sunucu hatası: ${response.statusCode}"}
+        ];
+      }
+    } catch (e) {
+      print("VerifyOtp hatası: $e");
+      return [
+        {"success": false, "message": e.toString()}
+      ];
+    }
+  }
+
+  Future<bool> registerFcmToken(String tckn, String fcmToken) async {
+    try {
+      final uri = Uri.parse('${ApiService.baseUrl}/api/school/register-fcm-token')
+          .replace(queryParameters: {
+        'tckn': tckn,
+        'fcmToken': fcmToken,
+      });
+
+      final response = await http.post(uri);
+
+      if (response.statusCode == 200) {
+        print("✅ FCM token başarıyla kaydedildi: ${response.body}");
+        return true;
+      } else if (response.statusCode == 404) {
+        print("⚠️ Kişi bulunamadı: ${response.body}");
+        return false;
+      } else {
+        print("❌ Sunucu hatası: ${response.statusCode} - ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("🚨 FCM token gönderilirken hata oluştu: $e");
+      return false;
+    }
+  }
+
+  Future<String> konumAlYeni() async {
+    String _konumBilgisi = "Konum bilgisi bekleniyor...";
+
+    bool servisAktif = await Geolocator.isLocationServiceEnabled();
+    if (!servisAktif) {
+      _konumBilgisi = "Konum servisi kapalı.";
+      return _konumBilgisi;
+    }
+
+    LocationPermission izinDurumu = await Geolocator.checkPermission();
+    if (izinDurumu == LocationPermission.denied) {
+      izinDurumu = await Geolocator.requestPermission();
+      if (izinDurumu == LocationPermission.denied) {
+        _konumBilgisi = "Konum izni reddedildi.";
+        return _konumBilgisi;
+      }
+    }
+
+    if (izinDurumu == LocationPermission.deniedForever) {
+      _konumBilgisi = "Konum izni kalıcı olarak reddedildi.";
+      return _konumBilgisi;
+    }
+
+    Position konum = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    globals.mevcutEnlem = konum.latitude.toString();
+    globals.mevcutBoylam = konum.longitude.toString();
+
+    _konumBilgisi = "Enlem: ${konum.latitude}, Boylam: ${konum.longitude}";
+
+    return _konumBilgisi;
+  }
+
+  Future<List<String>> getPlan({
+    required String tckn,
+    required int year,
+    required int month,
+    int day = 0,
+  }) async {
+    try {
+      logger.i("getPlan çağrılıyor → TCKN=$tckn, Year=$year, Month=$month, Day=$day");
+
+      final uri = Uri.parse(
+        "${ApiService.baseUrl}/api/plan/get?tckn=$tckn&year=$year&month=$month&day=$day",
+      );
+
+      final response = await http.get(uri);
+
+      logger.d("API yanıt kodu: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final urls = List<String>.from(data['urls'] ?? []);
+        logger.i("getPlan tamamlandı → ${urls.length} URL döndü.");
+        return urls;
+      } else {
+        logger.e("getPlan başarısız → ${response.statusCode}: ${response.body}");
+        throw Exception("Sunucu hatası");
+        //"Sunucu hatası: ${response.statusCode}"
+      }
+    } catch (e) {
+      logger.e("getPlan hatası: $e");
+      rethrow;
     }
   }
 }
