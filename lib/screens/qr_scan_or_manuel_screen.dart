@@ -68,7 +68,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
 
     try {
       // QR format: TCKN=12345678901;OTP=ABC123
-      final parts = data.split(';');
+      /*    final parts = data.split(';');
       //String? tckn;
       String? otp;
 
@@ -89,9 +89,9 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
         });
         return;
       }
+*/
 
-
-      final result = await ApiService.verifyOtp(globals.kullaniciTCKN, otp);
+      final result = await ApiService.verifyOtp(globals.kullaniciTCKN, data);
 
      /* if (result != null && result.isNotEmpty) {
         for (var person in result) {
@@ -100,9 +100,19 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
       }*/
       setState(() {
         isVerifying = false;
-        if (result != null && result.isNotEmpty) {
+        /*if (result != null && result.isNotEmpty) {
           verifyMessage = "✅ Kod Doğrulandı: ${result[0]['LogName']}";
-        } else {
+        }*/
+        if (result != null && result.isNotEmpty) {
+          verifyMessage = result.map((item) {
+            final logName = item['LogName'] ?? '';
+            final personName = item['PersonName'] ?? '';
+            return "• $logName - $personName";
+          }).join("\n");
+          print("karekod message"+verifyMessage.toString());
+          verifyMessage = "✅ Kod Doğrulandı:\n$verifyMessage";
+        }
+        else {
           verifyMessage = "❌ OTP geçersiz veya süresi dolmuş";
         }
       });
@@ -137,7 +147,14 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
     setState(() {
       isVerifying = false;
       if (result != null && result.isNotEmpty) {
-        verifyMessage = "✅ Kod Doğrulandı: ${result[0]['LogName']}";
+        //verifyMessage = "✅ Kod Doğrulandı: ${result[0]['LogName']}";
+        verifyMessage = result.map((item) {
+          final logName = item['LogName'] ?? '';
+          final personName = item['PersonName'] ?? '';
+          return "• $logName - $personName";
+        }).join("\n");
+        print("karekod message"+verifyMessage.toString());
+        verifyMessage = "✅ Kod Doğrulandı:\n$verifyMessage";
       } else {
         verifyMessage = "❌ OTP geçersiz veya süresi dolmuş";
       }
@@ -157,16 +174,31 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("QR / Kod Doğrulama"),
+        title: const
+        Text(
+            "QR / Kod Doğrulama",
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white,          // Seçili tab yazı & icon
+          unselectedLabelColor: Colors.white70, // Seçili olmayanlar
+          indicatorColor: Colors.white,      // Alt çizgi
           tabs: const [
-            Tab(icon: Icon(Icons.qr_code_scanner), text: "QR Oku"),
-            Tab(icon: Icon(Icons.keyboard), text: "Kod Gir"),
+            Tab(
+              icon: Icon(Icons.qr_code_scanner),
+              text: "QR Oku",
+            ),
+            Tab(
+              icon: Icon(Icons.keyboard),
+              text: "Kod Gir",
+            ),
           ],
         ),
+
       ),
       body: TabBarView(
         controller: _tabController,
@@ -176,8 +208,8 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withOpacity(0.8),
-                  AppColors.primary.withOpacity(0.6),
+                  AppColors.background.withOpacity(0.8),
+                  AppColors.background.withOpacity(0.6),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -340,7 +372,8 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary),
                   icon: const Icon(Icons.check),
                   label: const Text("Doğrula"),
                   onPressed: isVerifying ? null : _verifyManualOtp,

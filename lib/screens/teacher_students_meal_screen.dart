@@ -1,8 +1,14 @@
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../constants.dart';
+import '../services/api_service.dart';
+import '../models/meal_model.dart';
+import '../globals.dart' as globals;
 import 'package:http/http.dart' as http;
-import 'package:smart_okul_mobile/globals.dart' as globals;
-import 'package:smart_okul_mobile/constants.dart'; // AppColors için
+
+bool isLoading = false;
 
 class TeacherStudentsMealScreen extends StatefulWidget {
   final String teacherTckn;
@@ -10,130 +16,292 @@ class TeacherStudentsMealScreen extends StatefulWidget {
   const TeacherStudentsMealScreen({super.key, required this.teacherTckn});
 
   @override
-  _TeacherStudentsMealScreenState createState() =>
-      _TeacherStudentsMealScreenState();
+  _TeacherStudentsMealScreenState createState() => _TeacherStudentsMealScreenState();
 }
 
 class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
-  bool isLoading = true;
-  List<Map<String, dynamic>> studentsMeals = [];
-  Map<String, Map<String, int>> mealStatuses = {};
+  Future<MealModel?>? futureMeal;
 
-  final Map<int, String> mealEmojis = {
-    0: "❓",
-    1: "😞",
-    2: "😐",
-    3: "😊",
-  };
+  Map<int, Map<String, Map<String, int>>> studentMealSelections = {};
+  Map<int, int> studentSleepSelection = {};
+  Map<int, String> studentSleepNotes = {};
+  Map<int, int> studentMoodSelection = {};
+
+  final List<String> mealChoices = ["Yemedi", "Az Yedi", "Tamamını Yedi"];
+  final List<String> sleepChoices = ["Uyumadı", "Az Uyudu", "Uyudu"];
+  final List<String> moodChoices = ["Mutlu", "Üzgün", "Yorgun", "Huzurlu", "Sinirli"];
+  final List<String> moodEmojis = ["😊", "😢", "😴", "😌", "😡"];
+  final List<String> mealKeys = ["Kahvaltı", "Öğle", "İkindi"];
 
   @override
   void initState() {
     super.initState();
-    _fetchStudentsMeals();
+    _loadData();
   }
 
-  String _today() => DateTime.now().toIso8601String().split("T").first;
+  void _loadData() async {
+    String fixedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());//"2025-11-01";
+    futureMeal = ApiService.getMealList(widget.teacherTckn, fixedDate);
 
-  Future<void> _fetchStudentsMeals() async {
-    setState(() => isLoading = true);
+    final insertDate = fixedDate;
+    final url = Uri.parse(
+        "${globals.serverAdrr}/api/student/getStudentsMealByParentOrTeacher"
+            "?schoolId=${globals.globalSchoolId}&tckn=${globals.kullaniciTCKN}&insertDate=$insertDate"
+    );
+
     try {
-      final url = Uri.parse(
-          "${globals.serverAdrr}/api/student/getStudentsMealByParentOrTeacher"
-              "?schoolId=${globals.globalSchoolId}&tckn=${widget.teacherTckn}&insertDate=${_today()}");
       final response = await http.get(url);
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data is List) {
-          setState(() {
-            studentsMeals =
-                data.map((e) => Map<String, dynamic>.from(e)).toList();
-            mealStatuses = {};
-            for (var student in studentsMeals) {
-              final tckn = student["StudentTCKN"]?.toString() ?? "";
-              final dataStr =
-                  student["Data"]?.toString().padLeft(3, '0') ?? "000";
-              mealStatuses[tckn] = {
-                "sabah": int.tryParse(dataStr[0]) ?? 0,
-                "ogle": int.tryParse(dataStr[1]) ?? 0,
-                "ikindi": int.tryParse(dataStr[2]) ?? 0,
-                "uyku": dataStr.length > 3 ? int.tryParse(dataStr[3]) ?? 0 : 0,
-              };
+        final List<dynamic> savedData = response.body.isNotEmpty
+            ? (response.body.startsWith('[') ? jsonDecode(response.body) : [])
+            : [];
+
+        for (int i = 0; i < globals.globalOgrenciListesi.length; i++) {
+          final student = globals.globalOgrenciListesi[i];
+          final tckn = student['TCKN'];
+
+          final studentRecord = savedData.firstWhere(
+                (element) => element['StudentTCKN'] == tckn,
+            orElse: () => null,
+          );
+
+          if (studentRecord != null) {
+            final dataStr = studentRecord['Data'] as String;
+            final parts = dataStr.split('|');
+
+            if (parts.length >= 6) {
+              studentMealSelections[i] = {};
+              for (int j = 0; j < mealKeys.length; j++) {
+                final mealItems = parts[j].split(',');
+                studentMealSelections[i]![mealKeys[j]] = {};
+                for (var item in mealItems) {
+                  if (item.contains(':')) {
+                    final kv = item.split(':');
+                    final key = kv[0];
+                    final value = int.tryParse(kv[1]) ?? 0;
+                    studentMealSelections[i]![mealKeys[j]]![key] = value;
+                  }
+                }
+              }
+
+              studentSleepSelection[i] = int.tryParse(parts[3]) ?? -1;
+
+              final moodIdx = moodChoices.indexOf(parts[4]);
+              studentMoodSelection[i] = moodIdx >= 0 ? moodIdx : -1;
+
+              studentSleepNotes[i] = parts[5].trim().isEmpty ? "-" : parts[5];
+
             }
-          });
+          }
         }
+
+        setState(() {});
+      } else {
+        debugPrint("❌ Önceki yemek verisi yüklenemedi: ${response.statusCode}");
       }
     } catch (e) {
-      debugPrint("❌ Hata: $e");
-    } finally {
-      setState(() => isLoading = false);
+      debugPrint("❌ Önceki yemek verisi yüklenirken hata: $e");
     }
   }
 
-  Widget _buildMealRow(String tckn, String mealName, String mealKey) {
-    final selected = mealStatuses[tckn]?[mealKey] ?? 0;
+  Widget buildMealItem(int studentIndex, String mealName, String itemName) {
+    int currentSelection = studentMealSelections[studentIndex]?[mealName]?[itemName] ?? 0;
+
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        SizedBox(width: 60, child: Text(mealName, style: const TextStyle(fontSize: 14))),
-        ...mealEmojis.entries.map((entry) {
-          final index = entry.key;
-          final emoji = entry.value;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  mealStatuses[tckn]![mealKey] = index;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                decoration: BoxDecoration(
-                  border: index == selected
-                      ? Border.all(color: Colors.orangeAccent, width: 1.5)
-                      : null,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Center(
-                  child: Text(
-                    emoji,
-                    style: TextStyle(
-                        fontSize: 22,
-                        color: index == selected
-                            ? Colors.orangeAccent
-                            : Colors.grey),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
+        Text(itemName, style: const TextStyle(fontSize: 14, color: AppColors.primary)),
+        DropdownButton<int>(
+          value: currentSelection,
+          items: List.generate(mealChoices.length, (index) {
+            return DropdownMenuItem<int>(
+              value: index,
+              child: Text(mealChoices[index], style: const TextStyle(fontSize: 12)),
+            );
+          }),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              studentMealSelections.putIfAbsent(studentIndex, () => {});
+              studentMealSelections[studentIndex]!.putIfAbsent(mealName, () => {});
+              studentMealSelections[studentIndex]![mealName]![itemName] = value;
+            });
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildMealCard(Map<String, dynamic> student) {
-    final name = student["StudentName"]?.toString() ?? "Bilinmiyor";
-    final tckn = student["StudentTCKN"]?.toString() ?? "";
+  Widget buildMealList(int studentIndex, String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+        const SizedBox(height: 4),
+        ...items.map((e) => Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: buildMealItem(studentIndex, title.replaceAll(":", ""), e),
+          ),
+        )),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget buildMoodSection(int studentIndex) {
+    int currentMood = studentMoodSelection[studentIndex] ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text("Duygu Durumu:", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          children: List.generate(moodChoices.length, (index) {
+            return ChoiceChip(
+              label: Text("${moodEmojis[index]} ${moodChoices[index]}", style: const TextStyle(fontSize: 12)),
+              selected: index == currentMood,
+              selectedColor: AppColors.primary.withOpacity(0.2),
+              onSelected: (_) {
+                setState(() {
+                  studentMoodSelection[studentIndex] = index;
+                });
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget buildSleepSection(int studentIndex) {
+    int currentSelection = studentSleepSelection[studentIndex] ?? -1;
+    String note = studentSleepNotes[studentIndex] ?? "";
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text("Uyku:", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          children: List.generate(sleepChoices.length, (index) {
+            return ChoiceChip(
+              label: Text(sleepChoices[index], style: const TextStyle(fontSize: 12)),
+              selected: index == currentSelection,
+              selectedColor: AppColors.primary.withOpacity(0.2),
+              onSelected: (_) {
+                setState(() {
+                  studentSleepSelection[studentIndex] = index;
+                });
+              },
+            );
+          }),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: TextEditingController(text: note),
+          decoration: const InputDecoration(
+            labelText: "Açıklama",
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.bold, // 👈 sadece label kalın
+            ),
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+          onChanged: (val) {
+            studentSleepNotes[studentIndex] = val;
+          },
+        ),
+
+        buildMoodSection(studentIndex),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget buildStudentCard(
+      int studentIndex,
+      Map<String, dynamic> student,
+      MealModel? meal,
+      ) {
+    String studentName = student['Name'] ?? 'Öğrenci';
+
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name,
+
+            // 🔹 ÖĞRENCİ ADI (HER KARTTA)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                studentName,
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            _buildMealRow(tckn, "Sabah", "sabah"),
-            const SizedBox(height: 4),
-            _buildMealRow(tckn, "Öğle", "ogle"),
-            const SizedBox(height: 4),
-            _buildMealRow(tckn, "İkindi", "ikindi"),
-            const SizedBox(height: 4),
-            _buildMealRow(tckn, "Uyku", "uyku"),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            if (meal != null) ...[
+              ExpansionTile(
+                title: const Text(
+                  "Kahvaltı",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                ),
+                children: meal.meal1
+                    .map((e) => buildMealItem(studentIndex, "Kahvaltı", e))
+                    .toList(),
+              ),
+
+              ExpansionTile(
+                title: const Text(
+                  "Öğle",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                ),
+                children: meal.meal2
+                    .map((e) => buildMealItem(studentIndex, "Öğle", e))
+                    .toList(),
+              ),
+
+              ExpansionTile(
+                title: const Text(
+                  "İkindi",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                ),
+                children: meal.meal3
+                    .map((e) => buildMealItem(studentIndex, "İkindi", e))
+                    .toList(),
+              ),
+            ],
+
+            // 🔹 HER ZAMAN GÖSTERİLEN ALAN
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: buildSleepSection(studentIndex),
+            ),
           ],
         ),
       ),
@@ -141,89 +309,132 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
   }
 
   Future<void> _saveAllMeals() async {
+    bool hataVar = false; // 👈 hataVar
     setState(() => isLoading = true);
+
     try {
-      final insertDate = _today();
-      for (var entry in mealStatuses.entries) {
-        final tckn = entry.key;
-        final data = entry.value;
-        final dataStr =
-            "${data["sabah"]}${data["ogle"]}${data["ikindi"]}${data["uyku"]}";
+      final insertDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      for (int i = 0; i < globals.globalOgrenciListesi.length; i++) {
+        final student = globals.globalOgrenciListesi[i];
+        final tckn = student['TCKN'];
+
+        final mealDataStr = mealKeys.map((meal) {
+          final items = studentMealSelections[i]?[meal] ?? {};
+          return items.entries.map((e) => "${e.key}:${e.value}").join(',');
+        }).join('|');
+
+        final sleep = studentSleepSelection[i] ?? 0;
+        final moodIndex = studentMoodSelection[i] ?? 0;
+        final mood = moodChoices[moodIndex];
+        final note = studentSleepNotes[i] ?? "";
+
+        final finalDataStr = "$mealDataStr|$sleep|$mood|$note";
+
         final url = Uri.parse(
             "${globals.serverAdrr}/api/student/addMeal"
                 "?schoolId=${globals.globalSchoolId}"
                 "&studentTckn=$tckn"
                 "&insertDate=$insertDate"
-                "&data=$dataStr");
+                "&data=$finalDataStr"
+        );
+
         final response = await http.get(url);
+
         if (response.statusCode != 200) {
-          debugPrint(
-              "❌ Kaydetme hatası ($tckn): ${response.statusCode} - ${response.body}");
+          hataVar = true;
+          debugPrint("❌ Kaydetme hatası ($tckn): ${response.statusCode} - ${response.body}");
+        //  ScaffoldMessenger.of(context)
+         //     .showSnackBar(const SnackBar(content: Text("❌ Kaydetme hatası")));
+        }
         }
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("✅ Tüm yemekler kaydedildi")));
-    } catch (e) {
+      catch (e) {
       debugPrint("❌ SaveAll Exception: $e");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("❌ Kaydetme hatası")));
+     // ScaffoldMessenger.of(context)
+       //   .showSnackBar(const SnackBar(content: Text("❌ Kaydetme hatası")));
     } finally {
       setState(() => isLoading = false);
+    }
+
+    if (!hataVar) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("✅ Tüm bilgiler kaydedildi")));
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("❌ Kaydetme hatası")));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text("Yemek/Uyku Bilgileri"),
+        title: const Text("Günlük Bilgilendirme", style: AppStyles.titleLarge),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : studentsMeals.isEmpty
-              ? const Center(
-              child: Text("Bu öğretmene ait öğrenci bulunamadı."))
-              : Column(
+      body: FutureBuilder<MealModel?>(
+        future: futureMeal,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+         /* if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text("Yemek listesi bulunamadı.", style: TextStyle(color: AppColors.primary)));
+          }  final meal = snapshot.data!;*/
+          final MealModel? meal =
+          snapshot.connectionState == ConnectionState.done
+              ? snapshot.data
+              : null;
+
+
+
+
+          if (globals.globalOgrenciListesi.isEmpty) {
+            return const Center(child: Text("Öğrenci bulunamadı.", style: TextStyle(color: AppColors.primary)));
+          }
+
+          return Column(
             children: [
               Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _fetchStudentsMeals,
-                  child: ListView.builder(
-                    itemCount: studentsMeals.length,
-                    itemBuilder: (context, index) {
-                      return _buildMealCard(studentsMeals[index]);
-                    },
-                  ),
+                child: ListView.builder(
+                  itemCount: globals.globalOgrenciListesi.length,
+                  itemBuilder: (context, index) {
+                    final student = globals.globalOgrenciListesi[index];
+                    return buildStudentCard(index, student, meal);
+                  },
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ElevatedButton.icon(
-                  onPressed: _saveAllMeals,
-                  icon: const Icon(Icons.save),
-                  label: const Text("Tümünü Kaydet"),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 40),
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                        child: const Text("Vazgeç"),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _saveAllMeals,
+                        style: AppStyles.buttonStyle,
+                        child: isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text("Kaydet"),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }

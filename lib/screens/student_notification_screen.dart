@@ -4,6 +4,11 @@ import 'package:smart_okul_mobile/globals.dart' as globals;
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 
 class StudentNotificationScreen extends StatefulWidget {
   const StudentNotificationScreen({Key? key}) : super(key: key);
@@ -15,11 +20,13 @@ class StudentNotificationScreen extends StatefulWidget {
 class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
   late List<bool> selected;
   bool isButtonEnabled = true;
+  final Map<String, Uint8List?> studentPhotos = {};
 
   @override
   void initState() {
     super.initState();
     selected = List.generate(globals.globalOgrenciListesi.length, (index) => true);
+    _fetchStudentPhotos();
   }
 
   @override
@@ -28,8 +35,14 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Öğrenci Anons"),
-        backgroundColor: AppColors.primary,
+        automaticallyImplyLeading: false, // 👈 GERİ TUŞUNU KALDIRIR
+        title: const
+        Text(
+            "Öğrenci Anons",
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
+        backgroundColor: AppColors.newAppBar,//.primary,
         foregroundColor: AppColors.onPrimary,
       ),
       body: Container(
@@ -38,22 +51,22 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+              AppColors.newBody, //.primary.withOpacity(0.8),
+              AppColors.newBody//primary.withOpacity(0.6),
             ],
           ),
         ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            /*const SizedBox(height: 12),
             const Text(
               "Öğrenci Seçiniz",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: Colors.white,
+                color: AppColors.primary,
               ),
-            ),
+            ),*/
             const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
@@ -61,10 +74,73 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
                 itemCount: students.length,
                 itemBuilder: (context, index) {
                   final student = students[index];
+                  final Uint8List? photo = studentPhotos[student['TCKN']];
+
+                  return Card(
+                    elevation: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        setState(() {
+                          selected[index] = !selected[index];
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            // FOTOĞRAF
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.grey.shade200,
+                              backgroundImage: photo != null ? MemoryImage(photo) : null,
+                              child: photo == null
+                                  ? const Icon(Icons.person, color: Colors.grey)
+                                  : null,
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            // İSİM
+                            Expanded(
+                              child: Text(
+                                student['Name'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+
+                            // CHECKBOX
+                            Checkbox(
+                              value: selected[index],
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  selected[index] = value ?? false;
+                                });
+                              },
+                              checkColor: Colors.white,
+                              activeColor: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+
+                /*  itemBuilder: (context, index) {
+                  /*final student = students[index];
                   return CheckboxListTile(
                     title: Text(
                       student['Name'],
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: AppColors.primary),
                     ),
                     value: selected[index],
                     onChanged: (bool? value) {
@@ -75,35 +151,117 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
                     checkColor: AppColors.primary,
                     activeColor: Colors.white,
                   );
+                */
+                  final student = students[index];
+                  final Uint8List? photo = studentPhotos[student['TCKN']];
+
+                  return CheckboxListTile(
+                    secondary: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: photo != null ? MemoryImage(photo) : null,
+                      child: photo == null
+                          ? const Icon(Icons.person, color: Colors.grey)
+                          : null,
+                    ),
+                    title: Text(
+                      student['Name'],
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    value: selected[index],
+                    onChanged: (bool? value) {
+                      setState(() {
+                        selected[index] = value ?? false;
+                      });
+                    },
+                    checkColor: AppColors.primary,
+                    activeColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  );
                 },
-              ),
+              */),
             ),
             Padding(
               padding: const EdgeInsets.all(12.0),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
+                  // YAKLAŞTIM / BIRAKTIM → MAVİ
+                  SizedBox(
+                    width: double.infinity,
                     child: ElevatedButton(
                       onPressed: isButtonEnabled ? () => sendNotification(1) : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 60),
+                        textStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 6,
                       ),
                       child: Text(
                         globals.globalKullaniciTipi == "H" ? "Bıraktım" : "Yaklaştım",
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+
+                  const SizedBox(height: 20),
+
+                  // GELDİM / ALDIM → YEŞİL
+                  SizedBox(
+                    width: double.infinity,
                     child: ElevatedButton(
                       onPressed: isButtonEnabled ? () => sendNotification(2) : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 60),
+                        textStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 6,
                       ),
                       child: Text(
                         globals.globalKullaniciTipi == "H" ? "Aldım" : "Geldim",
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // GELDİM / ALDIM → YEŞİL
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isButtonEnabled ? () =>         Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const HomeScreen()),
+                      ) : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 60),
+                        textStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 6,
+                      ),
+                      child: Text("Ana Sayfa",
                       ),
                     ),
                   ),
@@ -115,6 +273,52 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
       ),
     );
   }
+
+  Future<void> _fetchStudentPhotos() async {
+    for (var ogrenci in globals.globalOgrenciListesi) {
+      String tckn = ogrenci['TCKN'];
+      String fotoVersion = ogrenci['FotoVersion'].toString();
+
+      Uint8List? photo = await ApiService().getPhoto(
+        tckn,
+        "${tckn}_$fotoVersion",
+      );
+
+      studentPhotos[tckn] = photo;
+    }
+    setState(() {});
+  }
+/*
+  Future<Uint8List?> _getPhoto(String tckn, String fotoName) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final localFile = File('${dir.path}/$fotoName.jpg');
+
+      if (await localFile.exists()) {
+        return await localFile.readAsBytes();
+      }
+
+      try {
+        final byteData =
+        await rootBundle.load('assets/images/$fotoName.jpg');
+        return byteData.buffer.asUint8List();
+      } catch (_) {}
+
+      final response = await http.get(Uri.parse(
+        '${globals.serverAdrr}/api/school/get-person-photo?tckn=$tckn',
+      ));
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        await localFile.writeAsBytes(bytes);
+        return bytes;
+      }
+    } catch (e) {
+      print('⚠️ Fotoğraf getirme hatası: $e');
+    }
+    return null;
+  }
+*/
 
   Future<int> mesafeKontrol(int tip) async {
     if (globals.globalKullaniciTipi == "P") {

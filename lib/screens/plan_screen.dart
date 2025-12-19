@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -235,14 +236,23 @@ class _PlanScreenState extends State<PlanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Planlar'),
+        title: const
+        Text(
+            'Planlar',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xCC1976D2), Color(0x991976D2)],
+            //colors: [Color(0xCC1976D2), Color(0x991976D2)],
+            colors: [
+              AppColors.background,
+              AppColors.background
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -317,22 +327,63 @@ class _PlanScreenState extends State<PlanScreen> {
                               onChanged: (v) => setState(() => _selectedYil = v!)),
                         ],
                       ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: planEkle,
+                            icon: const Icon(Icons.add, color: AppColors.primary),
+                            label: const Text("Plan Ekle"),
+                            style: AppStyles.buttonStyle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: planlariGetir,
+                            icon: const Icon(Icons.search, color: AppColors.primary),
+                            label: const Text("Getir"),
+                            style: AppStyles.buttonStyle,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    /*const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: planlariGetir,
+                        icon: const Icon(Icons.search, color: AppColors.primary),
+                        label: const Text("Plan Ekle",
+                            //style: TextStyle(color: AppColors.primary)
+                        ),
+                        style: AppStyles.buttonStyle,/* ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        )*/
+                      ),
+                    ),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: planlariGetir,
                         icon: const Icon(Icons.search, color: AppColors.primary),
                         label: const Text("Getir",
-                            style: TextStyle(color: AppColors.primary)),
-                        style: ElevatedButton.styleFrom(
+                           // style: TextStyle(color: AppColors.primary)
+                        ),
+                        style:AppStyles.buttonStyle,/*
+                        ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
-                        ),
+                        ),*/
                       ),
-                    ),
+                    ),*/
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -360,6 +411,68 @@ class _PlanScreenState extends State<PlanScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> planEkle() async {
+    try {
+      // PDF + Fotoğraf seçimi
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowMultiple: false,
+        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+      );
+
+      if (result == null) {
+        logger.w("Kullanıcı dosya seçmedi.");
+        return;
+      }
+
+      final path = result.files.single.path;
+      if (path == null) {
+        throw Exception("Dosya yolu alınamadı.");
+      }
+
+      File file = File(path);
+
+      int vyear = _selectedYil;
+      int vmonth = _selectedAy;
+      int vday = _secimTipi == 'Günlük' ? _selectedGun : 0;
+
+      logger.i("Plan yükleniyor → Gün: $vday Ay: $vmonth Yıl: $vyear");
+
+      setState(() => _isUploading = true);
+
+      final resultApi = await _apiService.uploadPlan(
+        tckn: globals.kullaniciTCKN,
+        year: vyear,
+        month: vmonth,
+        day: vday,
+        file: file,
+      );
+
+      logger.i("API yanıtı: $resultApi");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Plan başarıyla yüklendi")),
+        );
+      }
+
+      // Listeyi güncelle
+      planlariGetir();
+
+    } catch (e) {
+      logger.e("Plan yükleme hatası: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Plan yüklenemedi: $e")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
   }
 
   // 🔹 Ortak dropdown widget
@@ -390,6 +503,8 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 }
+
+
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoUrl;

@@ -200,7 +200,12 @@ class _CreateSurveyScreenState extends State<CreateSurveyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Yeni Anket Oluştur"),
+        title:
+        Text(
+            "Yeni Anket Oluştur",
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -210,8 +215,8 @@ class _CreateSurveyScreenState extends State<CreateSurveyScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6)
+              AppColors.background.withOpacity(0.8),
+              AppColors.background.withOpacity(0.6)
             ],
           ),
         ),

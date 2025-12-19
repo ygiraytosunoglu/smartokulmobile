@@ -42,7 +42,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     final seen = <String>{};
     uniqueOgretmenList = globals.globalOgretmenListesi
         .where((ogrenci) {
-      final tckn = '${ogrenci['TeacherTCKN'] ?? ''}';
+      final tckn = '${ogrenci['TeacherTCKN'] ?? ''+'_'+globals.globalSchoolId+'_T'}';
       if (tckn.isEmpty) return false;
       if (seen.contains(tckn)) return false;
       seen.add(tckn);
@@ -118,7 +118,11 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
+        title: const         Text(
+            'Mesaj Gönder',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),

@@ -24,7 +24,14 @@ class _CourseScheduleScreenState extends State<CourseScheduleScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text("Ders Programı"),
+        title:
+        Text(
+            "Ders Programı",
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
+
+
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -169,7 +176,7 @@ class FullScreenImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           Center(

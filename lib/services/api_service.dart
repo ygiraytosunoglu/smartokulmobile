@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import '../models/meal_model.dart';
 import '../models/user.dart';
 import '../globals.dart' as globals;
 import 'package:flutter/material.dart';
@@ -166,7 +171,8 @@ await apiService.putRequest(
   // Kullanıcı doğrulama
   Future<User> validatePerson(String tckn, String pin) async {
     final url = "${ApiService.baseUrl}/school/validate-person";
-    final body = jsonEncode({'tckn': tckn, 'pin': pin});
+    final body = jsonEncode({'tckn': tckn, 'pin': pin//, 'personType':
+    });
 
     final response = await http.post(
       Uri.parse(url),
@@ -395,20 +401,48 @@ await apiService.putRequest(
     }
   }
 
-  Future<bool> deleteGalleryPhoto(String imageUrl) async {
+
+  Future<bool> deleteGallery({
+    required String tckn,
+    required String fileName,
+  }) async {
     try {
-      final uri = Uri.parse("${ApiService.baseUrl}/api/school/delete-gallery-photo")
-          .replace(queryParameters: {"imageUrl": imageUrl});
-      final response = await http.delete(uri);
+      final uri = Uri.parse(
+          '${ApiService.baseUrl}/api/school/delete-gallery'
+      ).replace(queryParameters: {
+        'tckn': tckn,
+        'fileName': fileName,
+      });
+
+      print('DeleteGallery isteği gönderiliyor: $uri');
+
+      final response = await http.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          // Eğer token kullanıyorsan:
+          // 'Authorization': 'Bearer ${globals.token}',
+        },
+      );
+
+      print(
+          'DeleteGallery response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Dosya silindi: ${data['fileName']}');
         return true;
+      } else if (response.statusCode == 404) {
+        print('Dosya bulunamadı');
+        return false;
       } else {
-        logger.e("Fotoğraf silme başarısız: ${response.statusCode}");
+        print(
+            'DeleteGallery hata: ${response.statusCode} - ${response.body}');
         return false;
       }
-    } catch (e) {
-      logger.e("deleteGalleryPhoto hatası: $e");
+    } catch (e, stack) {
+      print('DeleteGallery exception: $e');
+     print(stack.toString());
       return false;
     }
   }
@@ -424,6 +458,337 @@ await apiService.putRequest(
       throw Exception("Duyuru listesi alınamadı: ${response.statusCode}");
     }
   }
+
+  Future<bool> updatePin(String tckn, String telNo, String yeniPin) async {
+    final url = Uri.parse(
+      '${ApiService.baseUrl}/api/school/update-pin?tckn=$tckn&telNo=$telNo&yeniPin=$yeniPin',
+    );
+
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+
+    final response = await http.post(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception('PIN güncellenemedi: ${response.body}');
+    }
+  }
+
+  // Okul logosu getirme servisi
+  Future<Uint8List> getLogo(String tckn) async {
+    final url = Uri.parse('${ApiService.baseUrl}/api/school/get-logo?tckn=$tckn');
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return response.bodyBytes;  // ← LOGO BYTE ARRAY
+    } else if (response.statusCode == 404) {
+      throw Exception('Logo bulunamadı');
+    } else {
+      throw Exception('Logo getirilemedi: ${response.statusCode}');
+    }
+  }
+
+  Future<bool> addStudentBoyKilo({
+    required String tckn,
+    required String boy,
+    required String kilo,
+    required DateTime date,
+  }) async {
+    try {
+      debugPrint("addStudentBoyKilo çağrıldı. tckn=$tckn, boy=$boy, kilo=$kilo, date=$date");
+
+      var uri = Uri.parse("${ApiService.baseUrl}/api/StudentBoyKilo/add");
+
+      var request = http.MultipartRequest("POST", uri);
+
+      request.fields["tckn"] = tckn;
+      request.fields["boy"] = boy;
+      request.fields["kilo"] = kilo;
+
+      // API'nin kabul ettiği format: 2025-12-08T10:30:00
+      request.fields["date"] = date.toIso8601String();
+
+      debugPrint("Gönderilen FormData: ${request.fields}");
+
+      var response = await request.send();
+      var responseBody = await response.stream.bytesToString();
+
+      debugPrint("API Status Code: ${response.statusCode}");
+      debugPrint("API Response: $responseBody");
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Hata: $e");
+      return false;
+    }
+  }
+
+  /// Boy - kilo listeleme servisi
+  Future<List<dynamic>> getStudentBoyKilo(String tckn) async {
+    try {
+      debugPrint("getStudentBoyKilo çağrıldı. TCKN=$tckn");
+
+      final url = Uri.parse("${ApiService.baseUrl}/api/StudentBoyKilo/get?tckn=$tckn");
+
+      final response = await http.get(url);
+
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data;
+      } else {
+        debugPrint("Hata: ${response.body}");
+        return [];
+      }
+    } catch (e) {
+      debugPrint("getStudentBoyKilo hata: $e");
+      return [];
+    }
+  }
+
+  Future<bool> uploadPlan({
+    required String tckn,
+    required int year,
+    required int month,
+    required int day,
+    required File file,
+  }) async {
+    try {
+      debugPrint("uploadPlan çağrıldı. "
+          "TCKN=$tckn, Year=$year, Month=$month, Day=$day, File=${file.path}");
+
+      var uri = Uri.parse("${ApiService.baseUrl}/api/Document/uploadPlan");
+
+      var request = http.MultipartRequest("POST", uri);
+
+      // Alanlar
+      request.fields["tckn"] = tckn;
+      request.fields["year"] = year.toString();
+      request.fields["month"] = month.toString();
+      request.fields["day"] = day.toString();
+
+      // Dosya mime tipi
+      String fileName = path.basename(file.path);
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          filename: fileName,
+        ),
+      );
+
+      debugPrint("Gönderilen alanlar: ${request.fields}");
+      debugPrint("Yüklenen dosya: $fileName");
+
+      var response = await request.send();
+      var responseBody = await response.stream.bytesToString();
+
+      debugPrint("Status: ${response.statusCode}");
+      debugPrint("Response: $responseBody");
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint("uploadPlan hata: $e");
+      return false;
+    }
+  }
+
+  Future<List<String>> getPlan({
+    required String tckn,
+    required int year,
+    required int month,
+    int day = 0,
+  }) async {
+    try {
+      debugPrint(
+          "getPlan çağrıldı -> TCKN=$tckn, Year=$year, Month=$month, Day=$day");
+
+      final url = Uri.parse(
+          "${ApiService.baseUrl}/api/Document/getPlan?tckn=$tckn&year=$year&month=$month&day=$day");
+
+      debugPrint("GET URL: $url");
+
+      final response = await http.get(url);
+
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // urls listesi backend'den geliyor
+        List<String> urls =
+        (data["urls"] as List).map((e) => e.toString()).toList();
+
+        return urls;
+      } else {
+        debugPrint("Hata: ${response.body}");
+        return [];
+      }
+    } catch (e) {
+      debugPrint("getPlan hata -> $e");
+      return [];
+    }
+  }
+
+  Future<bool> uploadBulten({
+    required String tckn,
+    required DateTime startDate,
+    required DateTime endDate,
+    required File file,
+  }) async {
+    try {
+      debugPrint("uploadBulten çağrıldı. "
+          "TCKN=$tckn, StartDate=$startDate, EndDate=$endDate, File=${file.path}");
+
+      var uri = Uri.parse("${ApiService.baseUrl}/api/Document/uploadBulten");
+
+      var request = http.MultipartRequest("POST", uri);
+
+      // Form field'lar
+      request.fields["tckn"] = tckn;
+      request.fields["startDate"] = startDate.toIso8601String();
+      request.fields["endDate"] = endDate.toIso8601String();
+
+      // Dosya adı
+      String fileName = path.basename(file.path);
+
+      request.files.add(await http.MultipartFile.fromPath(
+        "file",
+        file.path,
+        filename: fileName,
+      ));
+
+      debugPrint("Gönderilen FormData: ${request.fields}");
+      debugPrint("Yüklenen dosya: $fileName");
+
+      var response = await request.send();
+      var body = await response.stream.bytesToString();
+
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: $body");
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("uploadBulten hata: $e");
+      return false;
+    }
+  }
+
+  Future<List<String>> getBulten({
+    required String tckn,
+    required DateTime date,
+  }) async {
+    try {
+      debugPrint("getBulten çağrıldı -> TCKN=$tckn, Date=$date");
+
+      final url = Uri.parse(
+        "${ApiService.baseUrl}/api/Document/getBulten?tckn=$tckn&date=${date.toIso8601String()}",
+      );
+
+      debugPrint("GET URL: $url");
+
+      final response = await http.get(url);
+
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        List<String> urls =
+        (data["urls"] as List).map((e) => e.toString()).toList();
+
+        return urls;
+      } else {
+        debugPrint("Hata: ${response.body}");
+        return [];
+      }
+    } catch (e) {
+      debugPrint("getBulten hata -> $e");
+      return [];
+    }
+  }
+
+  Future<bool> uploadDocument({
+    required String tckn,
+    required String docType,
+    required File file,
+  }) async {
+    try {
+      debugPrint(
+          "uploadDocument çağrıldı. TCKN=$tckn, DocType=$docType, File=${file.path}");
+
+      var uri = Uri.parse("${ApiService.baseUrl}/api/Document/uploadDocument");
+
+      var request = http.MultipartRequest("POST", uri);
+
+      // Form field'lar
+      request.fields["tckn"] = tckn;
+      request.fields["docType"] = docType;
+
+      String fileName = path.basename(file.path);
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          "file",
+          file.path,
+          filename: fileName,
+        ),
+      );
+
+      debugPrint("Gönderilen FormData: ${request.fields}");
+      debugPrint("Yüklenen dosya: $fileName");
+
+      // Gönderim
+      var response = await request.send();
+      var body = await response.stream.bytesToString();
+
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: $body");
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("uploadDocument hata: $e");
+      return false;
+    }
+  }
+
+  static Future<List<String>> getDocumentUrls({
+    required String tckn,
+    required String docType,
+  }) async {
+    final url = Uri.parse(
+        '${ApiService.baseUrl}/api/Document/getDocument?tckn=$tckn&docType=$docType');
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      List<dynamic> list = data['urls'];
+      return list.map((e) => e.toString()).toList();
+    } else {
+      throw Exception("GetDocument failed: ${response.body}");
+    }
+  }
+
+
+
+
 /*
   Future<String> kullaniciBilgileriniCek(String tckn, String pswd) async {
     final String baseUrl = globals.serverAdrr +"/api/school/validate-person?tckn=${tckn}&pin=${pswd}";
@@ -550,8 +915,98 @@ await apiService.putRequest(
     return mesafe;
   }
 
-  Future<String> kullaniciBilgileriniCek(String tckn, String pswd) async {
-    final String baseUrl = "${globals.serverAdrr}/api/school/validate-person?tckn=$tckn&pin=$pswd";
+  Future<String> kullaniciBilgileriniCek(
+      String tckn, String pswd, String sRole) async {
+
+    final response = await http.get(Uri.parse(
+        "${globals.serverAdrr}/api/school/validate-person"
+            "?tckn=$tckn&pin=$pswd&personType=$sRole"));
+
+    if (response.statusCode != 200) {
+      return "Sunucu hatası";
+    }
+
+    final decoded = jsonDecode(response.body);
+    final List persons = decoded["Persons"] ?? [];
+
+    if (persons.isEmpty) {
+      return "Kullanıcı bulunamadı";
+    }
+
+    /// ✅ 1 OKUL → DEVAM
+    if (persons.length == 1) {
+      parsePerson(persons[0]);
+      return "OK";
+    }
+
+    /// ⚠️ 1'DEN FAZLA OKUL → SEÇİM GEREKİYOR
+    globals.secilebilirOkullar = persons;
+    return "SELECT_SCHOOL";
+  }
+
+  void parsePerson(Map<String, dynamic> p) {
+    globals.globalKullaniciAdi = p["Name"] ?? "";
+    globals.globalOkulAdi = p["SchoolName"] ?? "";
+    globals.orjKullaniciTCKN = p["TCKN"] ?? "";
+    globals.globalKullaniciTipi = p["Type"] ?? "";
+    globals.fotoVersion = p["FotoVersion"] ?? 0;
+    globals.sinifAdi  = p["ClassName"] ?? "";
+    globals.ogrenciOkulNo = p["SchoolNumber"] ?? "";
+
+    globals.duyuruVar = ValueNotifier((p["UnreadDuyuruCount"] ?? 0) > 0);
+    globals.anketVar = ValueNotifier((p["SurveyCount"] ?? 0) > 0);
+    globals.etkinlikVar = ValueNotifier((p["ActivityCount"] ?? 0) > 0);
+
+    globals.globalSchoolId = p["SchoolId"]?.toString() ?? "";
+    globals.kullaniciTCKN = globals.orjKullaniciTCKN+"_"+globals.globalSchoolId+"_"+globals.globalKullaniciTipi;
+
+    globals.globalKonumEnlem = p["KonumEnlem"]?.toString() ?? "";
+    globals.globalKonumBoylam = p["KonumBoylam"]?.toString() ?? "";
+    globals.mesafeLimit = p["MesafeLimit"] ?? 0;
+    globals.meslek = p["Meslek"] ?? "";
+    globals.hobi = p["Hobi"] ?? "";
+    globals.kvkk = p["Kvkk"]?.toString() ?? "0";
+
+    /// Öğrenciler
+    globals.globalOgrenciListesi = [];
+    for (var e in (p["Students"] ?? [])) {
+      globals.globalOgrenciListesi.add({
+        "Name": e["Name"] ?? "",
+        "TCKN": e["TCKN"] ?? "",
+        "FotoVersion": e["FotoVersion"] ?? 0,
+        "Alerji": e["Alerji"] ?? "",
+        "Ilac": e["Ilac"] ?? "",
+        "ClassName": e["ClassName"] ?? "",
+        "SchoolNumber": e["SchoolNumber"] ?? "",
+      });
+    }
+
+    /// Öğretmenler
+    globals.globalOgretmenListesi = (p["Teachers"] ?? []).map<Map<String, dynamic>>((e) => {
+      "TeacherName": e["TeacherName"] ?? "",
+      "TeacherTCKN": e["TeacherTCKN"] ?? "",
+      "StudentTCKN": e["StudentTCKN"] ?? "",
+      "StudentName": e["StudentName"] ?? "",
+    }).toList();
+
+    /// Menü
+    globals.menuListesi = (p["MenuTanim"] ?? "")
+        .toString()
+        .split(",")
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    /// Sınıflar
+    globals.globalSinifListesi = (p["Classes"] ?? []).map<Map<String, dynamic>>((e) => {
+      "Id": e["Id"],
+      "Ad": e["Ad"],
+    }).toList();
+  }
+
+
+  /*Future<String> kullaniciBilgileriniCek(String tckn, String pswd, String sRole) async {
+    final String baseUrl = "${globals.serverAdrr}/api/school/validate-person?tckn=$tckn&pin=$pswd&personType=$sRole";
     logger.i("baseUrl:$baseUrl");
 
     final uri = Uri.parse(baseUrl);
@@ -643,7 +1098,7 @@ await apiService.putRequest(
     }
 
     return "Veri indirildi!";
-  }
+  }*/
 
   // Duyuruyu okundu olarak işaretleme
   Future<bool> setDuyuruOkundu(int duyuruId) async {
@@ -778,7 +1233,7 @@ await apiService.putRequest(
   Future<List<Map<String, String>>> getGalleryWithThumbnails(
       String tckn, {int skip = 0, int take = 18}) async {
     final url = "${ApiService.baseUrl}/api/school/get-gallery?tckn=$tckn&skip=$skip&take=$take";
-
+    print("url:"+url);
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode != 200) {
@@ -892,6 +1347,49 @@ await apiService.putRequest(
     }
   }*/
 
+  Future<Uint8List> getProfilePhoto(String tckn) async {
+    final response = await http.get(
+      Uri.parse("$baseUrl/profile-photo?tckn=$tckn"),
+    );
+
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else {
+      throw Exception("Profil fotoğrafı alınamadı");
+    }
+  }
+
+
+  Future<Uint8List?> getPhoto(String tckn, String fotoName) async {
+    try {
+      Directory dir = await getApplicationDocumentsDirectory();
+      File localFile = File('${dir.path}/$fotoName.jpg');
+
+      if (await localFile.exists()) {
+        return await localFile.readAsBytes();
+      }
+
+      try {
+        final byteData =
+        await rootBundle.load('assets/images/$fotoName.jpg');
+        return byteData.buffer.asUint8List();
+      } catch (_) {}
+
+      final response = await http.get(Uri.parse(
+        '${ApiService.baseUrl}/api/school/get-person-photo?tckn=$tckn',
+      ));
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        await localFile.writeAsBytes(bytes);
+        return bytes;
+      }
+    } catch (e) {
+      print('⚠️ Fotoğraf getirme hatası: $e');
+    }
+    return null;
+  }
+
   // Çoklu fotoğraf yükleme
   Future<void> uploadGalleryImages(List<dynamic> images) async {
     final uri = Uri.parse("${ApiService.baseUrl}/gallery/upload");
@@ -924,6 +1422,71 @@ await apiService.putRequest(
     }
   }
 
+  Future<bool> updateActivity({
+    required String ownerTckn,
+    required int activityId,
+    required String data,
+    DateTime? expireDate,
+  }) async {
+    final uri = Uri.parse("${ApiService.baseUrl}/api/activity/update");
+
+    final request = http.MultipartRequest("POST", uri);
+
+    // ZORUNLU ALANLAR
+    request.fields["ownerTckn"] = ownerTckn;
+    request.fields["activityId"] = activityId.toString();
+    request.fields["data"] = data;
+
+    // OPSİYONEL ALAN
+    if (expireDate != null) {
+      request.fields["expireDate"] = expireDate.toIso8601String();
+    }
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception(responseBody);
+    }
+  }
+
+  //Etkinlik Silme
+  Future<bool> deleteActivity({
+    required String tckn,
+    required int activityId,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiService.baseUrl}/api/activity/delete'
+            '?tckn=$tckn'
+            '&activityId=$activityId',
+      );
+
+      final response = await http.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        // Yetkisiz veya bulunamadı
+        return false;
+      } else {
+        throw Exception(
+          'DeleteActivity başarısız. StatusCode: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      Logger().e('❌ deleteActivity hata: $e');
+      rethrow;
+    }
+  }
+
   // Etkinlik listesi alma
   Future<List<Map<String, dynamic>>> getEtkinlikList(String kullaniciTCKN) async {
     final url = "${ApiService.baseUrl}/api/activity/list-by-tckn?tckn=$kullaniciTCKN";
@@ -934,6 +1497,84 @@ await apiService.putRequest(
       return (decoded as List).cast<Map<String, dynamic>>();
     } else {
       throw Exception("Etkinlik listesi alınamadı: ${response.statusCode}");
+    }
+  }
+
+  // İlaç Bilgisi oluşturma
+  Future<void> createIlac(Map<String, dynamic> etkinlikData) async {
+    final uri = Uri.parse("${ApiService.baseUrl}/api/activity/add");
+    final request = http.MultipartRequest('POST', uri);
+
+    etkinlikData.forEach((key, value) {
+      if (value != null) request.fields[key] = value.toString();
+    });
+
+    final response = await request.send();
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final respStr = await response.stream.bytesToString();
+      logger.e("İlaç oluşturma response:$respStr");
+      throw Exception("İlaç oluşturulamadı: $respStr");
+    }
+  }
+
+  /// İlaç Takip Ekleme
+  Future<Map<String, dynamic>> addIlacTakip({
+    required String tckn,
+    required String studentTckn,
+    required String ilacDateStart,
+    required String ilacDateEnd,
+    required String ilacTime,
+    required String data,
+  }) async {
+    final url = Uri.parse("${ApiService.baseUrl}/api/IlacTakip/add");
+
+    var request = http.MultipartRequest('POST', url);
+
+    request.fields['tckn'] = tckn;
+    request.fields['studentTckn'] = studentTckn;
+    request.fields['ilacDateStart'] = ilacDateStart;
+    request.fields['ilacDateEnd'] = ilacDateEnd;
+    request.fields['ilacTime'] = ilacTime;
+    request.fields['data'] = data;
+
+    print("addIlacTakip request: "+request.toString());
+
+    try {
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        return {
+          "success": true,
+          "data": json.decode(responseData),
+        };
+      } else {
+        return {
+          "success": false,
+          "message": responseData,
+        };
+      }
+    } catch (e) {
+      return {
+        "success": false,
+        "message": "Hata oluştu: $e",
+      };
+    }
+  }
+
+  // İlaç listesi alma
+  Future<List<Map<String, dynamic>>> getIlacList(String ogrenciTCKN) async {
+
+    final url = "${ApiService.baseUrl}/api/IlacTakip/get?studentTckn=$ogrenciTCKN";
+    print("ilaç takip:");
+    print("${ApiService.baseUrl}/api/IlacTakip/get?studentTckn=$ogrenciTCKN");
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      return (decoded as List).cast<Map<String, dynamic>>();
+    } else {
+      throw Exception("İlaç listesi alınamadı: ${response.statusCode}");
     }
   }
 
@@ -1035,6 +1676,39 @@ await apiService.putRequest(
     }
   }
 
+  // 🔴 Survey Silme
+  Future<bool> deleteSurvey({
+    required String tckn,
+    required int surveyId,
+  }) async {
+    final uri = Uri.parse(
+      "${ApiService.baseUrl}/api/survey/delete"
+          "?tckn=$tckn&surveyId=$surveyId",
+    );
+
+    final response = await http.delete(
+      uri,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      // İstersen response'u parse edebilirsin
+      final data = jsonDecode(response.body);
+      debugPrint("Anket silindi: ${data["surveyId"]}");
+      return true;
+    } else if (response.statusCode == 401) {
+      throw Exception("Anket silme yetkiniz yok.");
+      return false;
+    } else {
+      throw Exception(
+        "Anket silinirken hata oluştu: ${response.body}",
+      );
+      return false;
+    }
+  }
+
   // Öğretmen/Müdür için anket summary alır
   Future<Map<String, dynamic>> getSurveySummary({
     required int surveyId,
@@ -1044,7 +1718,6 @@ await apiService.putRequest(
     final uri = Uri.parse("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
     logger.i("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
     final response = await http.get(uri);
-
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       return data;
@@ -1053,7 +1726,7 @@ await apiService.putRequest(
     }
   }
 
-
+/*
   Future<bool> uploadGallery(String tckn, List<File> files) async {
     try {
       var uri = Uri.parse("${ApiService.baseUrl}/api/school/upload-gallery");
@@ -1075,6 +1748,38 @@ await apiService.putRequest(
 
       if (response.statusCode == 200) {
         logger.i("✅ Galeriye ${files.length} fotoğraf yüklendi.");
+        return true;
+      } else {
+        logger.e("⚠️ Yükleme başarısız: ${response.statusCode}");
+        return false;
+      }
+    } catch (e) {
+      logger.e("❌ uploadGallery hatası: $e");
+      return false;
+    }
+  }
+*/
+
+  Future<bool> uploadGallery(String tckn, List<File> files) async {
+    try {
+      var uri = Uri.parse("${ApiService.baseUrl}/api/school/upload-gallery");
+      var request = http.MultipartRequest('POST', uri);
+      request.fields['tckn'] = tckn;
+
+      for (var file in files) {
+        final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
+        final multipartFile = await http.MultipartFile.fromPath(
+          'files',
+          file.path,
+          contentType: MediaType.parse(mimeType),
+        );
+        request.files.add(multipartFile);
+      }
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        logger.i("✅ Galeriye ${files.length} medya (video + thumbnail dahil) yüklendi.");
         return true;
       } else {
         logger.e("⚠️ Yükleme başarısız: ${response.statusCode}");
@@ -1213,13 +1918,14 @@ await apiService.putRequest(
 
     return _konumBilgisi;
   }
-
+/*
   Future<List<String>> getPlan({
     required String tckn,
     required int year,
     required int month,
     int day = 0,
-  }) async {
+  }) async
+  {
     try {
       logger.i("getPlan çağrılıyor → TCKN=$tckn, Year=$year, Month=$month, Day=$day");
 
@@ -1244,6 +1950,54 @@ await apiService.putRequest(
     } catch (e) {
       logger.e("getPlan hatası: $e");
       rethrow;
+    }
+  }
+*/
+  static Future<MealModel?> getMealList(String tckn, String date) async {
+    try {
+      final uri = Uri.parse("${ApiService.baseUrl}/api/MealList/get?tckn=$tckn&date=$date");
+
+      final response = await http.get(uri);
+      print("GetMealList Status: ${response.statusCode}");
+      print("GetMealList Body: ${response.body}");
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return MealModel.fromJson(data);
+      } else {
+        print("GetMealList Error: ${response.statusCode} ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("GetMealList Exception: $e");
+      return null;
+    }
+  }
+
+  /// Yemek listesini çeker
+  static Future<Map<String, dynamic>?> getMealList2(String tckn, String date) async {
+    final url = Uri.parse("${ApiService.baseUrl}/api/MealList/get?tckn=$tckn&date=$date");
+
+    try {
+      final response = await http.get(url);
+
+      print("GET MealList Status: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      else if (response.statusCode == 404) {
+        return {"error": "Belirtilen tarih için yemek bulunamadı."};
+      }
+      else if (response.statusCode == 400) {
+        return {"error": "Eksik parametre gönderildi."};
+      }
+      else {
+        return {"error": "Sunucu hatası: ${response.statusCode}"};
+      }
+    } catch (e) {
+      print("GetMealList exception: $e");
+      return null;
     }
   }
 }

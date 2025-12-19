@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/constants.dart';
 
 class MealListScreen extends StatelessWidget {
   const MealListScreen({super.key});
@@ -12,8 +13,8 @@ class MealListScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.blue[700]!,
-              Colors.blue[900]!,
+              AppColors.background,//Colors.blue[700]!,
+              AppColors.background,//Colors.blue[900]!,
             ],
           ),
         ),

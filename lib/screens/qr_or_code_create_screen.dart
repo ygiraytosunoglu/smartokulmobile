@@ -34,15 +34,20 @@ class _QrOrCodeCreateScreenState extends State<QrOrCodeCreateScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text("Karekod / Kod Oluştur"),
+        title: const
+        Text(
+            "Karekod / Kod Oluştur",
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
       ),
       body: Container(
         height: double.infinity, // 💡 ekranın tamamını kapla
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+              AppColors.background.withOpacity(0.8),
+              AppColors.background.withOpacity(0.6),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,

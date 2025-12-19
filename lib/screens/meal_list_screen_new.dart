@@ -14,14 +14,19 @@ class MealListScreenNew extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text("Yemek Listesi"),
+        title: const
+        Text(
+            "Yemek Listesi",
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+              AppColors.background.withOpacity(0.8),
+              AppColors.background.withOpacity(0.6),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,

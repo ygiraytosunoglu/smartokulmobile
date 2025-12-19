@@ -26,7 +26,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       isAllSelected = value ?? false;
       if (isAllSelected) {
         selectedOgrenciler = globals.globalOgrenciListesi
-            .map<String>((e) => e["TCKN"].toString())
+            .map<String>((e) => e["TCKN"].toString()+"_"+globals.globalSchoolId+'_S')
             .toList();
       } else {
         selectedOgrenciler.clear();
@@ -102,7 +102,12 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
+        title: const
+        Text(
+            'Mesaj Gönder',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -143,18 +148,19 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const Icon(Icons.campaign,
-                                    size: 64, color: AppColors.primary),
+                                    size: 64, color: AppColors.onPrimary),
                                 const SizedBox(height: 24),
                                 Text(
                                   'Yeni Mesaj',
-                                  style: Theme.of(context)
+                                  style: AppStyles.buttonTextStyle,
+                                  /*Theme.of(context)
                                       .textTheme
                                       .titleLarge
                                       ?.copyWith(
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
-                                  textAlign: TextAlign.center,
+                                  textAlign: TextAlign.center,*/
                                 ),
                                 const SizedBox(height: 16),
 
@@ -215,12 +221,12 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                   onPressed: _isSending
                                       ? null // 👈 Devre dışı
                                       : _sendNotification,
-                                  style: ElevatedButton.styleFrom(
+                                  style: AppStyles.buttonStyle,/*ElevatedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 16),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: AppColors.onPrimary,
-                                  ),
+                                  ),*/
                                   child: Text(
                                     _isSending
                                         ? 'Mesajınız Gönderiliyor...' // 👈 Değişen yazı

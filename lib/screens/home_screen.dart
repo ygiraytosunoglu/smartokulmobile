@@ -1,274 +1,517 @@
-
-import 'dart:ffi';
-
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:smart_okul_mobile/screens/course_schedule_screen.dart';
-import 'package:smart_okul_mobile/screens/devam_durumu_screen.dart';
-import 'package:smart_okul_mobile/screens/door_control_page.dart';
-import 'package:smart_okul_mobile/screens/etkinlik_screen.dart';
-import 'package:smart_okul_mobile/screens/meal_list_screen_new.dart';
-import 'package:smart_okul_mobile/screens/photo_gallery_screen.dart';
-import 'package:smart_okul_mobile/screens/plan_screen.dart';
-import 'package:smart_okul_mobile/screens/qr_or_code_create_screen.dart';
-import 'package:smart_okul_mobile/screens/qr_scan_or_manuel_screen.dart';
-import 'package:smart_okul_mobile/screens/send_notification_screen_p.dart';
-import 'package:smart_okul_mobile/screens/survey_screen.dart';
-import 'package:smart_okul_mobile/screens/user_profile_screen.dart';
-import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
-import 'package:smart_okul_mobile/screens/send_notification_screen.dart';
-import 'package:smart_okul_mobile/screens/send_notification_screen_m.dart';
-import 'package:smart_okul_mobile/screens/student_notification_screen.dart';
-
 import 'package:logger/logger.dart';
 
-import 'package:smart_okul_mobile/screens/teacher_students_meal_screen.dart';
-import 'package:smart_okul_mobile/screens/parent_student_meal_screen.dart';
-import 'package:smart_okul_mobile/screens/login_screen.dart'; // LoginScreen import edildi
 import '../constants.dart';
-import 'package:http/http.dart' as http;
-import 'package:smart_okul_mobile/globals.dart' as globals;
+import '../globals.dart' as globals;
 import '../services/api_service.dart';
 
-class HomeScreen extends StatelessWidget {
+import 'login_screen.dart';
+import 'duyuru_listesi_screen.dart';
+import 'photo_gallery_screen.dart';
+import 'plan_screen.dart';
+import 'survey_screen.dart';
+import 'etkinlik_screen.dart';
+import 'meal_screen.dart';
+import 'course_schedule_screen.dart';
+import 'devam_durumu_screen.dart';
+import 'ilac_screen.dart';
+import 'user_profile_screen.dart';
+import 'door_control_page.dart';
+import 'qr_or_code_create_screen.dart';
+import 'qr_scan_or_manuel_screen.dart';
+import 'student_notification_screen.dart';
+import 'teacher_students_meal_screen.dart';
+import 'parent_student_meal_screen.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    final screenHeight = MediaQuery.of(context).size.height;
-    final cardHeight = screenHeight / 6 - 30; // 6 satır, padding 16
-    print("home screen "+cardHeight.toString());
+class _HomeScreenState extends State<HomeScreen> {
+  Map<String, dynamic>? selectedStudent;
+
+  Future<Uint8List?>? _studentPhotoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 👶 Veli ise ilk öğrenciyi otomatik seç
+    if (globals.globalKullaniciTipi == 'P' &&
+        globals.globalOgrenciListesi.isNotEmpty) {
+      selectedStudent = globals.globalOgrenciListesi.first;
+
+      globals.studentTckn = selectedStudent!['TCKN'];
+      globals.studentClassId = selectedStudent!['ClassId'];
+
+      _loadStudentPhoto();
+    }
+  }
+
+ /* void _loadStudentPhoto() async{
+    if (selectedStudent == null) return;
+
+    final tckn = selectedStudent!['TCKN'];
+    final fotoVersion = selectedStudent!['FotoVersion'].toString();
+
+     _studentPhotoFuture = await ApiService().getPhoto(
+      tckn,
+      "${tckn}_$fotoVersion",
+    );
+  }*/
+
+  void _loadStudentPhoto() {
+    if (selectedStudent == null) return;
+
+    final tckn = selectedStudent!['TCKN'];
+    final fotoVersion = selectedStudent!['FotoVersion'].toString();
+
+    setState(() {
+      _studentPhotoFuture = ApiService().getPhoto(
+        tckn,
+        "${tckn}_$fotoVersion",
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
+
+      // ================= APPBAR =================
       appBar: AppBar(
-        automaticallyImplyLeading: false, // geri butonu kapatıldı
-        title: Text(globals.globalOkulAdi),
         backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
+        elevation: 0,
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            const SizedBox(width: 12),
+
+            /// LOGO
+            FutureBuilder<Uint8List>(
+              future: ApiService().getLogo(globals.kullaniciTCKN),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox(
+                    width: 45,
+                    height: 45,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  );
+                }
+
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    snapshot.data!,
+                    width: 45,
+                    height: 45,
+                    fit: BoxFit.cover,
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Text(
+                globals.globalOkulAdi,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: "Çıkış",
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text("Çıkış Yap"),
-                    content:
-                    const Text("Çıkış yapmak istediğinize emin misiniz?"),
-                    actions: [
-                      TextButton(
-                        child: const Text("Hayır"),
-                        onPressed: () {
-                          Navigator.of(context).pop(); // dialog kapanır
-                        },
-                      ),
-                      TextButton(
-                        child: const Text("Evet"),
-                        onPressed: () {
-                          Navigator.of(context).pop(); // dialog kapanır
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const LoginScreen()),
-                                (Route<dynamic> route) => false,
-                          );
-                        },
-                      ),
-                    ],
-                  );
-                },
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (_) => false,
               );
             },
+          )
+        ],
+      ),
+
+      // ================= BODY =================
+      body: SafeArea(
+        child: Column(
+          children: [
+            /// 👶 VELİ ÖĞRENCİ SEÇİCİ
+            if (globals.globalKullaniciTipi == 'P')
+              _buildStudentSelector(),
+
+            /// ================= GRID =================
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 3,
+                padding: const EdgeInsets.all(8),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1,
+                children: [
+                  if (globals.menuListesi.contains("GelenMesajlar"))
+                  ValueListenableBuilder<bool>(
+                    valueListenable: globals.duyuruVar,
+                    builder: (context, duyuruVar, _) {
+                      return buildSquareIconButton(context, 'mesajlar.png', "MESAJLAR",() { _duyuruListesiSayfasiniAc(context); },
+                        showRedBorder: duyuruVar, );
+                    },
+                  ),
+                  if (globals.menuListesi.contains("Galeri"))
+                    buildSquareIconButton(
+                      context,
+                      'galeri.png',
+                      "GALERİ",
+                          () => _galeriSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Anons"))
+                    buildSquareIconButton(
+                      context,
+                      'anons.png',
+                      "ANONS",
+                          () => _bildirimYeni(context),
+                    ),
+
+                /*  if (globals.menuListesi.contains("Plan"))
+                    buildSquareIconButton(
+                      context,
+                      'planlar.png',
+                      "PLANLAR",
+                          () => _planSayfasiniAc(context),
+                    ),*/
+
+                  /*if (globals.menuListesi.contains("YemekList"))
+                    buildSquareIconButton(
+                      context,
+                      'yemekler.png',
+                      "YEMEK LİSTESİ",
+                          () => _yemekListesiSayfasiniAc(context),
+                    ),*/
+
+                  if (globals.menuListesi.contains("Profil"))
+                    buildSquareIconButton(
+                      context,
+                      'profil.png',
+                      "PROFİL",
+                          () => _profilSayfasiniAc(context),
+                    ),
+                  if (globals.menuListesi.contains("DevamBilgisi"))
+                    buildSquareIconButton(
+                      context,
+                      'devam.png',
+                      "DEVAM BİLGİSİ",
+                          () => _devamDurumuSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Ilac"))
+                    buildSquareIconButton(
+                      context,
+                      'ilac.png',
+                      "İLAÇ",
+                          () => _ilacSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Bulten"))
+                    buildSquareIconButton(
+                      context,
+                      'bultenler.png',
+                      "BÜLTENLER",
+                          () {},
+                    ),
+
+                  if (globals.menuListesi.contains("Servis"))
+                    buildSquareIconButton(
+                      context,
+                      'servis.png',
+                      "SERVİS",
+                          () {},
+                    ),
+
+                  if (globals.menuListesi.contains("Evrak"))
+                    buildSquareIconButton(
+                      context,
+                      'evraklar.png',
+                      "EVRAKLAR",
+                          () {},
+                    ),
+
+                  if(globals.menuListesi.contains("AnaKapi")|| globals.menuListesi.contains("Otopark"))
+                    buildSquareIconButton(context, 'kapi.png', "KAPI KONTROL", () { kapiKontrol(context); }),
+
+                  if(globals.menuListesi.contains("Plan"))
+                    buildSquareIconButton(context, 'planlar.png', "PLANLAR",() { _planSayfasiniAc(context); }),
+                  if(globals.menuListesi.contains("Etkinlikler"))
+                    ValueListenableBuilder<bool>(
+                      valueListenable: globals.etkinlikVar,
+                      builder: (context, etkinlikVar, _) {
+                        return buildSquareIconButton(context, 'etkinlikler.png', "ETKINLİKLER",() { _etkinlikSayfasiniAc(context); },
+                          showRedBorder: etkinlikVar,);
+                      },
+                    ),
+                  if(globals.menuListesi.contains("YemekUykuBilgisi"))
+                    buildSquareIconButton(context, 'gunluk_defterim.png',"GÜNLÜK", () { _gunlukOgrYemekSayfaAc(context); }),
+                  if(globals.menuListesi.contains("YemekList"))
+                    buildSquareIconButton(context, 'yemekler.png',"YEMEK LİSTESİ", () { _yemekListesiSayfasiniAc(context); }),
+                  if(globals.menuListesi.contains("DersProgrami"))
+                    buildSquareIconButton(context, 'ders_programi.png', "DERS PROGRAMI",() { _dersProgramiSayfasiniAc(context); }),
+                  if(globals.menuListesi.contains("Anketler"))
+                    ValueListenableBuilder<bool>(
+                      valueListenable: globals.anketVar,
+                      builder: (context, anketVar, _) {
+                        return buildSquareIconButton(context, 'anketler.png', "ANKETLER",() { _anketSayfasiniAc(context); },
+                          showRedBorder: anketVar, );
+
+                      },
+                    ),
+                  if (globals.menuListesi.contains("Karekod"))
+                    buildSquareIconButton(
+                      context,
+                      'karekod.png',
+                      "KAREKOD",
+                          () {
+                        if (globals.globalKullaniciTipi == 'P' ||
+                            globals.globalKullaniciTipi == 'S') {
+                          _qrOlusturSayfasiniAc(context);
+                        } else {
+                          _qrOkutSayfasiniAc(context);
+                        }
+                      },
+                    ),
+
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================== ÖĞRENCİ SEÇİCİ ==================
+  Widget _buildStudentSelector() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      body: Container(
+      child: Row(
+        children: [
+          /// FOTO
+          FutureBuilder<Uint8List?>(
+            future: _studentPhotoFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircleAvatar(
+                  radius: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data == null) {
+                return const CircleAvatar(
+                  radius: 22,
+                  child: Icon(Icons.person),
+                );
+              }
+
+              return CircleAvatar(
+                radius: 22,
+                backgroundImage: MemoryImage(snapshot.data!),
+              );
+            },
+          ),
+
+          /*    FutureBuilder<Uint8List?>(
+            future: _studentPhotoFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircleAvatar(
+                  radius: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data == null) {
+                return const CircleAvatar(
+                  radius: 22,
+                  child: Icon(Icons.person),
+                );
+              }
+
+              return CircleAvatar(
+                radius: 22,
+                backgroundImage: MemoryImage(snapshot.data!),
+              );
+            },
+          ),
+*/
+          const SizedBox(width: 12),
+
+          /// DROPDOWN
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Map<String, dynamic>>(
+                isExpanded: true,
+                value: selectedStudent,
+                items: globals.globalOgrenciListesi.map((ogrenci) {
+                  return DropdownMenuItem(
+                    value: ogrenci,
+                    child: Text(
+                      ogrenci['Name'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedStudent = value;
+
+                    globals.studentTckn = value!['TCKN'];
+                    globals.studentClassId = value['ClassId'];
+
+                    _loadStudentPhoto();
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================== MENU BUTTON ==================
+  Widget _menuButton(String icon, String text, VoidCallback onTap) {
+    final width = (MediaQuery.of(context).size.width - 32) / 3;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        width: width,
+        height: width,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 8,
+              offset: const Offset(3, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              "assets/icons/$icon",
+              width: width * 0.55,
+              height: width * 0.55,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+// ================== KARE BUTON ==================
+  Widget buildSquareIconButton(
+      BuildContext context,
+      String iconName,
+      String labelText,
+      VoidCallback onTap, {
+        bool showRedBorder = false, // 👈 YENİ
+      }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = (screenWidth - 32) / 3;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Ink(
+          width: cardWidth,
+          height: cardWidth,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+
+            // 🔴 OKUNMAMIŞ MESAJ VARSA KIRMIZI ÇERÇEVE
+            border: showRedBorder
+                ? Border.all(color: Colors.red, width: 3)
+                : null,
+
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 8,
+                offset: const Offset(3, 3),
+              ),
+              BoxShadow(
+                color: Colors.white.withOpacity(0.8),
+                blurRadius: 8,
+                offset: const Offset(-3, -3),
+              ),
             ],
           ),
-        ),
-        child: SafeArea(
-          child: GridView.count(
-            crossAxisCount: 2,
-            childAspectRatio:
-            (MediaQuery.of(context).size.width / 2) / cardHeight,
-            padding: const EdgeInsets.all(8),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            children: <Widget>[
-              // if(globals.menuListesi.contains("Kapi")
-              //Anons, YemekList, Kapi, GelenDuyurular, YemekUykuBilgisi, Etkinlikler, Galeri, Anketler, DuyuruGonder, Profil,DevamBilgisi
-              //if (globals.globalKullaniciTipi == 'P')
-
-
-              if(globals.menuListesi.contains("Anons"))
-                _buildMenuCard(
-                  context,
-                  'Öğrenci Anons',
-                  Icons.campaign,
-                  AppColors.primary,
-                      () => _bildirimYeni(context),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                "assets/icons/$iconName",
+                width: cardWidth * 0.55,
+                height: cardWidth * 0.55,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                labelText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                 ),
-              if(globals.menuListesi.contains("AnaKapi")|| globals.menuListesi.contains("Otopark"))
-                _buildMenuCard(
-                  context,
-                  'Kapı Kontrol',
-                  Icons.door_front_door,
-                  AppColors.primary,
-                      () {
-                    kapiKontrol(context);
-                  },
-                ),
-              //if (globals.globalKullaniciTipi != 'M')
-              if (globals.menuListesi.contains("GelenMesajlar"))
-                ValueListenableBuilder<bool>(
-                  valueListenable: globals.duyuruVar,
-                  builder: (context, duyuruVar, _) {
-                    return _buildMenuCard(
-                      context,
-                      'Gelen Mesajlar',
-                      Icons.notifications_active,
-                      duyuruVar ? Colors.red : AppColors.primary,
-                          () {
-                        _duyuruListesiSayfasiniAc(context);
-                      },
-                    );
-                  },
-                ),
-              //if (["M", "T"].contains(globals.globalKullaniciTipi))
-              if(globals.menuListesi.contains("MesajGonder"))
-                _buildMenuCard(
-                  context,
-                  'Mesaj Gönder',
-                  Icons.message ,
-                  AppColors.primary,
-                      () {
-                    _bildirimGonderSayfasiniAc(context);
-                  },
-                ),
-              if(globals.menuListesi.contains("Galeri"))
-                _buildMenuCard(
-                  context,
-                  'Galeri',
-                  Icons.photo_library,
-                  AppColors.primary,
-                      () {
-                    _galeriSayfasiniAc(context);
-                  },
-                ),
-              if(globals.menuListesi.contains("Plan"))
-                _buildMenuCard(
-                  context,
-                  'Planlar',
-                  Icons.task,
-                  AppColors.primary,
-                      () {
-                    _planSayfasiniAc(context);
-                  },
-                ),
-              if(globals.menuListesi.contains("Etkinlikler"))
-                ValueListenableBuilder<bool>(
-                  valueListenable: globals.etkinlikVar,
-                  builder: (context, etkinlikVar, _) {
-                    return _buildMenuCard(
-                      context,
-                      'Etkinlikler',
-                      Icons.event,
-                      etkinlikVar ? Colors.red : AppColors.primary,
-                          () {
-                        _etkinlikSayfasiniAc(context);
-                      },
-                    );
-                  },
-                ),
-              //if (["P", "T"].contains(globals.globalKullaniciTipi))
-              if(globals.menuListesi.contains("YemekUykuBilgisi"))
-                _buildMenuCard(
-                  context,
-                  'Yemek/Uyku Bilgisi',
-                  Icons.restaurant,
-                  AppColors.primary,
-                      () {
-                    _gunlukOgrYemekSayfaAc(context);
-                  },
-                ),
-              if(globals.menuListesi.contains("YemekList"))
-                _buildMenuCard(
-                  context,
-                  'Yemek Listesi',
-                  Icons.restaurant_menu,
-                  AppColors.primary,
-                      () {
-                    _yemekListesiSayfasiniAc(context);
-                  },
-                ),
-             if(globals.menuListesi.contains("DersProgrami"))
-                _buildMenuCard(
-                  context,
-                  'Ders Programı',
-                  Icons.table_chart,
-                  AppColors.primary,
-                      () {
-                    _dersProgramiSayfasiniAc(context);
-                  },
-                ),
-              if(globals.menuListesi.contains("Anketler"))
-                ValueListenableBuilder<bool>(
-                  valueListenable: globals.anketVar,
-                  builder: (context, anketVar, _) {
-                    return _buildMenuCard(
-                      context,
-                      'Anketler',
-                      Icons.bar_chart,
-                      anketVar ? Colors.red : AppColors.primary,
-                          () {
-                        _anketSayfasiniAc(context);
-                      },
-                    );
-                  },
-                ),
-
-              if(globals.menuListesi.contains("Profil"))
-                _buildMenuCard(
-                  context,
-                  //'Profil/Yoklama'
-                  globals.globalKullaniciTipi == "M" ? 'Profil' : 'Profil/Yoklama',
-                  Icons.person,
-                  AppColors.primary,
-                      () => _profilSayfasiniAc(context),
-                ),
-              //if (["P"].contains(globals.globalKullaniciTipi))
-              if(globals.menuListesi.contains("DevamBilgisi"))
-                _buildMenuCard(
-                  context,
-                  'Devam Durumu',
-                  Icons.assignment_turned_in,
-                  AppColors.primary,
-                      () => _devamDurumuSayfasiniAc(context),
-                ),
-              if(globals.menuListesi.contains("KarekodOlustur"))
-                _buildMenuCard(
-                  context,
-                  'Karekod Oluştur',
-                  Icons.qr_code,
-                  AppColors.primary,
-                      () => _qrOlusturSayfasiniAc(context),
-                ),
-              if(globals.menuListesi.contains("KarekodGoster"))
-                _buildMenuCard(
-                  context,
-                  'Karekod Okut',
-                  Icons.qr_code_scanner,
-                  AppColors.primary,
-                      () => _qrOkutSayfasiniAc(context),
-                ),
+              ),
             ],
           ),
         ),
@@ -276,87 +519,154 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, String title, IconData icon,
-      Color iconColor, VoidCallback onTap) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white,
-                Colors.grey.shade100,
-              ],
+
+  /*Widget buildSquareIconButton(
+      BuildContext context,
+      String iconName,
+      String labelText,
+      VoidCallback onTap,
+      ) {
+    final cardWidth = (MediaQuery.of(context).size.width - 32) / 3;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        width: cardWidth,
+        height: cardWidth,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 8,
+              offset: const Offset(3, 3),
             ),
-          ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            splashColor: Colors.blue.withOpacity(0.3),
-            highlightColor: Colors.blue.withOpacity(0.15),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icon,
-                    size: 42,
-                    color: iconColor,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              "assets/icons/$iconName",
+              width: cardWidth * 0.55,
+              height: cardWidth * 0.55,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              labelText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
+          ],
         ),
       ),
+    );
+  }*/
+
+  // ================== NAVIGATIONS ==================
+  void kapiKontrol(BuildContext context) async {
+    String konum = await ApiService().konumAlYeni();
+    final logger = Logger();
+
+    if (globals.mevcutBoylam != null && globals.mevcutEnlem != null) {
+      double mesafe = 0;/* ACILACAK ApiService().mesafeHesapla(
+          double.parse(globals.globalKonumEnlem),
+          double.parse(globals.globalKonumBoylam),
+          double.parse(globals.mevcutEnlem),
+          double.parse(globals.mevcutBoylam));*/
+
+      logger.i("okula mesafe " + mesafe.toString());
+      if (globals.globalKullaniciTipi=='M' || mesafe < globals.mesafeLimit) {
+        int saatKontrol= await ApiService().checkCurrentTime(int.parse(globals.globalSchoolId), globals.globalKullaniciTipi);
+        if(saatKontrol==1){
+          _kapiKontrolSayfasiniAc(context);
+        } else {
+          _pencereAc(context, "Kapıyı açmak için saat aralığı uygun değil!");
+        }
+      }else{
+        _pencereAc(context, "Kapıyı açmak için konumunuz uygun değil!");
+      }
+    } else {
+      _pencereAc(context, "Mevcut konum bulunamadı. Konum ayarlarınızı kontrol ediniz!");
+    }
+  }
+
+  Future _pencereAc(BuildContext context, String mesaj) {
+    return showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (context) {
+        return AlertDialog(title: Text(mesaj));
+      },
     );
   }
 
   void _duyuruListesiSayfasiniAc(BuildContext context) {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (context) => DuyuruListesiScreen()));
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => DuyuruListesiScreen()));
+  }
+
+  void _galeriSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => PhotoGalleryScreen()));
+  }
+
+  void _planSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => PlanScreen()));
   }
 
   void _etkinlikSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => EtkinlikScreen()));
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => EtkinlikScreen()));
   }
 
-  Future<void> _galeriSayfasiniAc(BuildContext context) async {
+  void _yemekListesiSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => MealScreen(tckn: globals.kullaniciTCKN)));
+  }
+
+  void _profilSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => UserProfileScreen()));
+  }
+
+  void _bildirimYeni(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const StudentNotificationScreen()));
+  }
+
+  void _qrOlusturSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => QrOrCodeCreateScreen()));
+  }
+
+  void _qrOkutSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanOrManualScreen()));
+  }
+
+  void _devamDurumuSayfasiniAc(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => PhotoGalleryScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => DevamDurumuScreen(tckn: globals.studentTckn!)),
+    );
+  }
+  void _ilacSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => IlacScreen()),
     );
   }
 
-  Future<void> _planSayfasiniAc(BuildContext context) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PlanScreen(),
-      ),
-    );
+  void _open(BuildContext context, Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
+
 
   void _anketSayfasiniAc(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => SurveyScreen()));
@@ -376,67 +686,6 @@ class HomeScreen extends StatelessWidget {
                 hasGateAccess: vhasGateAccess, hasParkingAccess: vhasParkingAccess)));
   }
 
-  void _profilSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => UserProfileScreen()));
-  }
-
-  void _qrOlusturSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => QrOrCodeCreateScreen()));
-  }
-
-  void _qrOkutSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanOrManualScreen()));
-  }
-
-  void _devamDurumuSayfasiniAc(BuildContext context) {
-    final ogrenciler = globals.globalOgrenciListesi;
-
-    if (ogrenciler.length == 1) {
-      // Tek öğrenci varsa direkt aç
-      String tckn = ogrenciler.first['TCKN'];
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DevamDurumuScreen(tckn: tckn),
-        ),
-      );
-    } else {
-      // Birden fazla öğrenci varsa seçim popup'ı aç
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text("Öğrenci Seçiniz"),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: ogrenciler.length,
-                itemBuilder: (context, index) {
-                  final ogrenci = ogrenciler[index];
-                  return ListTile(
-                    title: Text(ogrenci['Name'].toString()), // öğrenci adı
-                    onTap: () {
-                      Navigator.pop(context); // popup kapat
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              DevamDurumuScreen(tckn: ogrenci['TCKN']),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      );
-    }
-  }
-
-
   void _gunlukOgrYemekSayfaAc(BuildContext context) {
     if (globals.globalKullaniciTipi == 'P') {
       Navigator.push(
@@ -454,10 +703,6 @@ class HomeScreen extends StatelessWidget {
         ),
       );
     }
-  }
-
-  void _yemekListesiSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => MealListScreenNew()));
   }
 
   void _dersProgramiSayfasiniAc(BuildContext context) async {
@@ -523,478 +768,545 @@ class HomeScreen extends StatelessWidget {
       }
     }
   }
-  /*void _dersProgramiSayfasiniAc(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => CourseScheduleScreen()));
-  }*/
 
-  void _bildirimGonderSayfasiniAc(BuildContext context) {
-    if (["M", "T", "P"].contains(globals.globalKullaniciTipi)) {
-      if (globals.globalKullaniciTipi == 'T') {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => SendNotificationScreen()));
-      }
+}
+/*import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 
-      if (globals.globalKullaniciTipi == 'M') {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => SendNotificationScreenM()));
-      }
+import '../constants.dart';
+import '../globals.dart' as globals;
+import '../services/api_service.dart';
 
-      if (globals.globalKullaniciTipi == 'P') {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => SendNotificationScreenP()));
-      }
-    } else {
-      _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
+import 'login_screen.dart';
+import 'duyuru_listesi_screen.dart';
+import 'photo_gallery_screen.dart';
+import 'plan_screen.dart';
+import 'survey_screen.dart';
+import 'etkinlik_screen.dart';
+import 'meal_screen.dart';
+import 'course_schedule_screen.dart';
+import 'devam_durumu_screen.dart';
+import 'ilac_screen.dart';
+import 'user_profile_screen.dart';
+import 'door_control_page.dart';
+import 'qr_or_code_create_screen.dart';
+import 'qr_scan_or_manuel_screen.dart';
+import 'student_notification_screen.dart';
+import 'teacher_students_meal_screen.dart';
+import 'parent_student_meal_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  Map<String, dynamic>? selectedStudent;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 👶 Veli ise ilk öğrenciyi otomatik seç
+    if (globals.globalKullaniciTipi == 'P' &&
+        globals.globalOgrenciListesi.isNotEmpty) {
+      selectedStudent = globals.globalOgrenciListesi.first;
+
+      globals.studentTckn = selectedStudent!['TCKN'];
+      globals.studentClassId = selectedStudent!['ClassId'];
     }
   }
-  void _bildirimYeni(BuildContext context) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const StudentNotificationScreen()),
-    );
-  }
-/*
-  void _bildirim(BuildContext context) async {
-    print("kullanıcı tipi: ${globals.globalKullaniciTipi}");
 
-    final ogrenciler = globals.globalOgrenciListesi;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
 
-    if (globals.globalKullaniciTipi != "P" &&
-        globals.globalKullaniciTipi != "S" &&
-        globals.globalKullaniciTipi != "H") {
-      await _pencereAc(context, "Sadece öğrenci, veli ve hostes öğretmene bildirim gönderebilir!");
-      return;
-    }
+      // ================= APPBAR =================
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            const SizedBox(width: 12),
 
-   /* if (ogrenciler.length == 1) {
-      // Tek öğrenci varsa direkt gönder
-      String tckn = ogrenciler.first['TCKN'];
-      await ApiService().yoklamaEkle(tckn, DateTime.now());
-      print("$tckn için yoklama eklendi");
-
-      final cevap = await ApiService().bildirimGonder();
-
-      await _pencereAc(
-        context,
-        cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
-      );
-    } else {*/
-      // Çoklu öğrenci seçimi için popup
-      int? secilenDurum; // 🔹 artık burada tanımlı
-      List<bool> secilen = List.generate(ogrenciler.length, (index) => true);
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: Text(
-                  globals.globalKullaniciTipi == "H"
-                      ? "Öğretmene/Veliye Bildir"
-                      : "Öğretmene Bildir",
-                ),
-                content: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.7,
-                    minWidth: MediaQuery.of(context).size.width * 0.8,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Eğer kullanıcı hostes ise radio butonlar başta gözüksün
-                       /* if (["H", "P"].contains(globals.globalKullaniciTipi)) ...[
-                          const Text(
-                            "Durum Seçiniz",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          RadioListTile<int>(
-                            title: Text(globals.globalKullaniciTipi == "H"
-                                ? "Okula bıraktım":"Okula yaklaştım"),
-                            value: 1,
-                            groupValue: secilenDurum,
-                            visualDensity: const VisualDensity(vertical: -4),
-                            dense: true,
-                            onChanged: (value) {
-                              setState(() {
-                                secilenDurum = value;
-                              });
-                            },
-                          ),
-                          RadioListTile<int>(
-                            title: Text(globals.globalKullaniciTipi == "H"
-                                ? "Okuldan aldım":"Okula geldim"),
-                            value: 2,
-                            groupValue: secilenDurum,
-                            visualDensity: const VisualDensity(vertical: -4),
-                            dense: true,
-                            onChanged: (value) {
-                              setState(() {
-                                secilenDurum = value;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                        ],*/
-
-                        // Öğrenci listesi başlığı
-                        const Text(
-                          "Öğrenci Seçiniz",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Öğrenci listesi
-                        ...List.generate(ogrenciler.length, (index) {
-                          final ogrenci = ogrenciler[index];
-                          return CheckboxListTile(
-                            title: Text(
-                              ogrenci['Name'],
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade700,
-                                fontSize: 15,
-                              ),
-                            ),
-                            value: secilen[index],
-                            visualDensity: const VisualDensity(vertical: -4),
-                            dense: true,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                secilen[index] = value ?? false;
-                              });
-                            },
-                          );
-                        }),
-                      ],
+            // LOGO
+            FutureBuilder<Uint8List>(
+              future: ApiService().getLogo(globals.kullaniciTCKN),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox(
+                    width: 45,
+                    height: 45,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
                     ),
+                  );
+                }
+
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    snapshot.data!,
+                    width: 45,
+                    height: 45,
+                    fit: BoxFit.cover,
                   ),
+                );
+              },
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Text(
+                globals.globalOkulAdi,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("İptal"),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final secilenOgrenciler = <String>[];
-                            for (int i = 0; i < ogrenciler.length; i++) {
-                              if (secilen[i]) secilenOgrenciler.add(ogrenciler[i]['TCKN']);
-                            }
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
 
-                            if (secilenOgrenciler.isEmpty) {
-                              await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
-                              return;
-                            }
-
-
-                            Navigator.pop(context); // popup kapat
-
-                            if(globals.globalKullaniciTipi=="P"){
-                                String konum = await ApiService().konumAlYeni();
-                                final logger = Logger();
-                                double mesafe=100000000;
-                                if (globals.mevcutBoylam != null &&
-                                    globals.mevcutEnlem != null) {
-                                  mesafe = ApiService().mesafeHesapla(
-                                  double.parse(globals.globalKonumEnlem),
-                                  double.parse(globals.globalKonumBoylam),
-                                  double.parse(globals.mevcutEnlem),
-                                  double.parse(globals.mevcutBoylam));
-                                }
-
-                                if (mesafe > globals.mesafeLimit) {
-                                    _pencereAc(context, "Okula mesafeniz uygun değil!");
-                                } else{
-                                  bool eklendi = await ApiService().yoklamaBulkAdd(
-                                      secilenOgrenciler, DateTime.now());
-                                  final cevap = await ApiService()
-                                      .sendStudentNotification(
-                                    schoolId: int.parse(globals.globalSchoolId),
-                                    senderTckn: globals.kullaniciTCKN,
-                                    studentTcknList: secilenOgrenciler,
-                                    durum: 1,
-                                  );
-                                  print("yaklaştı notification parent");
-
-                                  if (cevap == "200")
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Öğretmeninize Bildirim gönderildi',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-
-                                  await _pencereAc(
-                                    context,
-                                    cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
-                                  );
-                                }
-                            }
-                            else {
-                              bool eklendi = await ApiService().yoklamaBulkAdd(
-                                  secilenOgrenciler, DateTime.now());
-                              final cevap = await ApiService()
-                                  .sendStudentNotification(
-                                schoolId: int.parse(globals.globalSchoolId),
-                                senderTckn: globals.kullaniciTCKN,
-                                studentTcknList: secilenOgrenciler,
-                                durum: 1,
-                              );
-
-                              print("aldım notification hostes");
-                              if (cevap == "200")
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Öğretmeninize Bildirim gönderildi',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              /*
-                              if (!context.mounted) return;
-                              if (context.mounted) {
-                                await _pencereAc(
-                                  context,
-                                  cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
-                                );
-                              }*/
-                            }
-
-
-                          },
-                          child: Text(globals.globalKullaniciTipi == "H" ? "Bıraktım" : "Yaklaştım"),
-                        ),
-                      ),
-                      const SizedBox(width: 12), // Butonlar arası boşluk
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final secilenOgrenciler = <String>[];
-                            for (int i = 0; i < ogrenciler.length; i++) {
-                              if (secilen[i]) secilenOgrenciler.add(ogrenciler[i]['TCKN']);
-                            }
-
-                            if (secilenOgrenciler.isEmpty) {
-                              await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
-                              return;
-                            }
-
-                            Navigator.pop(context); // popup kapat
-                            bool eklendi = await ApiService().yoklamaBulkAdd(secilenOgrenciler, DateTime.now());
-                            final cevap = await ApiService().sendStudentNotification(
-                              schoolId: int.parse(globals.globalSchoolId),
-                              senderTckn: globals.kullaniciTCKN,
-                              studentTcknList: secilenOgrenciler,
-                              durum: 2,
-                            );
-                            print("geldi notification");
-                            if (cevap == "200")
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Öğretmeninize Bildirim gönderildi',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            if (!context.mounted) return;
-                            if (context.mounted) {
-                              await _pencereAc(
-                                context,
-                                cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
-                              );
-                            }
-                          },
-                          child: Text(globals.globalKullaniciTipi == "H" ? "Aldım" : "Geldim"),
-                        ),
-                      ),
-                    ],
-                  )
-
-                  /* ElevatedButton(
-                    onPressed: () async {
-                      // Seçili öğrenciler
-                      final secilenOgrenciler = <String>[];
-                      for (int i = 0; i < ogrenciler.length; i++) {
-                        if (secilen[i]) {
-                          secilenOgrenciler.add(ogrenciler[i]['TCKN']);
-                        }
-                      }
-
-                      if (secilenOgrenciler.isEmpty) {
-                        await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
-                        return;
-                      }
-
-                      // Eğer hostes ise radio kontrolü
-                     /* if (globals.globalKullaniciTipi == "H" && secilenDurum == null) {
-                        await _pencereAc(context, "Lütfen durum seçiniz!");
-                        return;
-                      }*/
-
-                      Navigator.pop(context); // popup kapat
-
-                      // Yoklama ekleme (toplu)
-                      await ApiService().yoklamaBulkAdd(secilenOgrenciler, DateTime.now());
-                      print("Seçilen öğrenciler için yoklama eklendi");
-
-                      // Bildirim gönderme
-                      final cevap = await ApiService().sendStudentNotification(
-                        schoolId: int.parse(globals.globalSchoolId),
-                        senderTckn: globals.kullaniciTCKN,
-                        studentTcknList: secilenOgrenciler,
-                        durum: 1,//globals.globalKullaniciTipi == "H" ? secilenDurum! : 0,
-                      );
-
-                      await _pencereAc(
-                        context,
-                        cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
-                      );
-                    },
-                    child:  Text(globals.globalKullaniciTipi == "H"?"Bıraktım":"Yaklaştım"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      // Seçili öğrenciler
-                      final secilenOgrenciler = <String>[];
-                      for (int i = 0; i < ogrenciler.length; i++) {
-                        if (secilen[i]) {
-                          secilenOgrenciler.add(ogrenciler[i]['TCKN']);
-                        }
-                      }
-
-                      if (secilenOgrenciler.isEmpty) {
-                        await _pencereAc(context, "En az bir öğrenci seçili olmalıdır!");
-                        return;
-                      }
-
-                      // Eğer hostes ise radio kontrolü
-                    /*  if (globals.globalKullaniciTipi == "H" && secilenDurum == null) {
-                        await _pencereAc(context, "Lütfen durum seçiniz!");
-                        return;
-                      }*/
-
-                      Navigator.pop(context); // popup kapat
-
-                      // Yoklama ekleme (toplu)
-                      await ApiService().yoklamaBulkAdd(secilenOgrenciler, DateTime.now());
-                      print("Seçilen öğrenciler için yoklama eklendi");
-
-                      // Bildirim gönderme
-                      final cevap = await ApiService().sendStudentNotification(
-                        schoolId: int.parse(globals.globalSchoolId),
-                        senderTckn: globals.kullaniciTCKN,
-                        studentTcknList: secilenOgrenciler,
-                        durum: 2,//globals.globalKullaniciTipi == "H" ? secilenDurum! : 0,
-                      );
-
-                      await _pencereAc(
-                        context,
-                        cevap == "200" ? "Öğretmeninize Bildirim gönderildi" : "Bildirim gönderilemedi",
-                      );
-                    },
-                    child:  Text(globals.globalKullaniciTipi == "H"?"Aldım":"Geldim"),
-                  ),*/
-                ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (_) => false,
               );
             },
-          );
-        },
-      );
-    //}
-  }
-*/
-/*  void _bildirim(BuildContext context) async {
-    if (globals.globalKullaniciTipi == "P" || globals.globalKullaniciTipi == "S") {
-      for (var ogrenci in globals.globalOgrenciListesi) {
-        String tckn = ogrenci['TCKN'];
-        await ApiService().yoklamaEkle(tckn, DateTime.now());
-        print(tckn+" icin yoklama eklendi");
-      }
+          )
+        ],
+      ),
 
-      _bildirimGonder().then((cevap) {
-        if (cevap == "200") {
-          _pencereAc(context, "Öğretmeninize Bildirim gönderildi");
-        } else {
-          _pencereAc(context, "Bildirim gönderilemedi ");
-        }
-      });
-    } else {
-      _pencereAc(context,
-          "Sadece öğrenci ve veliler öğretmene bildirim gönderebilir!");
-    }
-  }
-*/
+      // ================= BODY =================
+      body: SafeArea(
+        child: Column(
+          children: [
 
-  Future _pencereAc(BuildContext context, String mesaj) {
-    return showDialog<String>(
-      context: context,
-      useRootNavigator: true,
-      builder: (context) {
-        return AlertDialog(title: Text(mesaj));
-      },
+            // 👶 VELİ ÖĞRENCİ KARTI
+            if (globals.globalKullaniciTipi == 'P')
+              _buildStudentSelector(context),
+
+            // ================= GRID =================
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 3,
+                padding: const EdgeInsets.all(8),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1,
+                children: [
+
+                  if (globals.menuListesi.contains("GelenMesajlar"))
+                    buildSquareIconButton(
+                      context,
+                      'mesajlar.png',
+                      "MESAJLAR",
+                          () => _duyuruListesiSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Galeri"))
+                    buildSquareIconButton(
+                      context,
+                      'galeri.png',
+                      "GALERİ",
+                          () => _galeriSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Anons"))
+                    buildSquareIconButton(
+                      context,
+                      'anons.png',
+                      "ANONS",
+                          () => _bildirimYeni(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Plan"))
+                    buildSquareIconButton(
+                      context,
+                      'planlar.png',
+                      "PLANLAR",
+                          () => _planSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Etkinlikler"))
+                    buildSquareIconButton(
+                      context,
+                      'etkinlikler.png',
+                      "ETKİNLİKLER",
+                          () => _etkinlikSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("YemekList"))
+                    buildSquareIconButton(
+                      context,
+                      'yemekler.png',
+                      "YEMEK LİSTESİ",
+                          () => _yemekListesiSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Profil"))
+                    buildSquareIconButton(
+                      context,
+                      'profil.png',
+                      "PROFİL",
+                          () => _profilSayfasiniAc(context),
+                    ),
+                  if (globals.menuListesi.contains("DevamBilgisi"))
+                    buildSquareIconButton(
+                      context,
+                      'devam.png',
+                      "DEVAM BİLGİSİ",
+                          () => _devamDurumuSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Ilac"))
+                    buildSquareIconButton(
+                      context,
+                      'ilac.png',
+                      "İLAÇ",
+                          () => _ilacSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("Bulten"))
+                    buildSquareIconButton(
+                      context,
+                      'bultenler.png',
+                      "BÜLTENLER",
+                          () {},
+                    ),
+
+                  if (globals.menuListesi.contains("Servis"))
+                    buildSquareIconButton(
+                      context,
+                      'servis.png',
+                      "SERVİS",
+                          () {},
+                    ),
+
+                  if (globals.menuListesi.contains("Evrak"))
+                    buildSquareIconButton(
+                      context,
+                      'evraklar.png',
+                      "EVRAKLAR",
+                          () {},
+                    ),
+
+                  if (globals.menuListesi.contains("Karekod"))
+                    buildSquareIconButton(
+                      context,
+                      'karekod.png',
+                      "KAREKOD",
+                          () {
+                        if (globals.globalKullaniciTipi == 'P' ||
+                            globals.globalKullaniciTipi == 'S') {
+                          _qrOlusturSayfasiniAc(context);
+                        } else {
+                          _qrOkutSayfasiniAc(context);
+                        }
+                      },
+                    ),
+
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
+  Future<void> _fetchStudentPhotos() async {
+    for (var ogrenci in globals.globalOgrenciListesi) {
+      final String tckn = ogrenci['TCKN'];
+      final String fotoVersion = ogrenci['FotoVersion'].toString();
 
+       Uint8List? photo = await ApiService.getPhoto(
+        tckn,
+        "${tckn}_$fotoVersion",
+      );
 
-
-
-  /*Future<String> _bildirimGonderHostes() async {
-    final String baseUrl = globals.serverAdrr +
-        "/api/school/send-notification?schoolId=" +
-        globals.globalSchoolId +
-        "&TCKN=" +
-        globals.kullaniciTCKN;
-    Uri uri = Uri.parse(baseUrl);
-    print("_bildirimGonder çağırıldı");
-    http.Response response = await http.get(uri);
-    return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
-  }*/
-  void kapiKontrol(BuildContext context) async {
-    String konum = await ApiService().konumAlYeni();
-    final logger = Logger();
-
-    if (globals.mevcutBoylam != null && globals.mevcutEnlem != null) {
-      double mesafe = 0;/* ACILACAK ApiService().mesafeHesapla(
-          double.parse(globals.globalKonumEnlem),
-          double.parse(globals.globalKonumBoylam),
-          double.parse(globals.mevcutEnlem),
-          double.parse(globals.mevcutBoylam));*/
-
-      logger.i("okula mesafe " + mesafe.toString());
-      if (globals.globalKullaniciTipi=='M' || mesafe < globals.mesafeLimit) {
-        int saatKontrol= await ApiService().checkCurrentTime(int.parse(globals.globalSchoolId), globals.globalKullaniciTipi);
-        if(saatKontrol==1){
-          _kapiKontrolSayfasiniAc(context);
-        } else {
-          _pencereAc(context, "Kapıyı açmak için saat aralığı uygun değil!");
-        }
-      }else{
-        _pencereAc(context, "Kapıyı açmak için konumunuz uygun değil!");
-      }
-    } else {
-      _pencereAc(context, "Mevcut konum bulunamadı. Konum ayarlarınızı kontrol ediniz!");
+      studentPhotos[tckn] = photo;
     }
+
+    setState(() {});
+  }
+
+
+  // ================== ÖĞRENCİ SEÇİCİ ==================
+  Widget _buildStudentSelector(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+
+          /// 👤 PROFİL FOTOĞRAFI
+          FutureBuilder<Uint8List>(
+            future: ApiService().getProfilePhoto(
+              selectedStudent?['TCKN'] ?? '',
+            ),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const CircleAvatar(
+                  radius: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+
+              return CircleAvatar(
+                radius: 22,
+                backgroundImage: MemoryImage(snapshot.data!),
+              );
+            },
+          ),
+
+          const SizedBox(width: 12),
+
+          /// 🔽 SADECE İSİM DROPDOWN
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Map<String, dynamic>>(
+                isExpanded: true,
+                value: selectedStudent,
+                hint: const Text("Öğrenci Seç"),
+                items: globals.globalOgrenciListesi.map((ogrenci) {
+                  return DropdownMenuItem<Map<String, dynamic>>(
+                    value: ogrenci,
+                    child: Text(
+                      ogrenci['Name'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedStudent = value;
+                    globals.studentTckn = value!['TCKN'];
+                    globals.studentClassId = value['ClassId'];
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /* Widget _buildStudentSelector(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: selectedStudent?['PhotoUrl'] != null
+                ? NetworkImage(selectedStudent!['PhotoUrl'])
+                : null,
+            child: selectedStudent?['PhotoUrl'] == null
+                ? const Icon(Icons.person, size: 30)
+                : null,
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  selectedStudent?['Name'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  "Sınıf: ${selectedStudent?['ClassName'] ?? '-'}",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (globals.globalOgrenciListesi.length > 1)
+            DropdownButton<Map<String, dynamic>>(
+              value: selectedStudent,
+              underline: const SizedBox(),
+              icon: const Icon(Icons.keyboard_arrow_down),
+              items: globals.globalOgrenciListesi.map((ogrenci) {
+                return DropdownMenuItem<Map<String, dynamic>>(
+                  value: ogrenci,
+                  child: Text(ogrenci['Name']),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedStudent = value;
+                  globals.studentTckn = value!['TCKN'];
+                  globals.studentClassId = value['ClassId'];
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+*/
+  // ================== KARE BUTON ==================
+  Widget buildSquareIconButton(
+      BuildContext context,
+      String iconName,
+      String labelText,
+      VoidCallback onTap,
+      ) {
+    final cardWidth = (MediaQuery.of(context).size.width - 32) / 3;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        width: cardWidth,
+        height: cardWidth,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 8,
+              offset: const Offset(3, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              "assets/icons/$iconName",
+              width: cardWidth * 0.55,
+              height: cardWidth * 0.55,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              labelText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================== NAVIGATIONS ==================
+  void _duyuruListesiSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => DuyuruListesiScreen()));
+  }
+
+  void _galeriSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => PhotoGalleryScreen()));
+  }
+
+  void _planSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => PlanScreen()));
+  }
+
+  void _etkinlikSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => EtkinlikScreen()));
+  }
+
+  void _yemekListesiSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => MealScreen(tckn: globals.kullaniciTCKN)));
+  }
+
+  void _profilSayfasiniAc(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => UserProfileScreen()));
+  }
+
+  void _bildirimYeni(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const StudentNotificationScreen()));
+  }
+
+    void _qrOlusturSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => QrOrCodeCreateScreen()));
+    }
+
+    void _qrOkutSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanOrManualScreen()));
+    }
+
+  void _devamDurumuSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DevamDurumuScreen(tckn: globals.studentTckn!)),
+    );
+  }
+  void _ilacSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => IlacScreen()),
+    );
   }
 
 
 }
+*/
