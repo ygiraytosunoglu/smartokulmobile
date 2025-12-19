@@ -289,30 +289,118 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
       },
     );
   }
+  Future<bool> showDeleteConfirmDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Silme Onayı'),
+          content: const Text(
+            'Bu etkinliği silmek istediğinize emin misiniz?',
+          ),
+          actions: [
+            TextButton(
+              child: const Text('İptal'),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Sil'),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        );
+      },
+    ) ??
+        false;
+  }
 
-/*
-  Future<void> _showEtkinlikForm() async {
-    final TextEditingController tarihController = TextEditingController();
-    final TextEditingController saatController = TextEditingController();
-    final TextEditingController yerController = TextEditingController();
-    final TextEditingController aciklamaController = TextEditingController();
+  Future<void> _deleteActivity(int activityId) async {
+    final confirm = await showDeleteConfirmDialog(context);
+    if (!confirm) return;
 
-    // Sınıflar için seçim listesi (default tümü seçili)
-    Map<int, bool> seciliSiniflar = {
-      for (var s in globals.globalSinifListesi) s['Id'] as int: true
-    };
+    try {
+      final success = await ApiService().deleteActivity(
+        tckn: globals.kullaniciTCKN,
+        activityId: activityId,
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aktivite silindi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // 🔄 LİSTEYİ YENİDEN ÇEK
+        await _loadEtkinlikler();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Silme yetkiniz yok'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Silme hatası: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+
+  Future<void> _updateActivity(Map<String, dynamic> etkinlik) async {
+    // 🔹 Mevcut verileri parse et
+    String yer = '';
+    String aciklama = '';
+    DateTime? expireDate;
+
+    try {
+      final parsed = jsonDecode(etkinlik['Data']);
+      if (parsed is Map) {
+        yer = parsed['yer'] ?? '';
+        aciklama = parsed['aciklama'] ?? '';
+      }
+    } catch (_) {}
+
+    if (etkinlik['ExpireDate'] != null) {
+      expireDate = DateTime.tryParse(etkinlik['ExpireDate']);
+    }
+
+    final yerController = TextEditingController(text: yer);
+    final aciklamaController = TextEditingController(text: aciklama);
+    final tarihController = TextEditingController(
+      text: expireDate != null
+          ? DateFormat('dd.MM.yyyy').format(expireDate)
+          : '',
+    );
+    final saatController = TextEditingController(
+      text: expireDate != null
+          ? DateFormat('HH:mm').format(expireDate)
+          : '',
+    );
+
+    bool isSubmitting = false;
 
     await showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Yeni Etkinlik Oluştur'),
+              title: const Text("Etkinliği Düzenle"),
               content: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // Etkinlik Günü
+                    // 📅 Tarih
                     TextField(
                       controller: tarihController,
                       readOnly: true,
@@ -323,7 +411,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       onTap: () async {
                         final date = await showDatePicker(
                           context: context,
-                          initialDate: DateTime.now(),
+                          initialDate: expireDate ?? DateTime.now(),
                           firstDate: DateTime.now(),
                           lastDate: DateTime(2100),
                         );
@@ -334,7 +422,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    // Etkinlik Saati
+
+                    // ⏰ Saat
                     TextField(
                       controller: saatController,
                       readOnly: true,
@@ -345,15 +434,19 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       onTap: () async {
                         final time = await showTimePicker(
                           context: context,
-                          initialTime: TimeOfDay.now(),
+                          initialTime: expireDate != null
+                              ? TimeOfDay.fromDateTime(expireDate!)
+                              : TimeOfDay.now(),
                         );
                         if (time != null) {
-                          saatController.text = time.format(context);
+                          saatController.text =
+                          "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
                         }
                       },
                     ),
                     const SizedBox(height: 8),
-                    // Etkinlik Yeri
+
+                    // 📍 Yer
                     TextField(
                       controller: yerController,
                       decoration: const InputDecoration(
@@ -362,120 +455,96 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Açıklama
+
+                    // 📝 Açıklama
                     TextField(
                       controller: aciklamaController,
+                      maxLines: 3,
                       decoration: const InputDecoration(
                         labelText: 'Açıklama',
                         border: OutlineInputBorder(),
                       ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 12),
-                    // Sınıf seçimleri
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Sınıflar:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Column(
-                      children: globals.globalSinifListesi.map<Widget>((sinif) {
-                        int id = sinif['Id'];
-                        String ad = sinif['Ad'] ?? "Sınıf";
-                        return CheckboxListTile(
-                          title: Text(ad),
-                          value: seciliSiniflar[id],
-                          onChanged: (value) {
-                            setState(() {
-                              seciliSiniflar[id] = value ?? false;
-                            });
-                          },
-                        );
-                      }).toList(),
                     ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('İptal'),
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.pop(context),
+                  child: const Text("İptal"),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                    // ✅ VALIDATION
                     if (tarihController.text.isEmpty ||
-                        saatController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Etkinlik gün ve saati seçiniz.')),
-                      );
-                      return;
-                    }
-
-                    if (yerController.text.isEmpty ||
+                        saatController.text.isEmpty ||
+                        yerController.text.isEmpty ||
                         aciklamaController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Etkinlik yeri ve açıklama boş olamaz.')),
+                        const SnackBar(
+                          content: Text("Tüm alanlar doldurulmalıdır"),
+                        ),
                       );
                       return;
                     }
 
-                    // En az 1 sınıf seçili mi?
-                    var secilenler = seciliSiniflar.entries
-                        .where((e) => e.value)
-                        .map((e) => e.key)
-                        .toList();
-                    if (secilenler.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('En az bir sınıf seçmelisiniz.')),
-                      );
-                      return;
-                    }
+                    setStateDialog(() => isSubmitting = true);
 
                     try {
-                      // Tarih ve saati birleştir
-                      final selectedDate = DateFormat('dd.MM.yyyy').parse(tarihController.text);
+                      final selectedDate = DateFormat('dd.MM.yyyy')
+                          .parse(tarihController.text);
                       final parts = saatController.text.split(':');
                       final selectedTime = TimeOfDay(
                         hour: int.parse(parts[0]),
-                        minute: int.parse(parts[1].split(' ')[0]),
+                        minute: int.parse(parts[1]),
                       );
 
-                      final etkinlikTarihi = DateTime(
+                      final newExpireDate = DateTime(
                         selectedDate.year,
                         selectedDate.month,
                         selectedDate.day,
                         selectedTime.hour,
                         selectedTime.minute,
                       );
-                      // Seçilen her sınıf için API çağrısı
-                      for (var sinifId in secilenler) {
-                        print("sinifId.toString():"+sinifId.toString());
 
-                        await ApiService().createEtkinlik({
-                          'ownerTckn': globals.kullaniciTCKN,
-                          'sinifIds': sinifId.toString(),
-                          'data': jsonEncode({
-                            'yer': yerController.text,
-                            'aciklama': aciklamaController.text,
-                          }),
-                          'expireDate': etkinlikTarihi.toIso8601String(),
-                        });
-                      }
-
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Etkinlik başarıyla oluşturuldu.')),
+                      final success =
+                      await ApiService().updateActivity(
+                        ownerTckn: globals.kullaniciTCKN,
+                        activityId: etkinlik['Id'],
+                        data: jsonEncode({
+                          'yer': yerController.text,
+                          'aciklama': aciklamaController.text,
+                        }),
+                        expireDate: newExpireDate,
                       );
-                      _loadEtkinlikler(); // listeyi yenile
+
+                      if (success) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Etkinlik güncellendi"),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        _loadEtkinlikler();
+                      }
                     } catch (e) {
+                      setStateDialog(() => isSubmitting = false);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Etkinlik oluşturulamadı: $e')),
+                        SnackBar(
+                          content: Text("Güncelleme hatası: $e"),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                     }
                   },
-                  child: const Text('Oluştur'),
+                  child: Text(
+                    isSubmitting ? "Değiştiriliyor..." : "Değiştir",
+                  ),
                 ),
               ],
             );
@@ -484,12 +553,18 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
       },
     );
   }
-*/
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Etkinlik Listesi'),
+        title: const
+        Text(
+            'Etkinlik Listesi',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -499,8 +574,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+              AppColors.background.withOpacity(0.8),
+              AppColors.background.withOpacity(0.6),
             ],
           ),
         ),
@@ -517,18 +592,19 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       await _showEtkinlikForm();
                       _loadEtkinlikler(); // popup kapandıktan sonra liste yenilensin
                     },
-                    icon: const Icon(Icons.add, color: Colors.blue),
-                    label: const Text(
+                    icon: const Icon(Icons.add, color: AppColors.onPrimary),
+                    label:  Text(
                       'Yeni Etkinlik Oluştur',
-                      style: TextStyle(color: Colors.blue),
+                      //style: TextStyle(color: Colors.blue),
                     ),
-                    style: ElevatedButton.styleFrom(
+                    style: AppStyles.buttonStyle,
+                    /*ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
+                    ),*/
                   ),
                 ),
               ),
@@ -607,13 +683,56 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (sinifAdlari.isNotEmpty)
+                            Text('Sınıf/lar: $sinifAdlari', style: TextStyle(color: renk)),
+                          if (yer.isNotEmpty)
+                            Text('Yer: $yer', style: TextStyle(color: renk)),
+                          if (tarih.isNotEmpty)
+                            Text('Tarih: $tarih', style: TextStyle(color: renk)),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ✏️ Düzenle
+                          if(globals.globalKullaniciTipi!='P')
+                            IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.orange),
+                            tooltip: "Düzenle",
+                            onPressed: () {
+                              _updateActivity(etkinlik);
+                            },
+                          ),
+
+                          // 🗑️ Sil
+                          if(globals.globalKullaniciTipi!='P')
+                            IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            tooltip: "Sil",
+                            onPressed: () {
+                              final int activityId = etkinlik['Id'];
+                              _deleteActivity(activityId);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    /*child: ListTile(
+                      title: Text(
+                        aciklama.isNotEmpty ? aciklama : detay,
+                        style: TextStyle(color: renk, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           if (sinifAdlari.isNotEmpty) Text('Sınıf/lar: $sinifAdlari', style: TextStyle(color: renk)),
                           if (yer.isNotEmpty) Text('Yer: $yer', style: TextStyle(color: renk)),
                           if (tarih.isNotEmpty) Text('Tarih: $tarih', style: TextStyle(color: renk)),
                         ],
                       ),
                       onTap: () => null,//_etkinligeTiklandi(etkinlik['Data']),
-                    ),
+                    ),*/
                   );
                 },
               ),

@@ -148,8 +148,11 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
-
+        title: const         Text(
+            'Mesaj Gönder',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),

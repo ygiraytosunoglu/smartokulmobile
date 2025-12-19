@@ -178,13 +178,12 @@ class DoorControlPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Kapı Kontrol Paneli',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-       ),
+        title: const
+        Text(
+            'Kapı Kontrol Paneli',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         //backgroundColor: Colors.blue[700],
         elevation: 0,
         centerTitle: true,
@@ -192,13 +191,59 @@ class DoorControlPage extends StatelessWidget {
         foregroundColor: AppColors.onPrimary,
       ),
       body: Container(
+      width: double.infinity,
+      height: double.infinity, // ekranın tamamını kaplasın
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.background,
+            AppColors.background,
+          ],
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Column ekranı sarmasın, içerik kadar yer alsın
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (hasGateAccess)
+                _buildControlButton(
+                  context: context,
+                  icon: Icons.door_front_door,
+                  label: 'Ana Kapı Kontrol',
+                  enabled: hasGateAccess,
+                  onPressed: () => bildirVeKapiAc(context),
+                ),
+              if (hasGateAccess && hasParkingAccess)
+                const SizedBox(height: 16),
+              if (hasParkingAccess)
+                _buildControlButton(
+                  context: context,
+                  icon: Icons.local_parking,
+                  label: 'Otopark Kontrol',
+                  enabled: hasParkingAccess,
+                  onPressed: () => otoparkKapisiniAc(context),
+                ),
+              const SizedBox(height: 32), // alt boşluk
+            ],
+          ),
+        ),
+      ),
+    )
+
+
+    /*Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+              AppColors.background,//.primary.withOpacity(0.8),
+              AppColors.background,//.primary.withOpacity(0.6),
             ],
           ),
         ),
@@ -228,7 +273,7 @@ class DoorControlPage extends StatelessWidget {
             ),
           ),
       )
-
+*/
     );
   }
 
@@ -242,27 +287,28 @@ class DoorControlPage extends StatelessWidget {
     return Opacity(
       opacity: enabled ? 1.0 : 0.5,
       child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
+        style: AppStyles.buttonStyle,
+        /*ElevatedButton.styleFrom(
           minimumSize: const Size(double.infinity, 64),
           /*shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),*/
           elevation: 4,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: AppColors.onPrimary,
-          foregroundColor: AppColors.primary,
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
 
-        ),
-        icon: Icon(icon, size: 32, color: AppColors.primary//Colors.white
+        ),*/
+        icon: Icon(icon, size: 32, color: AppColors.onPrimary
         ),
         label: Text(
           label,
-          style: const TextStyle(
+          style: AppStyles.buttonTextStyle,/*const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,//Colors.white,
+            color: AppColors.onPrimary,
             letterSpacing: 1.2,
-          ),
+          ),*/
         ),
         onPressed: enabled ? onPressed : null,
       ),

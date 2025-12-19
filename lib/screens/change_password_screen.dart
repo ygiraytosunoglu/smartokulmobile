@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/constants.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -40,7 +41,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Şifre Değiştir')),
+      appBar: AppBar(title:
+      Text(
+          'Şifre Değiştir',
+          textAlign: TextAlign.center,
+          style: AppStyles.titleLarge
+      ),
+      backgroundColor: AppColors.primary,
+      foregroundColor: AppColors.onPrimary,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(

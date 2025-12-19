@@ -2,6 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_okul_mobile/screens/send_notification_screen.dart';
+import 'package:smart_okul_mobile/screens/send_notification_screen_m.dart';
+import 'package:smart_okul_mobile/screens/send_notification_screen_p.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
@@ -22,19 +25,6 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
     super.initState();
     _loadDuyurular();
   }
-
- /* Future<void> _loadDuyurular() async {
-    try {
-      final data = await ApiService().getDuyuruList(globals.kullaniciTCKN);
-      setState(() {
-        duyurular = data;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Hata _loadDuyurular: $e');
-    }
-  }
-*/
 
   List<TextSpan> _parseTextWithLinks(String text) {
     final regex = RegExp(
@@ -101,14 +91,17 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       });
 
       // Global değişkeni güncelle (liste boşsa false olur)
-      globals.duyuruVar = okunmamisVarMi as ValueNotifier<bool>;
+     // globals.duyuruVar = okunmamisVarMi as ValueNotifier<bool>;
+      globals.duyuruVar.value = okunmamisVarMi;
+
       print("globals.duyuruVar = ${globals.duyuruVar}");
     } catch (e) {
       print('Hata _loadDuyurular: $e');
-      globals.duyuruVar = false as ValueNotifier<bool>; // hata durumunda da false olsun
+      //globals.duyuruVar = false as ValueNotifier<bool>; // hata durumunda da false olsun
+      globals.duyuruVar.value = false;
     }
   }
-
+/*
   Future<void> _duyuruyaTiklandi(int duyuruId, String detay, bool okundu) async {
     await showDialog(
       context: context,
@@ -161,13 +154,51 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       }
     }
   }
+*/
 
-  /* Future<void> _duyuruyaTiklandi(int duyuruId, String detay, bool okundu) async {
+  Future<void> _duyuruyaTiklandi(Map<String, dynamic> duyuru) async {
+    final bool okundu = duyuru['Okundu'] == 1;
+
+    // 🔴 Popup açılmadan ÖNCE local state'i güncelle
+    if (!okundu) {
+      setState(() {
+        duyuru['Okundu'] = 1; // ARTIK OKUNMUŞ GİBİ
+      });
+
+      // API çağrısı arkadan gitsin
+      ApiService().setDuyuruOkundu(duyuru['Id']).catchError((e) {
+        print('Mesaj okundu güncelleme hatası: $e');
+      });
+    }
+
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text('Mesaj Detayı'),
-        content: Text(detay),
+        content: SingleChildScrollView(
+          child: GestureDetector(
+            onLongPress: () {
+              Clipboard.setData(ClipboardData(text: duyuru['Data']));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Mesaj kopyalandı')),
+              );
+            },
+            child: Linkify(
+              text: duyuru['Data'],
+              style: TextStyle(color: Colors.black87, fontSize: 16),
+              linkStyle: TextStyle(
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+              ),
+              onOpen: (link) async {
+                final uri = Uri.parse(link.url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -176,23 +207,18 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
         ],
       ),
     );
-    print("_duyuruyaTiklandi  dialog sonrası");
-    if (!okundu) {
-      try {
-        print("setDuyuruOkundu oncesi");
-        bool okunduMu = await ApiService().setDuyuruOkundu(duyuruId);
-        _loadDuyurular();
-      } catch (e) {
-        print('Mesaj okundu güncelleme hatası: $e');
-      }
-    }
-  }*/
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mesaj Listesi'),
+        title:
+        Text(
+            'Mesaj Listesi',
+            textAlign: TextAlign.center,
+            style: AppStyles.titleLarge
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -202,59 +228,128 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
+              AppColors.background.withOpacity(0.8),
+              AppColors.background.withOpacity(0.6),
             ],
           ),
         ),
         child: isLoading
             ? Center(child: CircularProgressIndicator())
-            : ListView.builder(
-          itemCount: duyurular.length,
-          itemBuilder: (context, index) {
-            var duyuru = duyurular[index];
-            var okundu = duyuru['Okundu'] == 1;
-            final renk = okundu ? Colors.grey : Colors.blue[900];
-            var tarih = DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(duyuru['InsertDate']));
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16), // oval köşeler
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 6,
-                      offset: Offset(0, 3), // gölge efekti
-                    ),
-                  ],
-                ),
-                child: ListTile(
-                  title: Text(
-                    duyuru['Baslik'],
-                    style: TextStyle(color: renk, fontWeight: FontWeight.bold),
+            : ListView(
+          padding: EdgeInsets.all(8),
+          children: [
+            // --- EN ÜSTE MESAJ GÖNDER BUTONU ---
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.only(bottom: 12),
+              child: ElevatedButton.icon(
+                style: AppStyles.buttonStyle,/*ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Gönderen: ${duyuru['GonderenAdi']}', style: TextStyle(color: renk)),
-                      Text('Tarih: $tarih', style: TextStyle(color: renk)),
+                ),*/
+                icon: Icon(Icons.send),
+                label: Text(
+                  "Mesaj Gönder",
+                  style: AppStyles.buttonTextStyle,
+                  /*TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),*/
+                ),
+                onPressed: () {
+                  _bildirimGonderSayfasiniAc(context);
+                },
+              ),
+            ),
+
+            // --- DUYURU LİSTESİ ---
+            ...duyurular.map((duyuru) {
+              var okundu = duyuru['Okundu'] == 1;
+              final renk = okundu ? Colors.grey : Colors.blue[900];
+              var tarih = DateFormat('dd.MM.yyyy HH:mm')
+                  .format(DateTime.parse(duyuru['InsertDate']));
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
                     ],
                   ),
-                  onTap: () => _duyuruyaTiklandi(
-                    duyuru['Id'],
-                    duyuru['Data'],
-                    okundu,
+                  child: ListTile(
+                    title: Text(
+                      duyuru['Baslik'],
+                      style: TextStyle(
+                        color: renk,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Gönderen: ${duyuru['GonderenAdi']}',
+                            style: TextStyle(color: renk)),
+                        Text('Tarih: $tarih',
+                            style: TextStyle(color: renk)),
+                      ],
+                    ),
+                    onTap: () => _duyuruyaTiklandi(duyuru),
+                    /*onTap: () => _duyuruyaTiklandi(
+                      duyuru['Id'],
+                      duyuru['Data'],
+                      okundu,
+                    ),*/
                   ),
                 ),
-              ),
-            );
-
-          },
+              );
+            }).toList(),
+          ],
         ),
       ),
     );
   }
+
+
+    void _bildirimGonderSayfasiniAc(BuildContext context) {
+      if (["M", "T", "P"].contains(globals.globalKullaniciTipi)) {
+        if (globals.globalKullaniciTipi == 'T') {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => SendNotificationScreen()));
+        }
+
+        if (globals.globalKullaniciTipi == 'M') {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => SendNotificationScreenM()));
+        }
+
+        if (globals.globalKullaniciTipi == 'P') {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => SendNotificationScreenP()));
+        }
+      } else {
+        _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
+      }
+    }
+
+  Future _pencereAc(BuildContext context, String mesaj) {
+    return showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (context) {
+        return AlertDialog(title: Text(mesaj));
+      },
+    );
+  }
+
 }
