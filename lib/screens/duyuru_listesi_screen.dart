@@ -19,6 +19,8 @@ class DuyuruListesiScreen extends StatefulWidget {
 class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
   List<Map<String, dynamic>> duyurular = [];
   bool isLoading = true;
+  bool hepsiSecili = false;
+  Set<String> seciliOgrenciler = {}; // ogrenciTckn tutulur
 
   @override
   void initState() {
@@ -91,7 +93,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       });
 
       // Global değişkeni güncelle (liste boşsa false olur)
-     // globals.duyuruVar = okunmamisVarMi as ValueNotifier<bool>;
+      // globals.duyuruVar = okunmamisVarMi as ValueNotifier<bool>;
       globals.duyuruVar.value = okunmamisVarMi;
 
       print("globals.duyuruVar = ${globals.duyuruVar}");
@@ -321,26 +323,26 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
   }
 
 
-    void _bildirimGonderSayfasiniAc(BuildContext context) {
-      if (["M", "T", "P"].contains(globals.globalKullaniciTipi)) {
-        if (globals.globalKullaniciTipi == 'T') {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => SendNotificationScreen()));
-        }
-
-        if (globals.globalKullaniciTipi == 'M') {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => SendNotificationScreenM()));
-        }
-
-        if (globals.globalKullaniciTipi == 'P') {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => SendNotificationScreenP()));
-        }
-      } else {
-        _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
+  void _bildirimGonderSayfasiniAc(BuildContext context) {
+    if (["M", "T", "P"].contains(globals.globalKullaniciTipi)) {
+      if (globals.globalKullaniciTipi == 'T') {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => SendNotificationScreen()));
       }
+
+      if (globals.globalKullaniciTipi == 'M') {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => SendNotificationScreenM()));
+      }
+
+      if (globals.globalKullaniciTipi == 'P') {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => SendNotificationScreenP()));
+      }
+    } else {
+      _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
     }
+  }
 
   Future _pencereAc(BuildContext context, String mesaj) {
     return showDialog<String>(

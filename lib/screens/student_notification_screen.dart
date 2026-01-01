@@ -5,19 +5,17 @@ import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import 'dart:typed_data';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 
 class StudentNotificationScreen extends StatefulWidget {
   const StudentNotificationScreen({Key? key}) : super(key: key);
 
   @override
-  _StudentNotificationScreenState createState() => _StudentNotificationScreenState();
+  _StudentNotificationScreenState createState() =>
+      _StudentNotificationScreenState();
 }
 
-class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
+class _StudentNotificationScreenState
+    extends State<StudentNotificationScreen> {
   late List<bool> selected;
   bool isButtonEnabled = true;
   final Map<String, Uint8List?> studentPhotos = {};
@@ -25,7 +23,8 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
   @override
   void initState() {
     super.initState();
-    selected = List.generate(globals.globalOgrenciListesi.length, (index) => true);
+    selected = List.generate(
+        globals.globalOgrenciListesi.length, (index) => true);
     _fetchStudentPhotos();
   }
 
@@ -35,251 +34,190 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // 👈 GERİ TUŞUNU KALDIRIR
-        title: const
-        Text(
-            "Öğrenci Anons",
-            textAlign: TextAlign.center,
-            style: AppStyles.titleLarge
+        automaticallyImplyLeading: false,
+        title: const Text(
+          "Öğrenci Anons",
+          style: AppStyles.titleLarge,
         ),
-        backgroundColor: AppColors.newAppBar,//.primary,
+        backgroundColor: AppColors.newAppBar,
         foregroundColor: AppColors.onPrimary,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.newBody, //.primary.withOpacity(0.8),
-              AppColors.newBody//primary.withOpacity(0.6),
-            ],
+
+      // ✅ SADECE LİSTE
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.newBody,
+                AppColors.newBody,
+              ],
+            ),
+          ),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            itemCount: students.length,
+            itemBuilder: (context, index) {
+              final student = students[index];
+              final Uint8List? photo =
+              studentPhotos[student['TCKN']];
+
+              return Card(
+                elevation: 4,
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() {
+                      selected[index] = !selected[index];
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.grey.shade200,
+                          backgroundImage:
+                          photo != null ? MemoryImage(photo) : null,
+                          child: photo == null
+                              ? const Icon(Icons.person,
+                              color: Colors.grey)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            student['Name'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        Checkbox(
+                          value: selected[index],
+                          onChanged: (bool? value) {
+                            setState(() {
+                              selected[index] = value ?? false;
+                            });
+                          },
+                          activeColor: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
-        child: Column(
-          children: [
-            /*const SizedBox(height: 12),
-            const Text(
-              "Öğrenci Seçiniz",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: AppColors.primary,
-              ),
-            ),*/
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: students.length,
-                itemBuilder: (context, index) {
-                  final student = students[index];
-                  final Uint8List? photo = studentPhotos[student['TCKN']];
+      ),
 
-                  return Card(
-                    elevation: 4,
-                    margin: const EdgeInsets.symmetric(vertical: 6),
+      // ✅ ALT BUTONLAR – HER ZAMAN GÖRÜNÜR
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 🔵 YAKLAŞTIM / BIRAKTIM
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed:
+                  isButtonEnabled ? () => sendNotification(1) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    minimumSize: const Size.fromHeight(56),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        setState(() {
-                          selected[index] = !selected[index];
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            // FOTOĞRAF
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundColor: Colors.grey.shade200,
-                              backgroundImage: photo != null ? MemoryImage(photo) : null,
-                              child: photo == null
-                                  ? const Icon(Icons.person, color: Colors.grey)
-                                  : null,
-                            ),
-
-                            const SizedBox(width: 12),
-
-                            // İSİM
-                            Expanded(
-                              child: Text(
-                                student['Name'],
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-
-                            // CHECKBOX
-                            Checkbox(
-                              value: selected[index],
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  selected[index] = value ?? false;
-                                });
-                              },
-                              checkColor: Colors.white,
-                              activeColor: AppColors.primary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-
-                /*  itemBuilder: (context, index) {
-                  /*final student = students[index];
-                  return CheckboxListTile(
-                    title: Text(
-                      student['Name'],
-                      style: const TextStyle(color: AppColors.primary),
-                    ),
-                    value: selected[index],
-                    onChanged: (bool? value) {
-                      setState(() {
-                        selected[index] = value ?? false;
-                      });
-                    },
-                    checkColor: AppColors.primary,
-                    activeColor: Colors.white,
-                  );
-                */
-                  final student = students[index];
-                  final Uint8List? photo = studentPhotos[student['TCKN']];
-
-                  return CheckboxListTile(
-                    secondary: CircleAvatar(
-                      radius: 22,
-                      backgroundColor: Colors.grey.shade200,
-                      backgroundImage: photo != null ? MemoryImage(photo) : null,
-                      child: photo == null
-                          ? const Icon(Icons.person, color: Colors.grey)
-                          : null,
-                    ),
-                    title: Text(
-                      student['Name'],
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    value: selected[index],
-                    onChanged: (bool? value) {
-                      setState(() {
-                        selected[index] = value ?? false;
-                      });
-                    },
-                    checkColor: AppColors.primary,
-                    activeColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  );
-                },
-              */),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  // YAKLAŞTIM / BIRAKTIM → MAVİ
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isButtonEnabled ? () => sendNotification(1) : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 60),
-                        textStyle: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 6,
-                      ),
-                      child: Text(
-                        globals.globalKullaniciTipi == "H" ? "Bıraktım" : "Yaklaştım",
-                      ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // GELDİM / ALDIM → YEŞİL
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isButtonEnabled ? () => sendNotification(2) : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 60),
-                        textStyle: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 6,
-                      ),
-                      child: Text(
-                        globals.globalKullaniciTipi == "H" ? "Aldım" : "Geldim",
-                      ),
-                    ),
+                  child: Text(
+                    globals.globalKullaniciTipi == "H"
+                        ? "Bıraktım"
+                        : "Yaklaştım",
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 20),
-
-                  // GELDİM / ALDIM → YEŞİL
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isButtonEnabled ? () =>         Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HomeScreen()),
-                      ) : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 60),
-                        textStyle: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 6,
-                      ),
-                      child: Text("Ana Sayfa",
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 12),
+
+              // 🟢 GELDİM / ALDIM
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed:
+                  isButtonEnabled ? () => sendNotification(2) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    minimumSize: const Size.fromHeight(56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    globals.globalKullaniciTipi == "H"
+                        ? "Aldım"
+                        : "Geldim",
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 🏠 ANA SAYFA
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const HomeScreen()),
+                          (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size.fromHeight(56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    "Ana Sayfa",
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  // 📸 Fotoğrafları getir
   Future<void> _fetchStudentPhotos() async {
     for (var ogrenci in globals.globalOgrenciListesi) {
-      String tckn = ogrenci['TCKN'];
-      String fotoVersion = ogrenci['FotoVersion'].toString();
+      final tckn = ogrenci['TCKN'];
+      final fotoVersion = ogrenci['FotoVersion'].toString();
 
-      Uint8List? photo = await ApiService().getPhoto(
+      final photo = await ApiService().getPhoto(
         tckn,
         "${tckn}_$fotoVersion",
       );
@@ -288,106 +226,31 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
     }
     setState(() {});
   }
-/*
-  Future<Uint8List?> _getPhoto(String tckn, String fotoName) async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final localFile = File('${dir.path}/$fotoName.jpg');
 
-      if (await localFile.exists()) {
-        return await localFile.readAsBytes();
-      }
-
-      try {
-        final byteData =
-        await rootBundle.load('assets/images/$fotoName.jpg');
-        return byteData.buffer.asUint8List();
-      } catch (_) {}
-
-      final response = await http.get(Uri.parse(
-        '${globals.serverAdrr}/api/school/get-person-photo?tckn=$tckn',
-      ));
-
-      if (response.statusCode == 200) {
-        final bytes = response.bodyBytes;
-        await localFile.writeAsBytes(bytes);
-        return bytes;
-      }
-    } catch (e) {
-      print('⚠️ Fotoğraf getirme hatası: $e');
-    }
-    return null;
-  }
-*/
-
-  Future<int> mesafeKontrol(int tip) async {
-    if (globals.globalKullaniciTipi == "P") {
-      String konum = await ApiService().konumAlYeni();
-      final logger = Logger();
-      double mesafe = 100000000;
-      if (globals.mevcutBoylam != null && globals.mevcutEnlem != null) {
-        mesafe = ApiService().mesafeHesapla(
-          double.parse(globals.globalKonumEnlem),
-          double.parse(globals.globalKonumBoylam),
-          double.parse(globals.mevcutEnlem),
-          double.parse(globals.mevcutBoylam),
-        );
-      }
-      print("mesafe: $mesafe");
-      if (tip == 1 && mesafe > globals.mesafeLimit) {
-        _pencereAc(context, "Okula mesafeniz uygun değil!");
-        return 0;
-      } else if (tip == 2 && mesafe > 100) {
-        _pencereAc(context, "Okula mesafeniz uygun değil!");
-        return 0;
-      }
-    }
-    return 1;
-  }
-
-  Future _pencereAc(BuildContext context, String mesaj) {
-    return showDialog<String>(
-      context: context,
-      useRootNavigator: true,
-      builder: (context) {
-        return AlertDialog(title: Text(mesaj));
-      },
-    );
-  }
-
+  // 📢 Bildirim
   Future<void> sendNotification(int durum) async {
-    setState(() {
-      isButtonEnabled = false;
-    });
-/*ACILACAK ?????????
-    if(!globals.globalKullaniciTipi == "H"){
-      int mesafeKont = await mesafeKontrol(durum);
-
-      if (mesafeKont == 0) {
-        setState(() {
-          isButtonEnabled = true;
-        });
-        return;
-      }
-    }*/
-
+    setState(() => isButtonEnabled = false);
 
     final students = globals.globalOgrenciListesi;
     final selectedStudents = <String>[];
 
     for (int i = 0; i < students.length; i++) {
-      if (selected[i]) selectedStudents.add(students[i]['TCKN']);
+      if (selected[i]) {
+        selectedStudents.add(students[i]['TCKN']);
+      }
     }
 
     if (selectedStudents.isEmpty) {
-      await showMessage("En az bir öğrenci seçili olmalıdır!");
-      setState(() {
-        isButtonEnabled = true;
-      });
+      await _showMessage("En az bir öğrenci seçilmelidir");
+      setState(() => isButtonEnabled = true);
       return;
     }
 
-    await ApiService().yoklamaBulkAdd(selectedStudents, DateTime.now());
+    await ApiService().yoklamaBulkAdd(
+      selectedStudents,
+      DateTime.now(),
+    );
+
     final response = await ApiService().sendStudentNotification(
       schoolId: int.parse(globals.globalSchoolId),
       senderTckn: globals.kullaniciTCKN,
@@ -395,35 +258,22 @@ class _StudentNotificationScreenState extends State<StudentNotificationScreen> {
       durum: durum,
     );
 
-    if (response == "200") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Öğretmeninize Bildirim gönderildi'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-
-    await showMessage(response == "200"
-        ? "Öğretmeninize Bildirim gönderildi"
+    await _showMessage(response == "200"
+        ? "Bildirim gönderildi"
         : "Bildirim gönderilemedi");
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      isButtonEnabled = true;
-    });
+    setState(() => isButtonEnabled = true);
 
     if (response == "200") {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-            (Route<dynamic> route) => false,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
       );
     }
   }
 
-  Future<void> showMessage(String msg) {
+  Future<void> _showMessage(String msg) {
     return showDialog(
       context: context,
       builder: (_) => AlertDialog(title: Text(msg)),

@@ -203,17 +203,19 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                 ),
                                 ...globals.globalOgrenciListesi.map((ogrenci) {
                                   final tckn = ogrenci['TCKN'].toString();
+                                  final fullTckn = tckn + "_" + globals.globalSchoolId + "_S";
                                   final name = ogrenci['Name'];
+
                                   return CheckboxListTile(
                                     title: Text(name),
-                                    value: selectedOgrenciler.contains(tckn),
+                                    value: selectedOgrenciler.contains(fullTckn),
                                     onChanged: _isSending
                                         ? null
-                                        : (value) => _toggleOgrenci(tckn, value),
-                                    controlAffinity:
-                                    ListTileControlAffinity.leading,
+                                        : (value) => _toggleOgrenci(fullTckn, value),
+                                    controlAffinity: ListTileControlAffinity.leading,
                                   );
                                 }).toList(),
+
 
                                 const SizedBox(height: 16),
 
