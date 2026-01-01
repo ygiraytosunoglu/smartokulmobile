@@ -27,7 +27,10 @@ String? studentTckn;
 int? studentClassId;
 
 
+
 ValueNotifier<bool> duyuruVar = ValueNotifier<bool>(false);
+ValueNotifier<bool> mesajVar = ValueNotifier<bool>(false);
+
 ValueNotifier<bool> anketVar = ValueNotifier<bool>(false);
 ValueNotifier<bool> etkinlikVar = ValueNotifier<bool>(false);
 

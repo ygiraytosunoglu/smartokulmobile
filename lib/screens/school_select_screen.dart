@@ -96,9 +96,9 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Text(
+                    /*subtitle: Text(
                       "SchoolId: ${p["SchoolId"]}",
-                    ),
+                    ),*/
                     onChanged: (value) {
                       setState(() {
                         _selectedIndex = value;

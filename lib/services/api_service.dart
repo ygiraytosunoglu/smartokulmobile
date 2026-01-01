@@ -317,6 +317,28 @@ await apiService.putRequest(
     }
   }
 
+  Future<void> sendMesaj(
+      String kullaniciTckn, List<String> tcknList, String title, String message) async {
+    final url = "${ApiService.baseUrl}/api/Mesaj/SendMesaj";
+
+    final body = {
+      'GonderenTckn': kullaniciTckn,
+      'AlanTcknList': tcknList,
+      'Baslik': title,
+      'Data': message,
+    };
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Bildirim gönderilemedi: ${response.body}');
+    }
+  }
+
 // Sınıf bazlı bildirim
   Future<void> sendNotificationToSiniflar(
       String kullaniciTckn, List<int> sinifList, String title, String message) async {
@@ -456,6 +478,273 @@ await apiService.putRequest(
       return jsonList.cast<Map<String, dynamic>>();
     } else {
       throw Exception("Duyuru listesi alınamadı: ${response.statusCode}");
+    }
+  }
+
+  // Mesaj listesi alma
+  Future<List<Map<String, dynamic>>> getMesajList(String kullaniciTCKN) async {
+    final url = "${ApiService.baseUrl}/api/Mesaj/GetMesajlar?tckn=$kullaniciTCKN";
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final jsonList = jsonDecode(response.body) as List;
+      return jsonList.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception("Duyuru listesi alınamadı: ${response.statusCode}");
+    }
+  }
+
+  Future<List<dynamic>> getAllDersler(int schoolId) async {
+    try {
+      final uri = Uri.parse(
+        "${ApiService.baseUrl}/api/ders/GetAll?schoolId=$schoolId",
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception(
+            "Dersler alınamadı. StatusCode: ${response.statusCode}");
+      }
+    } catch (e) {
+      throw Exception("getAllDersler hatası: $e");
+    }
+  }
+
+  Future<int?> addOdev({
+    required String gonderenTckn,
+    required List<String> alanTcknList,
+    required int dersId,
+    required int schoolId,
+    String? data,
+    DateTime? expireDate,
+    List<File>? files,
+  }) async {
+    try {
+      final uri = Uri.parse("${ApiService.baseUrl}/api/odev/add");
+
+      final request = http.MultipartRequest("POST", uri);
+
+      // 🔹 Zorunlu alanlar
+      request.fields['gonderenTckn'] = gonderenTckn;
+      request.fields['dersId'] = dersId.toString();
+      request.fields['schoolId'] = schoolId.toString();
+
+      // 🔹 Liste alanı (alanTcknList)
+      for (int i = 0; i < alanTcknList.length; i++) {
+        request.fields['alanTcknList[$i]'] = alanTcknList[i];
+      }
+
+      // 🔹 Opsiyonel alanlar
+      if (data != null) {
+        request.fields['data'] = data;
+      }
+
+      if (expireDate != null) {
+        request.fields['expireDate'] = expireDate.toIso8601String();
+      }
+      print("gonderenTckn:"+gonderenTckn);
+      print("dersId:"+dersId.toString());
+      print("schoolId:"+schoolId.toString());
+      print("expireDate:"+expireDate.toString());
+
+      // 🔹 Dosyalar
+      if (files != null && files.isNotEmpty) {
+        for (var file in files) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'files',
+              file.path,
+              filename: path.basename(file.path),
+            ),
+          );
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response =
+      await http.Response.fromStream(streamedResponse);
+      print( "resp:"+response.body);
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return body['id']; // backend’den dönen id
+      } else {
+        throw Exception(
+            "addOdev başarısız. StatusCode: ${response.statusCode} Body: ${response.body}");
+      }
+    } catch (e) {
+      throw Exception("addOdev hatası: $e");
+    }
+  }
+
+  Future<List<dynamic>> getOdevlerByDersId(int dersId) async {
+    try {
+      final uri = Uri.parse(
+        "${ApiService.baseUrl}/api/odev/getByDers?dersId=$dersId",
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data;
+      } else {
+        throw Exception(
+          "getOdevlerByDersId başarısız. "
+              "StatusCode: ${response.statusCode}, "
+              "Body: ${response.body}",
+        );
+      }
+    } catch (e) {
+      throw Exception("getOdevlerByDersId hatası: $e");
+    }
+  }
+
+  Future<bool> removeOdev({required int odevId}) async {
+    try {
+      final uri = Uri.parse(
+        "${ApiService.baseUrl}/api/odev/remove?odevId=$odevId",
+      );
+
+      final response = await http.delete(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+          // Eğer token kullanıyorsan buraya ekle
+          // "Authorization": "Bearer ${globals.token}",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // İstersen response body'yi parse edebilirsin
+        // final data = jsonDecode(response.body);
+        return true;
+      } else if (response.statusCode == 404) {
+        return false;
+      } else {
+        throw Exception(
+          "Ödev silinemedi. StatusCode: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> updateOdev({
+    required int odevId,
+    int? dersId,
+    String? data,
+    DateTime? expireDate,
+    required int schoolId,
+    List<File>? files,
+  }) async {
+    try {
+      final uri = Uri.parse("${ApiService.baseUrl}/api/odev/update");
+
+      final request = http.MultipartRequest("POST", uri);
+
+      // 🔹 Zorunlu alanlar
+      request.fields['odevId'] = odevId.toString();
+      request.fields['schoolId'] = schoolId.toString();
+
+      // 🔹 Opsiyonel alanlar
+      if (dersId != null) {
+        request.fields['dersId'] = dersId.toString();
+      }
+
+      if (data != null) {
+        request.fields['data'] = data;
+      }
+
+      if (expireDate != null) {
+        request.fields['expireDate'] =
+            expireDate.toIso8601String(); // DateTime uyumlu
+      }
+
+      // 🔹 Dosyalar
+      if (files != null && files.isNotEmpty) {
+        for (var file in files) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'files',
+              file.path,
+              filename: file.path.split('/').last,
+            ),
+          );
+        }
+      }
+
+      // 🔹 Header (token varsa aç)
+      request.headers.addAll({
+        "Content-Type": "multipart/form-data",
+        // "Authorization": "Bearer ${globals.token}",
+      });
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 404) {
+        return false;
+      } else {
+        throw Exception(
+          "Ödev güncellenemedi. StatusCode: ${response.statusCode}, Body: $responseBody",
+        );
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> getOdevlerByTckn({
+    required String tckn,
+    int skip = 0,
+    int take = 10,
+  }) async {
+    print("tckn:"+tckn);
+    print("skip:"+skip.toString()+" take:"+take.toString());
+    try {
+      final uri = Uri.parse(
+        "${ApiService.baseUrl}/api/odev/getByTckn"
+            "?tckn=$tckn"
+            "&skip=$skip"
+            "&take=$take",
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data;
+      } else {
+        throw Exception(
+          "getOdevlerByTckn başarısız. "
+              "StatusCode: ${response.statusCode}, "
+              "Body: ${response.body}",
+        );
+      }
+    } catch (e) {
+      throw Exception("getOdevlerByTckn hatası: $e");
     }
   }
 
@@ -956,6 +1245,7 @@ await apiService.putRequest(
     globals.duyuruVar = ValueNotifier((p["UnreadDuyuruCount"] ?? 0) > 0);
     globals.anketVar = ValueNotifier((p["SurveyCount"] ?? 0) > 0);
     globals.etkinlikVar = ValueNotifier((p["ActivityCount"] ?? 0) > 0);
+    globals.mesajVar = ValueNotifier((p["UnreadMesajCount"] ?? 0) > 0);
 
     globals.globalSchoolId = p["SchoolId"]?.toString() ?? "";
     globals.kullaniciTCKN = globals.orjKullaniciTCKN+"_"+globals.globalSchoolId+"_"+globals.globalKullaniciTipi;
@@ -1099,6 +1389,15 @@ await apiService.putRequest(
 
     return "Veri indirildi!";
   }*/
+
+  //Mesaj  okundu olarak işaretleme
+  Future<bool> setMesajOkundu(String gonderenTckn, String alanTckn) async {
+    final url = "${ApiService.baseUrl}/api/Mesaj/MarkConversationAsRead?gonderenTckn=$gonderenTckn&alanTckn=$alanTckn";
+    final response = await http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'gonderenTckn': gonderenTckn,'alanTckn': alanTckn}));
+
+    if (response.statusCode == 200) globals.duyuruVar = false as ValueNotifier<bool>;
+    return response.statusCode == 200;
+  }
 
   // Duyuruyu okundu olarak işaretleme
   Future<bool> setDuyuruOkundu(int duyuruId) async {
@@ -1726,6 +2025,104 @@ await apiService.putRequest(
     }
   }
 
+  static Future<List<dynamic>> getConversationList(String tckn) async {
+    if (tckn.isEmpty) {
+      throw Exception("TCKN boş olamaz");
+    }
+
+    final Uri url = Uri.parse(
+      "${ApiService.baseUrl}/api/Mesaj/GetConversationList?tckn=$tckn",
+    );
+
+   print("GetConversationList isteği atılıyor. URL: $url");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+      );
+
+      print(
+        "GetConversationList response: "
+            "StatusCode=${response.statusCode}, "
+            "Body=${response.body}",
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else {
+        throw Exception(
+          "Konuşma listesi alınamadı. "
+              "StatusCode: ${response.statusCode}",
+        );
+      }
+    } catch (e, stackTrace) {
+      throw Exception(
+        "GetConversationList hatası"
+      );
+      rethrow;
+    }
+  }
+
+  static Future<List<dynamic>> getConversationMessages({
+    required String gonderenTckn,
+    required String alanTckn,
+    int take = 20,
+    int skip = 0,
+  }) async {
+    if (gonderenTckn.isEmpty || alanTckn.isEmpty) {
+      throw Exception("Gönderen ve alan TCKN boş olamaz");
+    }
+
+    final Uri url = Uri.parse(
+      "${ApiService.baseUrl}/api/Mesaj/GetConversationMessages"
+          "?gonderenTckn=$gonderenTckn"
+          "&alanTckn=$alanTckn"
+          "&take=$take"
+          "&skip=$skip",
+    );
+
+    print(
+      "GetConversationMessages isteği atılıyor. "
+          "URL=$url",
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+      );
+
+      print(
+        "GetConversationMessages response: "
+            "StatusCode=${response.statusCode}, "
+            "Body=${response.body}",
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonData = json.decode(response.body);
+        return jsonData;
+      } else if (response.statusCode == 400) {
+        throw Exception("Geçersiz parametreler gönderildi");
+      } else {
+        throw Exception(
+          "Mesajlar alınamadı. StatusCode=${response.statusCode}",
+        );
+      }
+    } catch (e, stackTrace) {
+      throw Exception(
+        "GetConversationMessages hatası"
+      );
+      rethrow;
+    }
+  }
 /*
   Future<bool> uploadGallery(String tckn, List<File> files) async {
     try {

@@ -1,13 +1,15 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:smart_okul_mobile/screens/mesaj_ana_screen.dart';
+import 'package:smart_okul_mobile/screens/odev_screen.dart';
+import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
 
 import '../constants.dart';
 import '../globals.dart' as globals;
 import '../services/api_service.dart';
 
 import 'login_screen.dart';
-import 'duyuru_listesi_screen.dart';
 import 'photo_gallery_screen.dart';
 import 'plan_screen.dart';
 import 'survey_screen.dart';
@@ -168,10 +170,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   if (globals.menuListesi.contains("GelenMesajlar"))
                   ValueListenableBuilder<bool>(
-                    valueListenable: globals.duyuruVar,
-                    builder: (context, duyuruVar, _) {
-                      return buildSquareIconButton(context, 'mesajlar.png', "MESAJLAR",() { _duyuruListesiSayfasiniAc(context); },
-                        showRedBorder: duyuruVar, );
+                    valueListenable: globals.mesajVar,
+                    builder: (context, mesajVar, _) {
+                      return buildSquareIconButton(context, 'mesajlar.png', "MESAJLAR",() { _mesajSayfasiniAc(context); },
+                        showRedBorder: mesajVar, );
                     },
                   ),
                   if (globals.menuListesi.contains("Galeri"))
@@ -212,6 +214,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       'profil.png',
                       "PROFİL",
                           () => _profilSayfasiniAc(context),
+                    ),
+
+                  if (globals.menuListesi.contains("GelenMesajlar"))
+                    ValueListenableBuilder<bool>(
+                      valueListenable: globals.duyuruVar,
+                      builder: (context, duyuruVar, _) {
+                        return buildSquareIconButton(context, 'duyurular.png', "DUYURULAR",() { _duyuruListesiSayfasiniAc(context); },
+                          showRedBorder: duyuruVar, );
+                      },
                     ),
                   if (globals.menuListesi.contains("DevamBilgisi"))
                     buildSquareIconButton(
@@ -295,7 +306,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       },
                     ),
-
+                if (globals.menuListesi.contains("Odev"))
+                    buildSquareIconButton(
+                      context,
+                      'odevler.png',
+                      "ÖDEV",
+                            () => _odevSayfasiniAc(context),
+                    ),
                 ],
               ),
             ),
@@ -607,9 +624,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _duyuruListesiSayfasiniAc(BuildContext context) {
+  void _mesajSayfasiniAc(BuildContext context) {
     Navigator.push(context,
-        MaterialPageRoute(builder: (_) => DuyuruListesiScreen()));
+        MaterialPageRoute(builder: (_) => MesajAnaScreen()));
+  }
+  void _duyuruListesiSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DuyuruListesiScreen(),
+      ),
+    );
+
   }
 
   void _galeriSayfasiniAc(BuildContext context) {
@@ -660,6 +686,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => IlacScreen()),
+    );
+  }
+
+  void _odevSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => OdevScreen()),
     );
   }
 
