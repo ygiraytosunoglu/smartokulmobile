@@ -169,20 +169,20 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
 
       // API çağrısı arkadan gitsin
       ApiService().setDuyuruOkundu(duyuru['Id']).catchError((e) {
-        print('Mesaj okundu güncelleme hatası: $e');
+        print('Duyuru okundu güncelleme hatası: $e');
       });
     }
 
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Mesaj Detayı'),
+        title: Text('Duyuru Detayı'),
         content: SingleChildScrollView(
           child: GestureDetector(
             onLongPress: () {
               Clipboard.setData(ClipboardData(text: duyuru['Data']));
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Mesaj kopyalandı')),
+                SnackBar(content: Text('Duyuru kopyalandı')),
               );
             },
             child: Linkify(
@@ -217,7 +217,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       appBar: AppBar(
         title:
         Text(
-            'Mesaj Listesi',
+            'Duyuru Listesi',
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -255,7 +255,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
                 ),*/
                 icon: Icon(Icons.send),
                 label: Text(
-                  "Mesaj Gönder",
+                  "Yeni Duyuru",
                   style: AppStyles.buttonTextStyle,
                   /*TextStyle(
                     fontSize: 16,

@@ -216,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           () => _profilSayfasiniAc(context),
                     ),
 
-                  if (globals.menuListesi.contains("GelenMesajlar"))
+                  if (globals.menuListesi.contains("Duyuru"))
                     ValueListenableBuilder<bool>(
                       valueListenable: globals.duyuruVar,
                       builder: (context, duyuruVar, _) {

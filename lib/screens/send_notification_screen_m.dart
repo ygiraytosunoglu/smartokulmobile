@@ -75,7 +75,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Mesaj(lar) başarıyla gönderildi',
+              'Duyuru(ler) başarıyla gönderildi',
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.green,
@@ -149,7 +149,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
     return Scaffold(
       appBar: AppBar(
         title: const         Text(
-            'Mesaj Gönder',
+            'Duyuru Gönder',
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -185,7 +185,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                       const Icon(Icons.campaign, size: 64, color: AppColors.primary),
                       const SizedBox(height: 24),
                       Text(
-                        'Yeni Mesaj',
+                        'Yeni Duyuru',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -198,7 +198,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Bildirim Başlığı',
+                          labelText: 'Duyuru Başlığı',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.title),
                         ),
@@ -211,7 +211,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
-                          labelText: 'Bildirim Mesajı',
+                          labelText: 'Duyuru Mesajı',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.message),
                           alignLabelWithHint: true,
@@ -253,7 +253,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                           foregroundColor: AppColors.onPrimary,
                         ),
                         child: Text(
-                          _isSending ? 'Mesaj Gönderiliyor...' : 'Mesaj Gönder',
+                          _isSending ? 'Duyuru Gönderiliyor...' : 'Duyuru Gönder',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),

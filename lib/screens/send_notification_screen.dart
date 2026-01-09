@@ -63,7 +63,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Mesaj(lar) başarıyla gönderildi',
+              'Duyuru(lar) başarıyla gönderildi',
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.green,
@@ -104,7 +104,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       appBar: AppBar(
         title: const
         Text(
-            'Mesaj Gönder',
+            'Duyuru Gönder',
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -151,7 +151,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                     size: 64, color: AppColors.onPrimary),
                                 const SizedBox(height: 24),
                                 Text(
-                                  'Yeni Mesaj',
+                                  'Yeni Duyuru',
                                   style: AppStyles.buttonTextStyle,
                                   /*Theme.of(context)
                                       .textTheme
@@ -167,7 +167,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                 TextFormField(
                                   controller: _titleController,
                                   decoration: const InputDecoration(
-                                    labelText: 'Bildirim Başlığı',
+                                    labelText: 'Duyuru Başlığı',
                                     border: OutlineInputBorder(),
                                     prefixIcon: Icon(Icons.title),
                                   ),
@@ -181,7 +181,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                 TextFormField(
                                   controller: _messageController,
                                   decoration: const InputDecoration(
-                                    labelText: 'Bildirim Mesajı',
+                                    labelText: 'Duyuru Mesajı',
                                     border: OutlineInputBorder(),
                                     prefixIcon: Icon(Icons.message),
                                     alignLabelWithHint: true,
@@ -231,8 +231,8 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                   ),*/
                                   child: Text(
                                     _isSending
-                                        ? 'Mesajınız Gönderiliyor...' // 👈 Değişen yazı
-                                        : 'Mesaj Gönder',
+                                        ? 'Duyuru Gönderiliyor...' // 👈 Değişen yazı
+                                        : 'Duyuru Gönder',
                                     style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
@@ -422,7 +422,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                 TextFormField(
                                   controller: _titleController,
                                   decoration: const InputDecoration(
-                                    labelText: 'Bildirim Başlığı',
+                                    labelText: 'Duyuru Başlığı',
                                     border: OutlineInputBorder(),
                                     prefixIcon: Icon(Icons.title),
                                   ),
@@ -437,7 +437,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                 TextFormField(
                                   controller: _messageController,
                                   decoration: const InputDecoration(
-                                    labelText: 'Bildirim Mesajı',
+                                    labelText: 'Duyuru Mesajı',
                                     border: OutlineInputBorder(),
                                     prefixIcon: Icon(Icons.message),
                                     alignLabelWithHint: true,
@@ -651,7 +651,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Bildirim Başlığı',
+                          labelText: 'Duyuru Başlığı',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.title),
                         ),
@@ -664,7 +664,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
-                          labelText: 'Bildirim Mesajı',
+                          labelText: 'Duyuru Mesajı',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.message),
                           alignLabelWithHint: true,
@@ -695,7 +695,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Bildirim Gönder butonu
+                      // Duyuru Gönder butonu
                       ElevatedButton(
                         onPressed: _sendNotification,
                         style: ElevatedButton.styleFrom(
@@ -859,7 +859,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Bildirim Başlığı',
+                          labelText: 'Duyuru Başlığı',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.title),
                         ),
@@ -872,7 +872,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
-                          labelText: 'Bildirim Mesajı',
+                          labelText: 'Duyuru Mesajı',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.message),
                           alignLabelWithHint: true,
@@ -903,7 +903,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Bildirim Gönder butonu
+                      // Duyuru Gönder butonu
                       ElevatedButton(
                         onPressed: _sendNotification,
                         style: ElevatedButton.styleFrom(

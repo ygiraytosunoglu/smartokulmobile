@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import '../constants.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class MesajDetayScreen extends StatefulWidget {
   final String alanTckn;
@@ -40,48 +40,38 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
     _otomatikRefreshBaslat();
   }
 
-  /// 📥 İlk yükleme
   Future<void> _mesajlariYukle() async {
-    try {
-      final data = await ApiService.getConversationMessages(
-        gonderenTckn: globals.kullaniciTCKN,
-        alanTckn: widget.alanTckn,
-        take: 50,
-        skip: 0,
-      );
+    final data = await ApiService.getConversationMessages(
+      gonderenTckn: globals.kullaniciTCKN,
+      alanTckn: widget.alanTckn,
+      take: 50,
+      skip: 0,
+    );
 
-      // 🔥 KRİTİK: her zaman eskiden → yeniye sırala
-      data.sort((a, b) =>
-          DateTime.parse(a['InsertDate'])
-              .compareTo(DateTime.parse(b['InsertDate'])));
+    data.sort((a, b) =>
+        DateTime.parse(a['InsertDate'])
+            .compareTo(DateTime.parse(b['InsertDate'])));
 
-      setState(() {
-        mesajlar = List<Map<String, dynamic>>.from(data);
-        if (mesajlar.isNotEmpty) {
-          _sonMesajTarihi =
-              DateTime.parse(mesajlar.last['InsertDate']);
-        }
-        isLoading = false;
-      });
-
-      _scrollToBottom();
-    } catch (e) {
-      debugPrint("İlk yükleme hata: $e");
-      setState(() => isLoading = false);
-    }
+    setState(() {
+      mesajlar = List<Map<String, dynamic>>.from(data);
+      if (mesajlar.isNotEmpty) {
+        _sonMesajTarihi =
+            DateTime.parse(mesajlar.last['InsertDate']);
+      }
+      isLoading = false;
+    });
   }
 
-  /// ⏱ Otomatik refresh
   void _otomatikRefreshBaslat() {
+    _refreshTimer?.cancel();
     _refreshTimer =
-        Timer.periodic(const Duration(seconds: 5), (_) {
+        Timer.periodic(const Duration(seconds: 1), (_) {
           _yeniMesajlariKontrolEt();
         });
   }
 
-  /// 🆕 Yeni mesajları kontrol et
   Future<void> _yeniMesajlariKontrolEt() async {
-    if (_isRefreshing || !mounted) return;
+    if (_isRefreshing) return;
     _isRefreshing = true;
 
     try {
@@ -96,45 +86,29 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
           DateTime.parse(a['InsertDate'])
               .compareTo(DateTime.parse(b['InsertDate'])));
 
-      final List<Map<String, dynamic>> yeniMesajlar = data
-          .where((m) {
-        final tarih = DateTime.parse(m['InsertDate']);
+      final yeni = data.where((m) {
+        final t = DateTime.parse(m['InsertDate']);
         return _sonMesajTarihi == null ||
-            tarih.isAfter(_sonMesajTarihi!);
-      })
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+            t.isAfter(_sonMesajTarihi!);
+      }).toList();
 
-      if (yeniMesajlar.isNotEmpty) {
+      if (yeni.isNotEmpty) {
         setState(() {
-          mesajlar.addAll(yeniMesajlar);
-
+          mesajlar.addAll(yeni as Iterable<Map<String, dynamic>>);
           _sonMesajTarihi =
-              DateTime.parse(yeniMesajlar.last['InsertDate']);
+              DateTime.parse(yeni.last['InsertDate']);
         });
-        _scrollToBottom();
       }
-    } catch (e) {
-      debugPrint("Refresh hata: $e");
     } finally {
       _isRefreshing = false;
     }
   }
 
-  /// 📤 Mesaj gönder
   void mesajGonder() async {
     final text = _mesajController.text.trim();
     if (text.isEmpty) return;
 
     _mesajController.clear();
-
-    await ApiService().sendMesaj(
-      globals.kullaniciTCKN,
-      [widget.alanTckn],
-      "YAZISMA",
-      text,
-    );
-
     final now = DateTime.now();
 
     setState(() {
@@ -143,22 +117,14 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
         "Data": text,
         "InsertDate": now.toIso8601String(),
       });
-      _sonMesajTarihi = now;
     });
 
-    _scrollToBottom();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    await ApiService().sendMesaj(
+      globals.kullaniciTCKN,
+      [widget.alanTckn],
+      "YAZISMA",
+      text,
+    );
   }
 
   String normalizeTckn(dynamic v) {
@@ -168,116 +134,47 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
     return t;
   }
 
-  /// 📅 Gün başlığı
-  String gunBasligi(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final msgDay = DateTime(date.year, date.month, date.day);
-
-    if (msgDay == today) return "Bugün";
-    if (msgDay == yesterday) return "Dün";
-    return DateFormat('dd MMMM yyyy', 'tr').format(date);
-  }
-
-  Widget _gunAyirici(DateTime date) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Center(
-        child: Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            gunBasligi(date),
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _mesajBalonu(Map<String, dynamic> mesaj) {
-    final bool benimMesajim =
+    final benim =
         normalizeTckn(mesaj['GonderenTCKN']) ==
             normalizeTckn(globals.kullaniciTCKN);
 
     return Align(
       alignment:
-      benimMesajim ? Alignment.centerRight : Alignment.centerLeft,
+      benim ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
         padding: const EdgeInsets.all(12),
         constraints: const BoxConstraints(maxWidth: 300),
         decoration: BoxDecoration(
-          color: benimMesajim
-              ? AppColors.primary
-              : Colors.grey.shade300,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft:
-            benimMesajim ? const Radius.circular(16) : Radius.zero,
-            bottomRight:
-            benimMesajim ? Radius.zero : const Radius.circular(16),
-          ),
+          color: benim ? AppColors.primary : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Linkify(
           text: mesaj['Data'] ?? "",
           style: TextStyle(
-            color: benimMesajim ? Colors.white : Colors.black87,
-            fontSize: 15,
-          ),
-          linkStyle: TextStyle(
-            color: benimMesajim ? Colors.white70 : Colors.blue,
-            decoration: TextDecoration.underline,
+            color: benim ? Colors.white : Colors.black87,
           ),
           onOpen: (link) async {
-            String url = link.url;
-
-            // 🔥 ŞEMA YOKSA EKLE
-            if (!url.startsWith('http://') &&
-                !url.startsWith('https://')) {
-              url = 'https://$url';
-            }
-
-            final uri = Uri.parse(url);
-
+            final uri = Uri.parse(
+              link.url.startsWith('http')
+                  ? link.url
+                  : 'https://${link.url}',
+            );
             if (await canLaunchUrl(uri)) {
-              await launchUrl(
-                uri,
-                mode: LaunchMode.externalApplication,
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Link açılamadı: $url")),
-              );
+              await launchUrl(uri,
+                  mode: LaunchMode.externalApplication);
             }
           },
         ),
-
-
       ),
     );
   }
 
   @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    _mesajController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(widget.alanAdi),
         backgroundColor: AppColors.primary,
@@ -288,27 +185,26 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
+                : CustomScrollView(
               controller: _scrollController,
-              itemCount: mesajlar.length,
-              itemBuilder: (context, index) {
-                final msg = mesajlar[index];
-                final msgDate =
-                DateTime.parse(msg['InsertDate']);
-
-                bool gunDegisti = index == 0 ||
-                    DateTime.parse(
-                        mesajlar[index - 1]['InsertDate'])
-                        .day !=
-                        msgDate.day;
-
-                return Column(
-                  children: [
-                    if (gunDegisti) _gunAyirici(msgDate),
-                    _mesajBalonu(msg),
-                  ],
-                );
-              },
+              reverse: true,
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                      final i =
+                          mesajlar.length - 1 - index;
+                      return _mesajBalonu(mesajlar[i]);
+                    },
+                    childCount: mesajlar.length,
+                  ),
+                ),
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Container(color: Colors.white),
+                ),
+              ],
             ),
           ),
           SafeArea(
@@ -317,10 +213,16 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
                 Expanded(
                   child: TextField(
                     controller: _mesajController,
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration:
-                    const InputDecoration(hintText: "Mesaj yaz..."),
+                    decoration: const InputDecoration(
+                      hintText: "Mesaj yaz...",
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius:
+                        BorderRadius.all(Radius.circular(20)),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
                 ),
                 IconButton(

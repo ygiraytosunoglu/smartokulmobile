@@ -308,7 +308,9 @@ class _CreateSurveyScreenState extends State<CreateSurveyScreen> {
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       ...globals.globalSinifListesi.map((sinif) {
                         final id = sinif["Id"] as int;
-                        final name = sinif["Name"] ?? "Sınıf $id";
+                     //   final name = sinif["Name"] ?? "Sınıf $id";
+                        final name = sinif["Ad"] ?? "Sınıf $id";
+
                         return CheckboxListTile(
                           title: Text(name),
                           value: _selectedClasses[id] ?? false,

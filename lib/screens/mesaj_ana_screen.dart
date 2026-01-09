@@ -46,8 +46,8 @@ class _MesajAnaScreenState extends State<MesajAnaScreen> {
 
       if (index != -1 && conversations[index]['isRead'] == 0) {
         await ApiService().setMesajOkundu(
-          tckn, // gonderenTckn
-          globals.kullaniciTCKN, // alanTckn
+          globals.kullaniciTCKN, // gonderenTckn
+          tckn // alanTckn
         );
 
         setState(() {
