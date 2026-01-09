@@ -1,74 +1,86 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:intl/date_symbol_data_file.dart' show initializeDateFormatting;
+
+import 'firebase_options.dart';
+import 'globals.dart' as globals;
 import 'package:smart_okul_mobile/screens/login_screen.dart';
-import '../globals.dart' as globals;
-import 'package:flutter/services.dart';
 
-// Bildirim nesnesi global tanımlanmalı
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-FlutterLocalNotificationsPlugin();
+    FlutterLocalNotificationsPlugin();
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  globals.duyuruVar = true as ValueNotifier<bool>;
-  print('📩 Arka planda bildirim alındı: ${message.messageId}');
+/// 🔥 BACKGROUND HANDLER
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  globals.duyuruVar.value = true;
+  debugPrint('📩 Background message: ${message.messageId}');
 }
-Future<void> _initializeFirebaseMessaging() async {
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-  var _token = await messaging.getToken();
-  print("FirebaseMessaging Token: $_token");
+Future<void> initializeFirebaseMessaging() async {
+  final messaging = FirebaseMessaging.instance;
 
-  NotificationSettings settings = await messaging.requestPermission(
+  /// 🔐 Permission (iOS & Android)
+  await messaging.requestPermission(
     alert: true,
-    announcement: false,
     badge: true,
-    carPlay: false,
-    criticalAlert: false,
-    provisional: false,
     sound: true,
   );
 
-  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-    print('User granted permission');
-  } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-    print('User granted provisional permission');
-  } else {
-    print('User declined or has not accepted permission');
+  /// ✅ SADECE ANDROID TOKEN ALIR
+  if (Platform.isAndroid) {
+    final token = await messaging.getToken();
+    debugPrint('🔥 Android FCM Token: $token');
+    // backend’e gönder
   }
 
+  /// ❌ iOS’ta token / APNS / onTokenRefresh YOK
+  /// ❌ Simulator’da APNS olmadığı için bu bilinçli kapalı
+
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    print('Got a message whilst in the foreground!');
-    print('Message data: ${message.data}');
+    debugPrint('📨 Foreground message');
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    print('A new onMessageOpenedApp event was published!');
-    print('Message data: ${message.data}');
+    debugPrint('📲 Notification opened');
   });
 }
 
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  //_initializeFirebaseMessaging();
 
-  await Firebase.initializeApp();
+  /// ✅ TEK VE DOĞRU INIT
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  FirebaseMessaging.onBackgroundMessage(
+    firebaseMessagingBackgroundHandler,
+  );
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
+  const androidSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  const InitializationSettings initializationSettings =
-  InitializationSettings(android: initializationSettingsAndroid);
+  const iosSettings = DarwinInitializationSettings();
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  const initSettings = InitializationSettings(
+    android: androidSettings,
+    iOS: iosSettings,
+  );
 
-  // Sadece dikey yönlendirmeye izin ver
+  await flutterLocalNotificationsPlugin.initialize(initSettings);
+
+  await initializeFirebaseMessaging();
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -76,7 +88,6 @@ void main() async {
 
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -90,47 +101,37 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    // Uygulama ön plandayken gelen bildirimleri yakala
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      globals.duyuruVar.value = true ;//as ValueNotifier<bool>;
-      print('🔔 Uygulama açıkken bildirim alındı: ${message.notification?.title}');
+      globals.duyuruVar.value = true;
       _showLocalNotification(message);
     });
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-    AndroidNotificationDetails(
-      'channel_id',
-      'channel_name',
-      channelDescription: 'channel_description',
+    const androidDetails = AndroidNotificationDetails(
+      'default_channel',
+      'Genel Bildirimler',
+      channelDescription: 'Smart Okul bildirimleri',
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'ticker',
     );
 
-    const NotificationDetails platformChannelSpecifics =
-    NotificationDetails(android: androidPlatformChannelSpecifics);
+    const notificationDetails =
+        NotificationDetails(android: androidDetails);
 
     await flutterLocalNotificationsPlugin.show(
       0,
-      message.notification?.title ?? 'Başlık yok',
-      message.notification?.body ?? 'Mesaj yok',
-      platformChannelSpecifics,
+      message.notification?.title ?? 'Bildirim',
+      message.notification?.body ?? '',
+      notificationDetails,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: LoginScreen(),
     );
-    /*return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('📲 Bildirim Testi'),
-        ),
-      ),
-    );*/
   }
 }

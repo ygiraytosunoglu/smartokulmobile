@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,12 +26,25 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Fotoğrafları kaydetmek için izin gerekiyor</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Uygulama, profil fotoğrafı veya belge yükleme gibi özellikler için kameraya erişim isteyebilir.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Uygulama, fotoğraf yükleme ve paylaşım işlemleri için fotoğraf galerinize erişim isteyebilir.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Uygulama, fotoğraf kaydetme işlemleri için galerinize erişim isteyebilir.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Fotoğrafları kaydetmek için izin gerekiyor</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -43,9 +58,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 </dict>
 </plist>
