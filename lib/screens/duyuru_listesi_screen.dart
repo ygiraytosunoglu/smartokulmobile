@@ -241,7 +241,26 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
           padding: EdgeInsets.all(8),
           children: [
             // --- EN ÜSTE MESAJ GÖNDER BUTONU ---
-            Container(
+            // --- EN ÜSTE YENİ DUYURU BUTONU (SADECE M ve T) ---
+            if (globals.globalKullaniciTipi == 'M' ||
+                globals.globalKullaniciTipi == 'T')
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(bottom: 12),
+                child: ElevatedButton.icon(
+                  style: AppStyles.buttonStyle,
+                  icon: Icon(Icons.send),
+                  label: Text(
+                    "Yeni Duyuru",
+                    style: AppStyles.buttonTextStyle,
+                  ),
+                  onPressed: () {
+                    _bildirimGonderSayfasiniAc(context);
+                  },
+                ),
+              ),
+
+            /*Container(
               width: double.infinity,
               margin: EdgeInsets.only(bottom: 12),
               child: ElevatedButton.icon(
@@ -267,7 +286,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
                 },
               ),
             ),
-
+*/
             // --- DUYURU LİSTESİ ---
             ...duyurular.map((duyuru) {
               var okundu = duyuru['Okundu'] == 1;

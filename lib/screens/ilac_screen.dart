@@ -130,6 +130,12 @@ class _IlacScreenState extends State<IlacScreen> {
     String? seciliOgrenciTckn;
     bool isSubmitting = false;
 
+    // ✅ SADECE 1 ÖĞRENCİ VARSA OTOMATİK SEÇ
+    if (globals.globalOgrenciListesi.length == 1) {
+      final ogr = globals.globalOgrenciListesi.first;
+      seciliOgrenciTckn = ogr['TCKN'] ?? ogr['tckn'];
+    }
+
     await showDialog(
       context: context,
       builder: (context) {

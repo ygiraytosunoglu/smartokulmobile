@@ -342,10 +342,12 @@ class _SurveyScreenState extends State<SurveyScreen> {
                               subject,
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Padding(
+                            subtitle: globals.globalKullaniciTipi == 'P'
+                                ? Padding(
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text("Cevap: $answerText"),
-                            ),
+                            )
+                                : null,
                             leading: const Icon(
                               Icons.poll,
                               size: 36,

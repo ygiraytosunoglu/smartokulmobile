@@ -165,7 +165,71 @@ class _MesajAnaScreenState extends State<MesajAnaScreen> {
                       ),
                     ],
                   ),
-                  child: ListTile(
+                  child:
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        item['Name']
+                            .toString()
+                            .substring(0, 1)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    title: Text(
+                      item['Name'],
+                      style: TextStyle(
+                        fontWeight:
+                        okunmamis ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 16,
+                      ),
+                    ),
+
+                    // 👇 ÖĞRENCİ ADLARI
+                    subtitle: item['StudentName'] != null &&
+                        item['StudentName'].toString().isNotEmpty
+                        ? Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        item['StudentName'],
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: okunmamis
+                              ? AppColors.primary
+                              : Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    )
+                        : null,
+
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (okunmamis)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        const Icon(
+                          Icons.chevron_right,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
+                  )
+
+                  /*ListTile(
                     leading: CircleAvatar(
                       backgroundColor: AppColors.primary,
                       child: Text(
@@ -207,7 +271,7 @@ class _MesajAnaScreenState extends State<MesajAnaScreen> {
                         ),
                       ],
                     ),
-                  ),
+                  ),*/
                 ),
               ),
             );
