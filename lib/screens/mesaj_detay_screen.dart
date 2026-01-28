@@ -38,6 +38,15 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
   bool _isLoadingOld = false;
   bool _hasMore = true;
 
+  bool _kullaniciAltaYakinMi() {
+    if (!_scrollController.hasClients) return true;
+
+    final max = _scrollController.position.maxScrollExtent;
+    final current = _scrollController.position.pixels;
+
+    return (max - current) < 100;
+  }
+
   // ------------------ UTIL ------------------
 
   String normalizeTckn(dynamic v) {
@@ -174,7 +183,21 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
         }
       });
 
-      _scrollAlta();
+      final altaYakin = _kullaniciAltaYakinMi();
+
+      setState(() {
+        for (var m in data) {
+          if (!_mesajZatenVar(m)) {
+            mesajlar.add(m);
+            _sonMesajTarihi = DateTime.parse(m['InsertDate']);
+          }
+        }
+      });
+
+      if (altaYakin) {
+        _scrollAlta();
+      }
+
     } finally {
       _isRefreshing = false;
     }
@@ -185,6 +208,8 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
   Future<void> _eskiMesajlariYukle() async {
     if (_isLoadingOld || !_hasMore) return;
     _isLoadingOld = true;
+
+    final eskiScrollY = _scrollController.position.pixels;
 
     _skip += _take;
 
@@ -211,6 +236,10 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
           mesajlar.insert(0, m);
         }
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.jumpTo(eskiScrollY + 120);
     });
 
     _isLoadingOld = false;
