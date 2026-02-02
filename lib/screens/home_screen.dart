@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'package:smart_okul_mobile/screens/mesaj_ana_screen.dart';
+import 'package:smart_okul_mobile/screens/mesaj_ana_screen_m.dart';
 import 'package:smart_okul_mobile/screens/odev_screen.dart';
 import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
 
@@ -625,8 +626,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _mesajSayfasiniAc(BuildContext context) {
-    Navigator.push(context,
-        MaterialPageRoute(builder: (_) => MesajAnaScreen()));
+    if (globals.globalKullaniciTipi == 'M'){
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => MesajAnaScreenM()));
+    } else {
+      Navigator.push(context,
+        MaterialPageRoute(builder: (_) => MesajAnaScreen(tckn:globals.kullaniciTCKN)));
+    }
+
   }
   void _duyuruListesiSayfasiniAc(BuildContext context) {
     Navigator.push(

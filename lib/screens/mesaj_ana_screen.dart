@@ -5,7 +5,13 @@ import '../services/api_service.dart';
 import '../globals.dart' as globals;
 
 class MesajAnaScreen extends StatefulWidget {
-  const MesajAnaScreen({Key? key}) : super(key: key);
+  final String tckn; // 👈 PARAMETRE
+
+  const MesajAnaScreen({
+    Key? key,
+    required this.tckn,
+  }) : super(key: key);
+
 
   @override
   State<MesajAnaScreen> createState() => _MesajAnaScreenState();
@@ -24,7 +30,7 @@ class _MesajAnaScreenState extends State<MesajAnaScreen> {
   Future<void> _loadConversationList() async {
     try {
       final data =
-      await ApiService.getConversationList(globals.kullaniciTCKN);
+      await ApiService.getConversationList(widget.tckn);
 
       setState(() {
         conversations = List<Map<String, dynamic>>.from(data);
@@ -63,6 +69,7 @@ class _MesajAnaScreenState extends State<MesajAnaScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => MesajDetayScreen(
+          tckn:widget.tckn,
           alanTckn: tckn,
           alanAdi: name,
         ),

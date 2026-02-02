@@ -84,7 +84,7 @@ class ApiService {
         logger.e('Hata: ${response.statusCode} - ${response.body}');
         return {
           'success': false,
-          'message': 'Sunucu hatası',//: ${response.statusCode}',
+          'message': '${response.body}',
           'details': response.body
         };
       }
@@ -516,6 +516,43 @@ await apiService.putRequest(
       }
     } catch (e) {
       throw Exception("getAllDersler hatası: $e");
+    }
+  }
+
+  static Future<void> getAllTeachersAndSetGlobal(int schoolId) async {
+    final uri = Uri.parse(
+      "$baseUrl/api/Teacher/getAll?schoolId=$schoolId",
+    );
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+          // "Authorization": "Bearer ${globals.token}", // varsa aç
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+
+        globals.globalOgretmenListesi = data.map<Map<String, dynamic>>((e) => {
+          "Id": e["Id"],
+          "Name": e["Name"],
+          "TelNo": e["TelNo"],
+          "TCKN": e["TCKN"],
+          "TCKNOrig": e["TCKNOrig"],
+          "Cinsiyet": e["Cinsiyet"],
+          "DogumTarihi": e["DogumTarihi"],
+          "OgrenimDurumu": e["OgrenimDurumu"],
+        }).toList();
+      } else {
+        throw Exception(
+          "Öğretmenler alınamadı. StatusCode: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      throw Exception("getAllTeachersAndSetGlobal hata: $e");
     }
   }
 
@@ -1212,7 +1249,7 @@ await apiService.putRequest(
             "?tckn=$tckn&pin=$pswd&personType=$sRole"));
 
     if (response.statusCode != 200) {
-      return "Sunucu hatası";
+      return response.body;
     }
 
     final decoded = jsonDecode(response.body);
