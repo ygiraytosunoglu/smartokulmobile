@@ -168,7 +168,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("👪 Veli Bilgileri"),
-        content: ListView.builder(
+      /*  content: ListView.builder(
           shrinkWrap: true,
           itemCount: parents.length,
           itemBuilder: (_, i) {
@@ -179,7 +179,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 Text("Ad Soyad: ${p['Name']}"),
                 Text("Meslek: ${p['Meslek']}"),
                 Text("Hobi: ${p['Hobi']}"),
-                if ((p['TelNo'] ?? '').isNotEmpty)
+                if ((p['TelNo'] ?? '').isNotEmpty && (globals.menuListesi.contains("VeliTel")))
                   GestureDetector(
                     onTap: () => _makePhoneCall(p['TelNo']),
                     child: Text(
@@ -193,6 +193,33 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ],
             );
           },
+        ),
+       */
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: parents.map<Widget>((p) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Ad Soyad: ${p['Name']}"),
+                  Text("Meslek: ${p['Meslek']}"),
+                  Text("Hobi: ${p['Hobi']}"),
+                  if ((p['TelNo'] ?? '').isNotEmpty && (globals.menuListesi.contains("VeliTel")))
+                    GestureDetector(
+                      onTap: () => _makePhoneCall(p['TelNo']),
+                      child: Text(
+                        "Telefon: ${p['TelNo']}",
+                        style: const TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline),
+                      ),
+                    ),
+                  const Divider(),
+                ],
+              );
+            }).toList(),
+          ),
         ),
         actions: [
           TextButton(
@@ -318,7 +345,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               isKullanici: true,
             ),
             const SizedBox(height: 20),
-            const Text("👧 Öğrenciler",
+            if (globals.globalOgrenciListesi.isNotEmpty)
+              const Text("👧 Öğrenciler",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ...globals.globalOgrenciListesi.map((o) => _buildPhotoCard(
               name: o['Name'],
