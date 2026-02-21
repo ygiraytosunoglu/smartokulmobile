@@ -60,6 +60,10 @@ dependencies:
   clipboard: ^2.0.2
   file_picker: ^10.3.6
   video_thumbnail: ^0.5.6
+  photo_manager: ^3.8.3
+  wechat_camera_picker: ^4.4.0
+  extended_image: ^10.0.1
+  wechat_assets_picker: ^10.1.0
 
 dev_dependencies:
   flutter_test:

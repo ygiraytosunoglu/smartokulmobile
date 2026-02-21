@@ -26,10 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Fotoğrafları kaydetmek için izin gerekiyor</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Uygulama, profil fotoğrafı veya belge yükleme gibi özellikler için kameraya erişim isteyebilir.</string>
+	<key>NSMicrophoneUsageDescription</key>
+    <string>Video çekimi için mikrofon gerekiyor.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Uygulama, fotoğraf yükleme ve paylaşım işlemleri için fotoğraf galerinize erişim isteyebilir.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

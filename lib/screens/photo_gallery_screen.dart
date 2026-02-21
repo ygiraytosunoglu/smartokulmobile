@@ -5,18 +5,18 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
-//import 'package:smart_okul_mobile/screens/plan_screen.dart';
-//import 'package:video_player/video_player.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import '../constants.dart';
 import 'package:logger/logger.dart';
 import 'package:smart_okul_mobile/screens/video_player_screen.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-
+import 'package:wechat_camera_picker/wechat_camera_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 class PhotoGalleryScreen extends StatefulWidget {
   const PhotoGalleryScreen({Key? key}) : super(key: key);
 
@@ -31,6 +31,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   final logger = Logger();
 
   final List<Map<String, String>> _galleryMedia = [];
+
+  final Map<String, File> _videoThumbCache = {};
 
   bool _isLoading = false;
   bool _isUploading = false;
@@ -108,157 +110,112 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
   }
 
+  Future<File?> _getVideoThumbnail(String videoUrl) async {
+    if (_videoThumbCache.containsKey(videoUrl)) {
+      return _videoThumbCache[videoUrl];
+    }
 
-  /*Future<void> _loadGalleryMedia({bool isLoadMore = false}) async {
-    if (_isLoading) return;
-
-    setState(() => _isLoading = true);
     try {
-      final media = await _apiService.getGalleryWithThumbnails(
-        globals.kullaniciTCKN,
-        take: _take,
-        skip: _skip,
+      final tempDir = await getTemporaryDirectory();
+
+      final path = await vt.VideoThumbnail.thumbnailFile(
+        video: videoUrl,
+        thumbnailPath: tempDir.path,
+        imageFormat: vt.ImageFormat.JPEG,
+        quality: 80,
       );
 
-      if (mounted) {
-        setState(() {
-          if (isLoadMore) {
-            _galleryMedia.addAll(media);
-            _groupedMedia = groupByDate(_galleryMedia);
-          } else {
-            _galleryMedia.clear();
-            _galleryMedia.addAll(media);
-          }
+      if (path == null) return null;
 
-          _hasMore = media.length == _take;
-          _skip += _take;
-        });
-      }
+      final file = File(path);
+      _videoThumbCache[videoUrl] = file;
+
+      return file;
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Galeri yüklenemedi: $e")),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      logger.e("Thumbnail üretilemedi", error: e);
+      return null;
     }
   }
-*/
-  /*
-  Future<void> _pickAndUploadMedia() async {
-    try {
-      final pickedFiles = await _picker.pickMultiImage();
-      final pickedVideo = await _picker.pickVideo(source: ImageSource.gallery);
 
-      List<File> filesToUpload = [];
+  Future<List<AssetEntity>?> pickMedia(BuildContext context) async {
+    final PermissionState ps = await PhotoManager.requestPermissionExtend();
 
-      if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        filesToUpload.addAll(pickedFiles.map((x) => File(x.path)));
-      }
-      if (pickedVideo != null) {
-        filesToUpload.add(File(pickedVideo.path));
-      }
-      if (filesToUpload.isEmpty) return;
+    if (_isUploading) return null; // tekrar basmayı engeller
 
-      setState(() => _isUploading = true);
+    setState(() => _isUploading = true);
 
-      final success = await _apiService.uploadGallery(
-        globals.kullaniciTCKN,
-        filesToUpload,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success
-                ? "Medya başarıyla yüklendi"
-                : "Medya yükleme başarısız"),
-          ),
-        );
-      }
-
-      if (success) {
-        _skip = 0;
-        await _loadGalleryMedia();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Medya yükleme hatası: $e")),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
+    if (!ps.isAuth) {
+      PhotoManager.openSetting();
+      return null;
     }
+
+    final List<AssetEntity>? result =
+    await AssetPicker.pickAssets(
+      context,
+      pickerConfig: const AssetPickerConfig(
+        maxAssets: 20,
+        requestType: RequestType.common, // photo + video
+      ),
+    );
+
+    setState(() => _isUploading = false);
+
+    return result;
   }
-*/
-  Future<void> _pickAndUploadMedia() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'mp4', 'mov'],
-      );
 
-      if (result == null) return;
+  Future<AssetEntity?> openCamera(BuildContext context) async {
+    final entity = await CameraPicker.pickFromCamera(
+      context,
+      pickerConfig: const CameraPickerConfig(
+        enableRecording: true,
+      ),
+    );
 
-      List<File> filesToUpload = [];
-      List<File> selectedFiles = result.paths.map((path) => File(path!)).toList();
+    return entity;
+  }
 
-      for (var file in selectedFiles) {
-        filesToUpload.add(file);
+  Future<List<File>> convertToFiles(List<AssetEntity> assets) async {
+    List<File> files = [];
 
-        // Video mu?
-        final ext = file.path.split('.').last.toLowerCase();
-        if (['mp4', 'mov'].contains(ext)) {
-          final thumb = await generateVideoThumbnail(file.path);
-
-          if (thumb != null) {
-            filesToUpload.add(thumb);
-          }
-        }
+    for (final asset in assets) {
+      final file = await asset.file;
+      if (file != null) {
+        files.add(file);
       }
+    }
 
-      setState(() => _isUploading = true);
+    return files;
+  }
 
-      final success = await _apiService.uploadGallery(
-        globals.kullaniciTCKN,
-        filesToUpload, // içine videolar + thumbnail eklenmiş oldu
-      );
+  Future<void> pickWhatsappStyleMedia() async {
+    final assets = await pickMedia(context);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success
-                ? "Medya başarıyla yüklendi"
-                : "Medya yükleme başarısız"),
-          ),
-        );
-      }
+    if (assets == null || assets.isEmpty) return;
 
-      if (success) {
-        _skip = 0;
-        await _loadGalleryMedia();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Medya yükleme hatası: $e")),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isUploading = false);
+    final files = await convertToFiles(assets);
+
+    setState(() => _isUploading = true);
+
+    final success = await _apiService.uploadGallery(
+      globals.kullaniciTCKN,
+      files,
+    );
+
+    setState(() => _isUploading = false);
+
+    if (success) {
+      _skip = 0;
+      await _loadGalleryMedia();
     }
   }
 
   Future<File?> generateVideoThumbnail(String videoPath) async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final thumbPath = await VideoThumbnail.thumbnailFile(
+      final thumbPath = await vt.VideoThumbnail.thumbnailFile(
         video: videoPath,
         thumbnailPath: tempDir.path,
-        imageFormat: ImageFormat.JPEG,
+        imageFormat: vt.ImageFormat.JPEG,
         quality: 85,
       );
 
@@ -439,10 +396,106 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       );
     }
   }
-
   Widget _buildMediaItem(Map<String, String> media) {
     final full = media['full']!;
     final thumb = media['thumb'] ?? full;
+
+    final uri = Uri.parse(full);
+
+    final bool isVideo =
+        uri.path.toLowerCase().endsWith('.mp4') ||
+            uri.path.toLowerCase().endsWith('.mov');
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: () {
+              if (isVideo) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VideoPlayerScreen(videoUrl: full),
+                  ),
+                );
+              } else {
+                _showFullImage(full);
+              }
+            },
+
+            /// ✅ FOTO
+            child: isVideo
+                ? FutureBuilder<File?>(
+              future: _getVideoThumbnail(full),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return _buildShimmerPlaceholder();
+                }
+
+                return Image.file(
+                  snapshot.data!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                );
+              },
+            )
+                : CachedNetworkImage(
+              imageUrl: thumb,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => _buildShimmerPlaceholder(),
+              errorWidget: (_, __, ___) =>
+              const Icon(Icons.broken_image,
+                  size: 40, color: Colors.red),
+            ),
+          ),
+
+          /// ▶️ PLAY ICON
+          if (isVideo)
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(
+                Icons.play_circle_fill,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
+
+          /// DELETE
+          if (globals.globalKullaniciTipi == 'T')
+            Positioned(
+              bottom: 6,
+              right: 6,
+              child: InkWell(
+                onTap: () => _confirmDelete(full),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.delete,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+/*
+  Widget _buildMediaItem(Map<String, String> media) {
+    final full = media['full']!;
+    final thumb = media['thumb'] ?? full;
+
+    final bool isVideo =
+        full.toLowerCase().endsWith(".mp4") ||
+            full.toLowerCase().endsWith(".mov");
 
     final uri = Uri.parse(full);
     final isVideo = uri.path.toLowerCase().endsWith('.mp4');
@@ -507,195 +560,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       ),
     );
   }
-
-/*
-  Widget _buildMediaItem(Map<String, String> media) {
-    final isVideo = media['type'] == 'video';
-    return GestureDetector(
-      onTap: () {
-        if (isVideo) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VideoPlayerScreen(videoUrl: media['full']!),
-            ),
-          );
-        } else {
-          _showFullImage(media['full']!);
-        }
-      },
-      onLongPress: () => _deleteMedia(media['full']!),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: isVideo
-            ? Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: media['thumb']!,
-              fit: BoxFit.cover,
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: Icon(Icons.play_circle_fill,
-                  color: Colors.white, size: 30),
-            ),
-          ],
-        )
-            : CachedNetworkImage(
-          imageUrl: media['thumb']!,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
-*/
-/*
-  Widget _buildMediaItem(Map<String, String> media) {
-    final url = media['full']!;
-    print("_buildMediaItem url:"+url);
-    final isVideo = url.toLowerCase().contains(".mp4");
-    print("isVideo: "+isVideo.toString());
-
-    return GestureDetector(
-      onTap: () {
-        if (isVideo) {
-          print("video acilacak");
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) {
-                print("VideoPlayerScreen builder tetiklendi");
-                return VideoPlayerScreen(videoUrl: url);
-              },
-            ),
-          );
-          print("video acildi");
-
-        } else {
-          _showFullImage(url);
-
-        }
-      },
-      onLongPress: () => _deleteMedia(url),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: isVideo
-            ? Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: media['thumb']!,
-              fit: BoxFit.cover,
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: Icon(Icons.play_circle_fill,
-                  color: Colors.white, size: 30),
-            ),
-          ],
-        )
-            : CachedNetworkImage(
-          imageUrl: media['thumb']!,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
-*/
-  /*
-  Widget _buildMediaItem(Map<String, String> media) {
-    final full = media['full']!;
-    final thumb = media['thumb'] ?? full;
-
-    final uri = Uri.parse(full);
-    final isVideo = uri.path.toLowerCase().endsWith('.mp4');
-
-    return GestureDetector(
-      onTap: () {
-        if (isVideo) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VideoPlayerScreen(videoUrl: full),
-            ),
-          );
-        } else {
-          _showFullImage(full);
-        }
-      },
-      onLongPress: () => _deleteMedia(full),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: thumb,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _buildShimmerPlaceholder(),
-              errorWidget: (_, __, ___) =>
-              const Icon(Icons.broken_image, size: 40, color: Colors.red),
-            ),
-            if (isVideo)
-              const Positioned(
-                top: 8,
-                right: 8,
-                child: Icon(Icons.play_circle_fill,
-                    size: 32, color: Colors.white),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-*/
-  /* Widget _buildMediaItem(Map<String, String> media) {
-    final full = media['full']!;
-    final thumb = media['thumb'] ?? full;
-
-    /*
-    final isVideo = full.toLowerCase().endsWith(".mp4");
-*/
-    final uri = Uri.parse(full);
-    final isVideo = uri.path.toLowerCase().endsWith('.mp4');
-
-    return GestureDetector(
-      onTap: () {
-        if (isVideo) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => VideoPlayerScreen(videoUrl: full),
-            ),
-          );
-        } else {
-          _showFullImage(full);
-        }
-      },
-      onLongPress: () => _deleteMedia(full),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: thumb,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _buildShimmerPlaceholder(),
-              errorWidget: (_, __, ___) =>
-              const Icon(Icons.broken_image, size: 40, color: Colors.red),
-            ),
-            if (isVideo)
-              const Positioned(
-                top: 8,
-                right: 8,
-                child: Icon(Icons.play_circle_fill,
-                    size: 32, color: Colors.white),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 */
   @override
   Widget build(BuildContext context) {
@@ -741,8 +605,27 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 if (globals.globalKullaniciTipi == "T")
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isUploading ? null : _pickAndUploadMedia,
+                    child:
+                    ElevatedButton.icon(
+                      onPressed: _isUploading ? null : pickWhatsappStyleMedia,
+
+                      icon: _isUploading
+                          ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : const Icon(Icons.add_a_photo),
+
+                      label: Text(
+                        _isUploading ? "Yükleniyor..." : "Medya Ekle",
+                      ),
+                    )
+                    /*ElevatedButton.icon(
+                      onPressed: _isUploading ? null : pickWhatsappStyleMedia,
                       icon: const Icon(Icons.add_a_photo,
                           color: AppColors.onPrimary),
                       label:  Text("Medya Ekle",
@@ -754,7 +637,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),*/
-                    ),
+                    ),*/
                   ),
                 const SizedBox(height: 16),
                 Expanded(
@@ -801,49 +684,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     }).toList(),
                   ),
                 ),
-                /*Expanded(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (scrollInfo) {
-                      if (!_isLoading &&
-                          _hasMore &&
-                          scrollInfo.metrics.pixels >=
-                              scrollInfo.metrics.maxScrollExtent - 600) {
-                        _loadGalleryMedia(isLoadMore: true);
-                      }
-                      return false;
-                    },
-                    child: _isLoading && _galleryMedia.isEmpty
-                        ?
-                    GridView.builder(
-                      itemCount: 9,
-                      gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                      ),
-                      itemBuilder: (_, __) => _buildShimmerPlaceholder(),
-                    )
-                        : _galleryMedia.isEmpty
-                        ? const Center(child: Text("Henüz medya yok"))
-                        : GridView.builder(
-                      controller: _scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                      ),
-                      itemCount: _galleryMedia.length,
-                      itemBuilder: (context, index) {
-                        final media = _galleryMedia[index];
-                        return _buildMediaItem(media);
-                      },
-                    ),
-                  ),
-                ),
-             */
               ],
             ),
           ),
