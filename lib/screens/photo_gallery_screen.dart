@@ -17,6 +17,9 @@ import 'package:intl/intl.dart';
 import 'package:wechat_camera_picker/wechat_camera_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+
+final logger = Logger();
 class PhotoGalleryScreen extends StatefulWidget {
   const PhotoGalleryScreen({Key? key}) : super(key: key);
 
@@ -28,11 +31,20 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   final ApiService _apiService = ApiService();
   final ImagePicker _picker = ImagePicker();
   final ScrollController _scrollController = ScrollController();
-  final logger = Logger();
 
   final List<Map<String, String>> _galleryMedia = [];
 
   final Map<String, File> _videoThumbCache = {};
+
+  Set<String> _selectedStudents = {};
+  bool _selectAllStudents = false;
+
+
+  /// 👇 Galeri yükleme için seçilen kişiler
+ // List<int> selectedPersonIds = [];
+
+  /// 👇 Seçilen foto/video dosyaları
+  List<File> selectedFiles = [];
 
   bool _isLoading = false;
   bool _isUploading = false;
@@ -44,6 +56,15 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   @override
   void initState() {
     super.initState();
+    logger.i("===== GALERI INIT =====");
+    logger.i("Ogrenci count: ${globals.globalOgrenciListesi.length}");
+    logger.i("Liste: ${globals.globalOgrenciListesi}");
+
+    print("===== pGALERI INIT =====");
+    print("pOgrenci count: ${globals.globalOgrenciListesi.length}");
+    print("pListe: ${globals.globalOgrenciListesi}");
+
+
     _loadGalleryMedia();
   }
 
@@ -70,17 +91,142 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
     return grouped;
   }
+
+  Future<Set<String>?> showStudentSelectionDialog() async {
+    setState(() {
+      _selectedStudents.clear();
+      _selectAllStudents = false;
+    });
+    _selectAllStudents = false;
+
+    if (globals.globalOgrenciListesi.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text(AppLocalizations.of(context)!.studentListNotLoaded)),
+      );
+      return null;
+    }
+
+    return await showDialog<Set<String>>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+
+            void toggleAll(bool? value) {
+              setStateDialog(() {
+                _selectAllStudents = value ?? false;
+
+                if (_selectAllStudents) {
+                  _selectedStudents = globals.globalOgrenciListesi
+                      .map<String>((e) => e['TCKN'].toString())
+                      .toSet();
+                } else {
+                  _selectedStudents.clear();
+                }
+              });
+            }
+
+            return AlertDialog(
+              title:  Text(AppLocalizations.of(context)!.selectStudentsTitle),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400, // ⭐ ÖNEMLİ
+                child: Column(
+                  children: [
+
+                    /// HEPSİ
+                    CheckboxListTile(
+                      value: _selectAllStudents,
+                      title: const Text(
+                        "Hepsi",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      onChanged: toggleAll,
+                    ),
+
+                    const Divider(),
+
+                    /// ÖĞRENCİLER
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: globals.globalOgrenciListesi.length,
+                        itemBuilder: (_, index) {
+                          final student =
+                          globals.globalOgrenciListesi[index];
+
+                          final tckn = student['TCKN'].toString();
+                          final name = student['Name'];
+
+                          final selected =
+                          _selectedStudents.contains(tckn);
+
+                          return CheckboxListTile(
+                            value: selected,
+                            title: Text(name),
+                            onChanged: (val) {
+                              setStateDialog(() {
+                                if (val == true) {
+                                  _selectedStudents.add(tckn);
+                                } else {
+                                  _selectedStudents.remove(tckn);
+                                }
+
+                                _selectAllStudents =
+                                    _selectedStudents.length ==
+                                        globals.globalOgrenciListesi.length;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(AppLocalizations.of(context)!.cancel),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, _selectedStudents);
+                  },
+                  child: Text(AppLocalizations.of(context)!.contin),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _loadGalleryMedia({bool isLoadMore = false}) async {
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final media = await _apiService.getGalleryWithThumbnails(
-        globals.kullaniciTCKN,
-        take: _take,
-        skip: _skip,
-      );
+      final media;
+      List<String> list =[globals.studentTckn ?? ""] ;
+
+
+      if(globals.globalKullaniciTipi=='P'){
+        media = await _apiService.getPersonGallery(
+          list, // positional
+          take: _take,
+          skip: _skip,
+        );
+      } else {
+         media = await _apiService.getGalleryWithThumbnails(
+          globals.kullaniciTCKN,
+         take: _take,
+         skip: _skip,
+        );
+      }
+
+      print("Galeri yükleme sonucu: $media");
 
       if (!mounted) return;
 
@@ -98,9 +244,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       _hasMore = media.length == _take;
       _skip += _take;
     } catch (e) {
+      print("Galeri yükleme hatası: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Galeri yüklenemedi: $e")),
+          SnackBar(content: Text(AppLocalizations.of(context)!.galleryLoadError(e.toString()))),
         );
       }
     } finally {
@@ -138,11 +285,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   Future<List<AssetEntity>?> pickMedia(BuildContext context) async {
-    final PermissionState ps = await PhotoManager.requestPermissionExtend();
 
-    if (_isUploading) return null; // tekrar basmayı engeller
-
-    setState(() => _isUploading = true);
+    final PermissionState ps =
+    await PhotoManager.requestPermissionExtend();
 
     if (!ps.isAuth) {
       PhotoManager.openSetting();
@@ -154,11 +299,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       context,
       pickerConfig: const AssetPickerConfig(
         maxAssets: 20,
-        requestType: RequestType.common, // photo + video
+        requestType: RequestType.common,
       ),
     );
-
-    setState(() => _isUploading = false);
 
     return result;
   }
@@ -186,20 +329,45 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
     return files;
   }
-
   Future<void> pickWhatsappStyleMedia() async {
+
+    /// MEDYA SEÇ
     final assets = await pickMedia(context);
 
     if (assets == null || assets.isEmpty) return;
+
+    /// ⭐ UI stabilize
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    /// ÖĞRENCİ SEÇ
+    final selectedStudents =
+    await showStudentSelectionDialog();
+
+    if (selectedStudents == null ||
+        selectedStudents.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text(AppLocalizations.of(context)!.noStudentSelected)),
+      );
+      return;
+    }
 
     final files = await convertToFiles(assets);
 
     setState(() => _isUploading = true);
 
+
+    final result = await ApiService.uploadPersonGallery(
+      tcknOrigList: selectedStudents.toList(),//selectedPersonIds,
+      files: files,
+    );
+
+    final bool success = result["success"] ?? false;
+
+/*
     final success = await _apiService.uploadGallery(
       globals.kullaniciTCKN,
       files,
-    );
+    );*/
 
     setState(() => _isUploading = false);
 
@@ -232,7 +400,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       final status = await Permission.photos.request();
       if (status.isDenied) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Fotoğraflara erişim izni gerekli")),
+           SnackBar(content: Text(AppLocalizations.of(context)!.photoPermissionRequired)),
         );
         return;
       }
@@ -241,22 +409,22 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         url,
         albumName: globals.globalOkulAdi?.isNotEmpty == true
             ? globals.globalOkulAdi!
-            : "SmartOkul",
+            : AppLocalizations.of(context)!.appTitle,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result == true
-                ? "Medya galeriye kaydedildi"
-                : "Galeriye kaydetme başarısız"),
+                ? AppLocalizations.of(context)!.mediaSavedToGallery
+                : AppLocalizations.of(context)!.mediaSaveFailed),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Hata: $e")),
+          SnackBar(content: Text(AppLocalizations.of(context)!.err+" $e")),
         );
       }
     }
@@ -337,17 +505,17 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Medya Sil"),
-        content: const Text("Bu medya kalıcı olarak silinecek. Emin misiniz?"),
+        title:  Text(AppLocalizations.of(context)!.deleteMediaTitle),
+        content:  Text(AppLocalizations.of(context)!.deleteMediaConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("İptal"),
+            child:  Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Sil"),
+            child:  Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),
@@ -378,7 +546,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       );
 
       if (!success) {
-        throw Exception("Silme başarısız");
+        throw Exception(AppLocalizations.of(context)!.deleteFailed(""));
       }
 
       setState(() {
@@ -387,12 +555,12 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Medya silindi")),
+         SnackBar(content: Text(AppLocalizations.of(context)!.mediaDeleted)),
       );
     } catch (e) {
       logger.e("Medya silme hatası", error: e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Silme başarısız: $e")),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
       );
     }
   }
@@ -401,86 +569,78 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final thumb = media['thumb'] ?? full;
 
     final uri = Uri.parse(full);
-
     final bool isVideo =
         uri.path.toLowerCase().endsWith('.mp4') ||
-            uri.path.toLowerCase().endsWith('.mov');
+        uri.path.toLowerCase().endsWith('.mov');
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: () {
+        if (isVideo) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => VideoPlayerScreen(videoUrl: full),
+            ),
+          );
+        } else {
+          _showFullImage(full);
+        }
+      },
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          GestureDetector(
-            onTap: () {
-              if (isVideo) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => VideoPlayerScreen(videoUrl: full),
-                  ),
-                );
-              } else {
-                _showFullImage(full);
-              }
-            },
-
-            /// ✅ FOTO
-            child: isVideo
-                ? FutureBuilder<File?>(
-              future: _getVideoThumbnail(full),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return _buildShimmerPlaceholder();
-                }
-
-                return Image.file(
-                  snapshot.data!,
+          /// Thumbnail
+          isVideo
+              ? FutureBuilder<File?>(
+                  future: _getVideoThumbnail(full),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return _buildShimmerPlaceholder();
+                    return Image.file(
+                      snapshot.data!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    );
+                  },
+                )
+              : CachedNetworkImage(
+                  imageUrl: thumb,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
-                );
-              },
-            )
-                : CachedNetworkImage(
-              imageUrl: thumb,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _buildShimmerPlaceholder(),
-              errorWidget: (_, __, ___) =>
-              const Icon(Icons.broken_image,
-                  size: 40, color: Colors.red),
-            ),
-          ),
+                  placeholder: (_, __) => _buildShimmerPlaceholder(),
+                  errorWidget: (_, __, ___) => const ColoredBox(
+                    color: Colors.black12,
+                    child: Icon(Icons.broken_image, size: 36, color: Colors.red),
+                  ),
+                ),
 
-          /// ▶️ PLAY ICON
-          if (isVideo)
-            const Positioned(
-              top: 8,
-              right: 8,
+          /// ▶️ Video — yarı saydam overlay + ortada play ikonu
+          if (isVideo) ...[
+            Container(color: Colors.black26),
+            const Center(
               child: Icon(
                 Icons.play_circle_fill,
-                size: 32,
+                size: 44,
                 color: Colors.white,
               ),
             ),
+          ],
 
-          /// DELETE
+          /// 🗑️ Sil butonu — sadece öğretmen
           if (globals.globalKullaniciTipi == 'T')
             Positioned(
-              bottom: 6,
-              right: 6,
-              child: InkWell(
+              bottom: 4,
+              right: 4,
+              child: GestureDetector(
                 onTap: () => _confirmDelete(full),
                 child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
                     color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.delete,
-                    size: 20,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.delete, size: 16, color: Colors.white),
                 ),
               ),
             ),
@@ -488,86 +648,15 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       ),
     );
   }
-/*
-  Widget _buildMediaItem(Map<String, String> media) {
-    final full = media['full']!;
-    final thumb = media['thumb'] ?? full;
 
-    final bool isVideo =
-        full.toLowerCase().endsWith(".mp4") ||
-            full.toLowerCase().endsWith(".mov");
-
-    final uri = Uri.parse(full);
-    final isVideo = uri.path.toLowerCase().endsWith('.mp4');
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Stack(
-        children: [
-          GestureDetector(
-            onTap: () {
-              if (isVideo) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => VideoPlayerScreen(videoUrl: full),
-                  ),
-                );
-              } else {
-                _showFullImage(full);
-              }
-            },
-            child: CachedNetworkImage(
-              imageUrl: thumb,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _buildShimmerPlaceholder(),
-              errorWidget: (_, __, ___) =>
-              const Icon(Icons.broken_image, size: 40, color: Colors.red),
-            ),
-          ),
-
-          // ▶️ Video ikonu
-          if (isVideo)
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: Icon(Icons.play_circle_fill,
-                  size: 32, color: Colors.white),
-            ),
-
-          // 🗑️ DELETE BUTONU (SADECE ÖĞRETMEN)
-          if (globals.globalKullaniciTipi == 'T')
-            Positioned(
-              bottom: 6,
-              right: 6,
-              child: InkWell(
-                onTap: () => _confirmDelete(full),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.delete,
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-*/
   @override
   Widget build(BuildContext context) {
+    print("GALERI BUILD CALISTI");
     return Scaffold(
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            'Galeri',
+            AppLocalizations.of(context)!.galleryTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -586,106 +675,85 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                /*const Padding(
-                  padding: EdgeInsets.only(bottom: 8.0),
-                  child: Text(
-                    "Her sınıf sadece son 100 medya öğesini görebilir",
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),*/
-                if (globals.globalKullaniciTipi == "T")
-                  SizedBox(
+          child: Column(
+            children: [
+              /// ➕ Medya ekle butonu (öğretmen)
+              if (globals.globalKullaniciTipi == "T")
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                  child: SizedBox(
                     width: double.infinity,
-                    child:
-                    ElevatedButton.icon(
+                    child: ElevatedButton.icon(
                       onPressed: _isUploading ? null : pickWhatsappStyleMedia,
-
                       icon: _isUploading
                           ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                          : const Icon(Icons.add_a_photo),
-
-                      label: Text(
-                        _isUploading ? "Yükleniyor..." : "Medya Ekle",
-                      ),
-                    )
-                    /*ElevatedButton.icon(
-                      onPressed: _isUploading ? null : pickWhatsappStyleMedia,
-                      icon: const Icon(Icons.add_a_photo,
-                          color: AppColors.onPrimary),
-                      label:  Text("Medya Ekle",
-                          style: AppStyles.buttonTextStyle),
-                      style: AppStyles.buttonStyle,/*ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),*/
-                    ),*/
-                  ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: _groupedMedia.isEmpty
-                      ? const Center(child: Text(" ")) //Center(child: Text("Henüz medya yok"))
-                      : ListView(
-                    controller: _scrollController,
-                    children: _groupedMedia.entries.map((entry) {
-                      final date =  DateFormat('dd-MM-yyyy').format(DateTime.parse(entry.key)); ;
-                      final items = entry.value;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 📅 Tarih başlığı
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Text(
-                              "📅 $date",
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
                               ),
-                            ),
-                          ),
-
-                          // Grid alanı
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: items.length,
-                            gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                            ),
-                            itemBuilder: (_, index) =>
-                                _buildMediaItem(items[index]),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                            )
+                          : const Icon(Icons.add_a_photo),
+                      label: Text(
+                        _isUploading
+                            ? AppLocalizations.of(context)!.uploading
+                            : AppLocalizations.of(context)!.addMedia,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
+
+              /// 📷 Galeri
+              Expanded(
+                child: _groupedMedia.isEmpty
+                    ? const Center(child: Text(" "))
+                    : ListView(
+                        controller: _scrollController,
+                        padding: EdgeInsets.zero,
+                        children: _groupedMedia.entries.map((entry) {
+                          final date = DateFormat('dd MMMM yyyy', 'tr')
+                              .format(DateTime.parse(entry.key));
+                          final items = entry.value;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              /// Tarih başlığı
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
+                                child: Text(
+                                  date,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+
+                              /// Kare grid — 3 sütun, 2px boşluk
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: EdgeInsets.zero,
+                                itemCount: items.length,
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  crossAxisSpacing: 2,
+                                  mainAxisSpacing: 2,
+                                  childAspectRatio: 1,
+                                ),
+                                itemBuilder: (_, index) =>
+                                    _buildMediaItem(items[index]),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
           ),
         ),
       ),

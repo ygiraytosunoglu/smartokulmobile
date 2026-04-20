@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import '../constants.dart';
 import 'package:logger/logger.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class PlanScreen extends StatefulWidget {
   const PlanScreen({Key? key}) : super(key: key);
@@ -20,6 +21,7 @@ class PlanScreen extends StatefulWidget {
 }
 
 class _PlanScreenState extends State<PlanScreen> {
+  AppLocalizations get t => AppLocalizations.of(context)!;
   final ApiService _apiService = ApiService();
   final ImagePicker _picker = ImagePicker();
   final ScrollController _scrollController = ScrollController();
@@ -101,7 +103,7 @@ class _PlanScreenState extends State<PlanScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${mappedImages.length} plan bulundu.")),
+          SnackBar(content: Text("${mappedImages.length} "+t.planFound)),
         );
       }
 
@@ -110,7 +112,7 @@ class _PlanScreenState extends State<PlanScreen> {
       logger.e("Plan alma hatası: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Plan alınamadı")),
+           SnackBar(content: Text(t.planFetchError)),
         );
       }
     }
@@ -122,7 +124,7 @@ class _PlanScreenState extends State<PlanScreen> {
       final status = await Permission.photos.request();
       if (status.isDenied) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Fotoğraflara erişim izni gerekli")),
+           SnackBar(content: Text(t.permissionPhotosRequired)),
         );
         return;
       }
@@ -135,11 +137,11 @@ class _PlanScreenState extends State<PlanScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result == true
-                ? "Medya galeriye kaydedildi"
-                : "Galeriye kaydetme başarısız"),
+                ? t.planSavedToGallery
+                : t.planSaveFailed),
           ),
         );
       }
@@ -236,9 +238,9 @@ class _PlanScreenState extends State<PlanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            'Planlar',
+            t.plans,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -281,11 +283,11 @@ class _PlanScreenState extends State<PlanScreen> {
                                 onChanged: (val) {
                                   if (val != null) setState(() => _secimTipi = val);
                                 },
-                                items: const [
+                                items:  [
                                   DropdownMenuItem(
-                                      value: 'Günlük', child: Text('Günlük')),
+                                      value: t.daily, child: Text(t.daily)),
                                   DropdownMenuItem(
-                                      value: 'Aylık', child: Text('Aylık')),
+                                      value: t.monthly, child: Text(t.monthly)),
                                 ],
                               ),
                             ),
@@ -294,7 +296,7 @@ class _PlanScreenState extends State<PlanScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (_secimTipi == 'Günlük')
+                    if (_secimTipi == t.daily)
                       Row(
                         children: [
                           _buildDropdown<int>(
@@ -334,7 +336,7 @@ class _PlanScreenState extends State<PlanScreen> {
                           child: ElevatedButton.icon(
                             onPressed: planEkle,
                             icon: const Icon(Icons.add, color: AppColors.primary),
-                            label: const Text("Plan Ekle"),
+                            label:  Text(t.addPlan),
                             style: AppStyles.buttonStyle,
                           ),
                         ),
@@ -343,53 +345,19 @@ class _PlanScreenState extends State<PlanScreen> {
                           child: ElevatedButton.icon(
                             onPressed: planlariGetir,
                             icon: const Icon(Icons.search, color: AppColors.primary),
-                            label: const Text("Getir"),
+                            label:  Text(t.fetch),
                             style: AppStyles.buttonStyle,
                           ),
                         ),
                       ],
                     ),
 
-                    /*const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: planlariGetir,
-                        icon: const Icon(Icons.search, color: AppColors.primary),
-                        label: const Text("Plan Ekle",
-                            //style: TextStyle(color: AppColors.primary)
-                        ),
-                        style: AppStyles.buttonStyle,/* ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        )*/
-                      ),
-                    ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: planlariGetir,
-                        icon: const Icon(Icons.search, color: AppColors.primary),
-                        label: const Text("Getir",
-                           // style: TextStyle(color: AppColors.primary)
-                        ),
-                        style:AppStyles.buttonStyle,/*
-                        ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),*/
-                      ),
-                    ),*/
                   ],
                 ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: _galleryMedia.isEmpty
-                      ? const Center(child: Text("Henüz plan bulunamadı"))
+                      ?  Center(child: Text(t.noPlansYet))
                       : GridView.builder(
                     controller: _scrollController,
                     gridDelegate:
@@ -429,14 +397,14 @@ class _PlanScreenState extends State<PlanScreen> {
 
       final path = result.files.single.path;
       if (path == null) {
-        throw Exception("Dosya yolu alınamadı.");
+        throw Exception(t.filePathError);
       }
 
       File file = File(path);
 
       int vyear = _selectedYil;
       int vmonth = _selectedAy;
-      int vday = _secimTipi == 'Günlük' ? _selectedGun : 0;
+      int vday = _secimTipi == t.daily ? _selectedGun : 0;
 
       logger.i("Plan yükleniyor → Gün: $vday Ay: $vmonth Yıl: $vyear");
 
@@ -454,7 +422,7 @@ class _PlanScreenState extends State<PlanScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Plan başarıyla yüklendi")),
+           SnackBar(content: Text(t.planUploadSuccess)),
         );
       }
 
@@ -465,7 +433,7 @@ class _PlanScreenState extends State<PlanScreen> {
       logger.e("Plan yükleme hatası: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Plan yüklenemedi: $e")),
+          SnackBar(content: Text(t.planUploadError+"$e")),
         );
       }
     } finally {

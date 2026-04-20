@@ -3,6 +3,7 @@ import 'package:smart_okul_mobile/constants.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
 import 'package:smart_okul_mobile/services/api_service.dart';
 import '../services/api_service.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class DoorControlPage extends StatelessWidget {
   final bool hasGateAccess;
@@ -14,28 +15,17 @@ class DoorControlPage extends StatelessWidget {
     required this.hasParkingAccess,
   }) : super(key: key);
 
-  /*void anaKapiyiAc(BuildContext context){
-    Future<String> cevap = _onGatePressed(context);
-    _onGatePressed(context).then((cevap){
-      if (cevap =="200" )   {
-        _pencereAc(context,"Ana Kapı açılma isteği gönderdildi");
-      } else {
-        _pencereAc(context, "İstek gönderilemedi ");
-      }
-    });
-  }*/
-
   Future<void> anaKapiyiAc(BuildContext context) async {
     try {
       String cevap = await ApiService().onGatePressed(context);
 
       if (cevap == "200") {
-        _pencereAc(context, "Ana Kapı açılma isteği gönderildi");
+        _pencereAc(context, AppLocalizations.of(context)!.mainGateRequestSent);
       } else {
-        _pencereAc(context, "Otopark için istek gönderilemedi");
+        _pencereAc(context,AppLocalizations.of(context)!.mainGateRequestFailed);
       }
     } catch (e) {
-      _pencereAc(context, "Bir hata oluştu: $e");
+      _pencereAc(context, AppLocalizations.of(context)!.errorOccurred+": $e");
     }
   }
 
@@ -67,7 +57,7 @@ class DoorControlPage extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text("Geldiğimizi Bildir"),
+              title: Text(AppLocalizations.of(context)!.notifyArrivalTitle),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView(
@@ -90,7 +80,7 @@ class DoorControlPage extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text("İptal"),
+                  child:  Text(AppLocalizations.of(context)!.cancel),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -102,16 +92,16 @@ class DoorControlPage extends StatelessWidget {
                     }
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
+                       SnackBar(
                         content: Text(
-                          'Yoklamalar Kaydedildi',
+                          AppLocalizations.of(context)!.attendanceSaved,
                           style: TextStyle(color: Colors.white),
                         ),
                         backgroundColor: Colors.green,
                       ),
                     );
                   },
-                  child: const Text("Geldiğimizi Bildir"),
+                  child:  Text(AppLocalizations.of(context)!.notifyArrivalTitle),
                 ),
               ],
             );
@@ -126,12 +116,12 @@ class DoorControlPage extends StatelessWidget {
       String cevap = await ApiService().onParkingPressed(context);
 
       if (cevap == "200") {
-        _pencereAc(context, "Otopark Kapısı açılma isteği gönderildi");
+        _pencereAc(context, AppLocalizations.of(context)!.parkingRequestSent);
       } else {
-        _pencereAc(context, "Otopark için istek gönderilemedi");
+        _pencereAc(context,AppLocalizations.of(context)!.parkingRequestFailed);
       }
     } catch (e) {
-      _pencereAc(context, "Bir hata oluştu: $e");
+      _pencereAc(context, AppLocalizations.of(context)!.errorOccurred+": $e");
     }
   }
 
@@ -144,43 +134,14 @@ class DoorControlPage extends StatelessWidget {
     );
   }
 
- /* Future<String> _onGatePressed(BuildContext context) async{
-    // TODO: API çağrısı buraya eklenecek
-    final String baseUrl =
-         globals.serverAdrr+"/api/school/open-door/"+globals.globalSchoolId;
-    print("baseUrl:$baseUrl");
-    Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("gate status:"+response.statusCode.toString());
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ana Kapı Kontrol çağrıldı')),
-    );
-    return Future.delayed(Duration(seconds: 2), () => response.statusCode.toString()??"0");
-  }
-
-  Future<String>  _onParkingPressed(BuildContext context) async{
-    // TODO: API çağrısı buraya eklenecek
-    final String baseUrl =
-       globals.serverAdrr+"/api/school/open-park/"+globals.globalSchoolId;
-    print("baseUrl:$baseUrl");
-    Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
-    print("otopark status:"+response.statusCode.toString());
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Otopark Kontrol çağrıldı')),
-    );
-    return Future.delayed(Duration(seconds: 2), () => response.statusCode.toString()??"0");
-  }
-*/
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            'Kapı Kontrol Paneli',
+            AppLocalizations.of(context)!.doorControlTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -214,7 +175,7 @@ class DoorControlPage extends StatelessWidget {
                 _buildControlButton(
                   context: context,
                   icon: Icons.door_front_door,
-                  label: 'Ana Kapı Kontrol',
+                  label: AppLocalizations.of(context)!.mainGateControl,
                   enabled: hasGateAccess,
                   onPressed: () => bildirVeKapiAc(context),
                 ),
@@ -224,7 +185,7 @@ class DoorControlPage extends StatelessWidget {
                 _buildControlButton(
                   context: context,
                   icon: Icons.local_parking,
-                  label: 'Otopark Kontrol',
+                  label: AppLocalizations.of(context)!.parkingControl,
                   enabled: hasParkingAccess,
                   onPressed: () => otoparkKapisiniAc(context),
                 ),
@@ -236,44 +197,7 @@ class DoorControlPage extends StatelessWidget {
     )
 
 
-    /*Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.background,//.primary.withOpacity(0.8),
-              AppColors.background,//.primary.withOpacity(0.6),
-            ],
-          ),
-        ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (hasGateAccess==true)
-                  _buildControlButton(
-                    context: context,
-                    icon: Icons.door_front_door,
-                    label: 'Ana Kapı Kontrol',
-                    enabled: hasGateAccess,
-                    onPressed: () => bildirVeKapiAc(context),
-                  ),
-                const SizedBox(height: 32),
-                if (hasParkingAccess==true)
-                  _buildControlButton(
-                    context: context,
-                    icon: Icons.local_parking,
-                    label: 'Otopark Kontrol',
-                    enabled: hasParkingAccess,
-                    onPressed: () => otoparkKapisiniAc(context),
-                  ),
-              ],
-            ),
-          ),
-      )
-*/
+
     );
   }
 
@@ -288,27 +212,12 @@ class DoorControlPage extends StatelessWidget {
       opacity: enabled ? 1.0 : 0.5,
       child: ElevatedButton.icon(
         style: AppStyles.buttonStyle,
-        /*ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 64),
-          /*shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),*/
-          elevation: 4,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.onPrimary,
 
-        ),*/
         icon: Icon(icon, size: 32, color: AppColors.onPrimary
         ),
         label: Text(
           label,
-          style: AppStyles.buttonTextStyle,/*const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.onPrimary,
-            letterSpacing: 1.2,
-          ),*/
+          style: AppStyles.buttonTextStyle,
         ),
         onPressed: enabled ? onPressed : null,
       ),

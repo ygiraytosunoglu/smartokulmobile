@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class EtkinlikScreen extends StatefulWidget {
   @override
@@ -12,6 +13,7 @@ class EtkinlikScreen extends StatefulWidget {
 }
 
 class _EtkinlikScreenState extends State<EtkinlikScreen> {
+  AppLocalizations get t => AppLocalizations.of(context)!;
   List<Map<String, dynamic>> etkinlikler = [];
   bool isLoading = true;
 
@@ -64,14 +66,14 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Etkinlik Detayı'),
+        title:  Text(t.activityDetailTitle),
         content: Text(
-          "Açıklama: ${aciklamaMetni.isNotEmpty ? aciklamaMetni : 'Yok'}",
+          t.description+": ${aciklamaMetni.isNotEmpty ? aciklamaMetni : t.noDescription}",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Tamam'),
+            child:  Text(t.ok),
           ),
         ],
       ),
@@ -95,7 +97,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Yeni Etkinlik Oluştur'),
+              title:  Text(t.newActivity),
               content: SingleChildScrollView(
                 child: Column(
                   children: [
@@ -103,8 +105,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     TextField(
                       controller: tarihController,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Etkinlik Günü',
+                      decoration:  InputDecoration(
+                        labelText: t.activityDay,
                         border: OutlineInputBorder(),
                       ),
                       onTap: () async {
@@ -120,13 +122,13 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                         }
                       },
                     ),
-                    const SizedBox(height: 8),
+                     SizedBox(height: 8),
                     // ⏰ Etkinlik Saati
                     TextField(
                       controller: saatController,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Etkinlik Saati',
+                      decoration:  InputDecoration(
+                        labelText: t.activityTime,
                         border: OutlineInputBorder(),
                       ),
                       onTap: () async {
@@ -143,8 +145,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     // 📍 Etkinlik Yeri
                     TextField(
                       controller: yerController,
-                      decoration: const InputDecoration(
-                        labelText: 'Etkinlik Yeri',
+                      decoration:  InputDecoration(
+                        labelText: t.activityPlace,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -152,8 +154,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     // 📝 Açıklama
                     TextField(
                       controller: aciklamaController,
-                      decoration: const InputDecoration(
-                        labelText: 'Açıklama',
+                      decoration:  InputDecoration(
+                        labelText: t.description,
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
@@ -162,15 +164,15 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     // 🎓 Sınıf seçimleri
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: const Text(
-                        "Sınıflar:",
+                      child:  Text(
+                        t.classes+":",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     Column(
                       children: globals.globalSinifListesi.map<Widget>((sinif) {
                         int id = sinif['Id'];
-                        String ad = sinif['Ad'] ?? "Sınıf";
+                        String ad = sinif['Ad'] ?? t.classLabel;
                         return CheckboxListTile(
                           title: Text(ad),
                           value: seciliSiniflar[id],
@@ -190,7 +192,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () => Navigator.of(context).pop(),
-                  child: const Text('İptal'),
+                  child:  Text(t.cancel),
                 ),
                 ElevatedButton(
                   onPressed: isSubmitting
@@ -199,8 +201,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     if (tarihController.text.isEmpty ||
                         saatController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Etkinlik gün ve saati seçiniz.')),
+                         SnackBar(
+                            content: Text(t.selectDayTime)),
                       );
                       return;
                     }
@@ -208,9 +210,9 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     if (yerController.text.isEmpty ||
                         aciklamaController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                         SnackBar(
                             content:
-                            Text('Etkinlik yeri ve açıklama boş olamaz.')),
+                            Text(t.placeDescriptionEmpty)),
                       );
                       return;
                     }
@@ -221,8 +223,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                         .toList();
                     if (secilenler.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('En az bir sınıf seçmelisiniz.')),
+                         SnackBar(
+                            content: Text(t.selectAtLeastOneClass)),
                       );
                       return;
                     }
@@ -262,16 +264,16 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
 
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                         SnackBar(
                             content:
-                            Text('Etkinlik başarıyla oluşturuldu.')),
+                            Text(t.activityCreated)),
                       );
                       _loadEtkinlikler();
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content:
-                            Text('Etkinlik oluşturulamadı: $e')),
+                            Text(t.activityCreateError+' $e')),
                       );
                       setState(() {
                         isSubmitting = false;
@@ -279,7 +281,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     }
                   },
                   child: Text(
-                    isSubmitting ? 'Oluşuturuluyor...' : 'Oluştur',
+                    isSubmitting ? t.creating : t.create,
                   ),
                 ),
               ],
@@ -330,8 +332,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aktivite silindi'),
+           SnackBar(
+            content: Text(t.activityDeleted),
             backgroundColor: Colors.green,
           ),
         );
@@ -340,8 +342,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
         await _loadEtkinlikler();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Silme yetkiniz yok'),
+           SnackBar(
+            content: Text(t.noDeletePermission),
             backgroundColor: Colors.red,
           ),
         );
@@ -349,7 +351,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Silme hatası: $e'),
+          content: Text(t.activityDeleteError+' $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -396,7 +398,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text("Etkinliği Düzenle"),
+              title:  Text(t.editActivity),
               content: SingleChildScrollView(
                 child: Column(
                   children: [
@@ -404,8 +406,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     TextField(
                       controller: tarihController,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Etkinlik Günü',
+                      decoration:  InputDecoration(
+                        labelText: t.activityDay,
                         border: OutlineInputBorder(),
                       ),
                       onTap: () async {
@@ -427,8 +429,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     TextField(
                       controller: saatController,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Etkinlik Saati',
+                      decoration:  InputDecoration(
+                        labelText:t.activityTime,
                         border: OutlineInputBorder(),
                       ),
                       onTap: () async {
@@ -449,8 +451,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     // 📍 Yer
                     TextField(
                       controller: yerController,
-                      decoration: const InputDecoration(
-                        labelText: 'Etkinlik Yeri',
+                      decoration:  InputDecoration(
+                        labelText: t.activityPlace,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -460,8 +462,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     TextField(
                       controller: aciklamaController,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Açıklama',
+                      decoration:  InputDecoration(
+                        labelText: t.description,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -473,7 +475,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () => Navigator.pop(context),
-                  child: const Text("İptal"),
+                  child:  Text(t.cancel),
                 ),
                 ElevatedButton(
                   onPressed: isSubmitting
@@ -485,8 +487,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                         yerController.text.isEmpty ||
                         aciklamaController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Tüm alanlar doldurulmalıdır"),
+                         SnackBar(
+                          content: Text(t.fillAllFields),
                         ),
                       );
                       return;
@@ -525,8 +527,8 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       if (success) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Etkinlik güncellendi"),
+                           SnackBar(
+                            content: Text(t.activityUpdated),
                             backgroundColor: Colors.green,
                           ),
                         );
@@ -536,14 +538,14 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       setStateDialog(() => isSubmitting = false);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("Güncelleme hatası: $e"),
+                          content: Text(t.activityUpdateError+" $e"),
                           backgroundColor: Colors.red,
                         ),
                       );
                     }
                   },
                   child: Text(
-                    isSubmitting ? "Değiştiriliyor..." : "Değiştir",
+                    isSubmitting ? t.updating : t.update,
                   ),
                 ),
               ],
@@ -559,9 +561,9 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            'Etkinlik Listesi',
+            t.activityListTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -594,7 +596,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     },
                     icon: const Icon(Icons.add, color: AppColors.onPrimary),
                     label:  Text(
-                      'Yeni Etkinlik Oluştur',
+                      t.newActivity,
                       //style: TextStyle(color: Colors.blue),
                     ),
                     style: AppStyles.buttonStyle,
@@ -612,9 +614,9 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : (etkinlikler.isEmpty)
-                  ? const Center(
+                  ?  Center(
                 child: Text(
-                  "Henüz etkinlik yok.",
+                  t.noActivityYet,
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               )
@@ -684,11 +686,11 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (sinifAdlari.isNotEmpty)
-                            Text('Sınıf/lar: $sinifAdlari', style: TextStyle(color: renk)),
+                            Text(t.classLabel+': $sinifAdlari', style: TextStyle(color: renk)),
                           if (yer.isNotEmpty)
-                            Text('Yer: $yer', style: TextStyle(color: renk)),
+                            Text(t.placeLabel+': $yer', style: TextStyle(color: renk)),
                           if (tarih.isNotEmpty)
-                            Text('Tarih: $tarih', style: TextStyle(color: renk)),
+                            Text(t.dateLabel+': $tarih', style: TextStyle(color: renk)),
                         ],
                       ),
                       trailing: Row(
@@ -698,7 +700,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                           if(globals.globalKullaniciTipi!='P')
                             IconButton(
                             icon: const Icon(Icons.edit, color: Colors.orange),
-                            tooltip: "Düzenle",
+                            tooltip: t.edit,
                             onPressed: () {
                               _updateActivity(etkinlik);
                             },
@@ -708,7 +710,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                           if(globals.globalKullaniciTipi!='P')
                             IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            tooltip: "Sil",
+                            tooltip: t.delete,
                             onPressed: () {
                               final int activityId = etkinlik['Id'];
                               _deleteActivity(activityId);
@@ -717,22 +719,6 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                         ],
                       ),
                     ),
-
-                    /*child: ListTile(
-                      title: Text(
-                        aciklama.isNotEmpty ? aciklama : detay,
-                        style: TextStyle(color: renk, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (sinifAdlari.isNotEmpty) Text('Sınıf/lar: $sinifAdlari', style: TextStyle(color: renk)),
-                          if (yer.isNotEmpty) Text('Yer: $yer', style: TextStyle(color: renk)),
-                          if (tarih.isNotEmpty) Text('Tarih: $tarih', style: TextStyle(color: renk)),
-                        ],
-                      ),
-                      onTap: () => null,//_etkinligeTiklandi(etkinlik['Data']),
-                    ),*/
                   );
                 },
               ),
@@ -743,271 +729,3 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
     );
   }
 }
-
-
-/*import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../constants.dart';
-import '../services/api_service.dart';
-import '../globals.dart' as globals;
-
-class EtkinlikScreen extends StatefulWidget {
-  @override
-  _EtkinlikScreenState createState() => _EtkinlikScreenState();
-}
-
-class _EtkinlikScreenState extends State<EtkinlikScreen> {
-  List<Map<String, dynamic>> etkinlikler = [];
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadEtkinlikler();
-  }
-
-  Future<void> _loadEtkinlikler() async {
-    try {
-      final data = await ApiService().getEtkinlikList(globals.kullaniciTCKN);
-      setState(() {
-        etkinlikler = data ?? [];  // null gelirse boş liste ata
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Hata _loadEtkinlikler: $e');
-      setState(() {
-        etkinlikler = []; // hata olsa bile liste boş kalır
-        isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _etkinligeTiklandi(String detay) async {
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Etkinlik Detayı'),
-        content: Text(detay ?? "Detay yok"), // null kontrolü
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Tamam'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showEtkinlikForm() async {
-    DateTime? selectedDate;
-    TimeOfDay? selectedTime;
-    final TextEditingController yerController = TextEditingController();
-    final TextEditingController aciklamaController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Yeni Etkinlik Oluştur'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Etkinlik Günü
-                ListTile(
-                  title: Text(selectedDate == null
-                      ? 'Etkinlik Günü Seç'
-                      : 'Tarih: ${DateFormat('dd.MM.yyyy').format(selectedDate!)}'),
-                  trailing: Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2100),
-                    );
-                    if (date != null) setState(() => selectedDate = date);
-                  },
-                ),
-                const SizedBox(height: 8),
-                // Etkinlik Saati
-                ListTile(
-                  title: Text(selectedTime == null
-                      ? 'Etkinlik Saati Seç'
-                      : 'Saat: ${selectedTime!.format(context)}'),
-                  trailing: Icon(Icons.access_time),
-                  onTap: () async {
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    if (time != null) setState(() => selectedTime = time);
-                  },
-                ),
-                const SizedBox(height: 8),
-                // Etkinlik Yeri
-                TextField(
-                  controller: yerController,
-                  decoration: const InputDecoration(
-                    labelText: 'Etkinlik Yeri',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Açıklama
-                TextField(
-                  controller: aciklamaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Açıklama',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('İptal'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (selectedDate == null || selectedTime == null || yerController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Lütfen tüm alanları doldurun.')),
-                  );
-                  return;
-                }
-
-                // Tarih ve saati birleştir
-                final etkinlikTarihi = DateTime(
-                  selectedDate!.year,
-                  selectedDate!.month,
-                  selectedDate!.day,
-                  selectedTime!.hour,
-                  selectedTime!.minute,
-                );
-
-                // API çağrısı
-                try {
-                  await ApiService().createEtkinlik({
-                    'tarih': etkinlikTarihi.toIso8601String(),
-                    'yer': yerController.text,
-                    'aciklama': aciklamaController.text,
-                    'gonderenTCKN': globals.kullaniciTCKN,
-                  });
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Etkinlik başarıyla oluşturuldu.')),
-                  );
-                  _loadEtkinlikler(); // Listeyi yenile
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Etkinlik oluşturulamadı: $e')),
-                  );
-                }
-              },
-              child: const Text('Oluştur'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Etkinlik Listesi'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
-            ],
-          ),
-        ),
-        child: Column(
-          children: [
-            // Öğretmen ise buton göster
-            if (globals.globalKullaniciTipi == "T")
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _showEtkinlikForm,
-                    icon: const Icon(Icons.add, color: Colors.blue),
-                    label: const Text(
-                      'Yeni Etkinlik Oluştur',
-                      style: TextStyle(color: Colors.blue),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : etkinlikler.isEmpty
-                  ? const Center(
-                child: Text(
-                  "Henüz etkinlik yok.",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              )
-                  : ListView.builder(
-                itemCount: etkinlikler.length,
-                itemBuilder: (context, index) {
-                  var etkinlik = etkinlikler[index];
-                  var renk = Colors.blue[900];
-
-                  String tarih = "Tarih yok";
-                  if (etkinlik['InsertDate'] != null &&
-                      etkinlik['InsertDate'].toString().isNotEmpty) {
-                    try {
-                      tarih = DateFormat('dd.MM.yyyy HH:mm').format(
-                        DateTime.parse(etkinlik['InsertDate']),
-                      );
-                    } catch (e) {
-                      tarih = "Geçersiz tarih";
-                    }
-                  }
-
-                  return ListTile(
-                    title: Text(
-                      etkinlik['Baslik'] ?? "",
-                      style: TextStyle(color: renk, fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Gönderen: ${etkinlik['GonderenAdi'] ?? "Bilinmiyor"}', style: TextStyle(color: renk)),
-                        Text('Tarih: $tarih', style: TextStyle(color: renk)),
-                      ],
-                    ),
-                    onTap: () => _etkinligeTiklandi(etkinlik['Data']),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-*/

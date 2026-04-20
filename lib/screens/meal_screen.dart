@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../models/meal_model.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class MealScreen extends StatefulWidget {
   final String tckn;
@@ -17,8 +18,8 @@ class _MealScreenState extends State<MealScreen> {
   DateTime selectedDate = DateTime.now();
   Future<MealModel?>? futureMeal;
 
-  final List<String> gunler = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-  final List<String> aylar = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+  //final List<String> gunler = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+  //final List<String> aylar = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
 
   late final List<DateTime> days;
   late final ScrollController _scrollController;
@@ -62,8 +63,12 @@ class _MealScreenState extends State<MealScreen> {
         itemBuilder: (context, index) {
           final day = days[index];
           final isSelected = DateUtils.isSameDay(day, selectedDate);
-          final gunAdi = gunler[day.weekday % 7];
-          final ayAdi = aylar[day.month - 1];
+        //  final gunAdi = gunler[day.weekday % 7];
+        //  final ayAdi = aylar[day.month - 1];
+          final locale = Localizations.localeOf(context).toString();
+
+          final gunAdi = DateFormat.E(locale).format(day);     // Pzt / Mon
+          final ayAdi = DateFormat.MMM(locale).format(day);    // Oca / Jan
 
           return GestureDetector(
             onTap: () {
@@ -145,8 +150,8 @@ class _MealScreenState extends State<MealScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text(
-          "Yemek Listesi",
+        title:  Text(
+          AppLocalizations.of(context)!.mealScreenTitle,
           style: AppStyles.titleLarge,
         ),
       ),
@@ -162,7 +167,7 @@ class _MealScreenState extends State<MealScreen> {
                 }
 
                 if (!snapshot.hasData || snapshot.data == null) {
-                  return const Center(child: Text("Yemek listesi bulunamadı.", style: TextStyle(color: AppColors.primary)));
+                  return  Center(child: Text(AppLocalizations.of(context)!.mealNotFound, style: TextStyle(color: AppColors.primary)));
                 }
 
                 final meal = snapshot.data!;
@@ -190,30 +195,15 @@ class _MealScreenState extends State<MealScreen> {
                               ),
                             ),
                             const Divider(),
-                            buildMealList("Kahvaltı:", meal.meal1),
-                            buildMealList("Öğle:", meal.meal2),
-                            buildMealList("İkindi:", meal.meal3),
+                            buildMealList(AppLocalizations.of(context)!.mealBreakfast, meal.meal1),
+                            buildMealList(AppLocalizations.of(context)!.mealLunch, meal.meal2),
+                            buildMealList(AppLocalizations.of(context)!.mealSnack, meal.meal3),
                           ],
                         ),
                       ),
                     ),
                   ),
                 );
-
-                /*final meal = snapshot.data!;
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildMealList("Kahvaltı:", meal.meal1),
-                        buildMealList("Öğle:", meal.meal2),
-                        buildMealList("İkindi:", meal.meal3),
-                      ],
-                    ),
-                  ),
-                );*/
               },
             ),
           ),

@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class OdevScreen extends StatefulWidget {
   @override
@@ -60,7 +61,7 @@ class _OdevScreenState extends State<OdevScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Dosya açılamadı")),
+             SnackBar(content: Text(AppLocalizations.of(context)!.fileOpenError)),
           );
         }
       },
@@ -119,7 +120,7 @@ class _OdevScreenState extends State<OdevScreen> {
     final uri = Uri.parse(url);
     return uri.pathSegments.isNotEmpty
         ? uri.pathSegments.last
-        : "Dosya";
+        : AppLocalizations.of(context)!.file;
   }
 
   void _showOdevDetayPopup(Map<String, dynamic> odev) {
@@ -156,21 +157,19 @@ class _OdevScreenState extends State<OdevScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Ödev Detayı"),
+          title:  Text(AppLocalizations.of(context)!.lessonDetail),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (dersAdi.isNotEmpty)
-                  _detaySatir("Ders", dersAdi),
+                  _detaySatir(AppLocalizations.of(context)!.lesson, dersAdi),
 
                 if (tarih.isNotEmpty)
-                  _detaySatir("Son Teslim", tarih),
-
+                  _detaySatir(AppLocalizations.of(context)!.dueDate, tarih),
                 const Divider(),
-
-                const Text(
-                  "Açıklama",
+                 Text(
+                   AppLocalizations.of(context)!.description,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
@@ -210,7 +209,7 @@ class _OdevScreenState extends State<OdevScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Kapat"),
+              child:  Text(AppLocalizations.of(context)!.close),
             ),
           ],
         );
@@ -268,17 +267,17 @@ class _OdevScreenState extends State<OdevScreen> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Ödev Sil"),
-          content: const Text("Bu ödev silinecek. Emin misiniz?"),
+          title:  Text(AppLocalizations.of(context)!.deleteHomeworkTitle),
+          content:  Text(AppLocalizations.of(context)!.deleteHomeworkConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text("Hayır"),
+              child:  Text(AppLocalizations.of(context)!.no),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text("Evet"),
+              child:  Text(AppLocalizations.of(context)!.yes),
             ),
           ],
         );
@@ -298,16 +297,16 @@ class _OdevScreenState extends State<OdevScreen> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Ödev silindi")),
+           SnackBar(content: Text(AppLocalizations.of(context)!.homeworkDeleted)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Ödev bulunamadı")),
+           SnackBar(content: Text(AppLocalizations.of(context)!.homeworkNotFound)),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Silme sırasında hata oluştu")),
+         SnackBar(content: Text(AppLocalizations.of(context)!.deleteError)),
       );
     }
   }
@@ -327,54 +326,6 @@ class _OdevScreenState extends State<OdevScreen> {
   }
 
 
-/*
-  Future<void> _loadOdevler() async {
-    try {
-      List<Map<String, dynamic>> tumOdevler = [];
-       String aktifTckn = globals.orjKullaniciTCKN;
-
-      if(globals.globalKullaniciTipi=="T"){
-        aktifTckn = globals.orjKullaniciTCKN;
-      } else if (globals.globalKullaniciTipi=="P") {
-        aktifTckn =globals.studentTckn!;
-      }
-      /*for (var ogr in globals.globalOgrenciListesi) {
-        final tckn = ogr['TCKN'];
-        final ad = ogr['Name'] ?? '';
-
-        if (tckn == null) continue;
-
-        final data = await ApiService().getOdevlerByTckn(
-          tckn: tckn,
-          skip: 0,
-          take: 10,
-        );
-
-        if (data != null) {
-          for (var item in data) {
-            item['OgrenciAd'] = ad;
-            tumOdevler.add(item);
-          }
-        }
-      }*/
-
-      final data = await ApiService().getOdevlerByTckn(
-        tckn: aktifTckn,
-        skip: 0,
-        take: 10,
-      );
-      setState(() {
-        odevler = tumOdevler;
-        isLoading = false;
-      });
-    } catch (_) {
-      setState(() {
-        odevler = [];
-        isLoading = false;
-      });
-    }
-  }
-*/
   String getDersAdi(int? dersId) {
     if (dersId == null) return "-";
 
@@ -431,15 +382,15 @@ class _OdevScreenState extends State<OdevScreen> {
             }
 
             return AlertDialog(
-              title: const Text("Yeni Ödev Oluştur"),
+              title:  Text(AppLocalizations.of(context)!.newHomeworkTitle),
               content: SingleChildScrollView(
                 child: Column(
                   children: [
                     dersLoading
                         ? const CircularProgressIndicator()
                         : DropdownButtonFormField<dynamic>(
-                      decoration: const InputDecoration(
-                        labelText: "Ders *",
+                      decoration:  InputDecoration(
+                        labelText:AppLocalizations.of(context)!.lessonRequired,
                         border: OutlineInputBorder(),
                       ),
                       items: dersListesi
@@ -458,8 +409,8 @@ class _OdevScreenState extends State<OdevScreen> {
                     TextField(
                       controller: aciklamaCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: "Açıklama *",
+                      decoration:  InputDecoration(
+                        labelText:AppLocalizations.of(context)!.descriptionRequired,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -467,8 +418,8 @@ class _OdevScreenState extends State<OdevScreen> {
                     TextField(
                       controller: expireCtrl,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: "Son Teslim Tarihi *",
+                      decoration:  InputDecoration(
+                        labelText: AppLocalizations.of(context)!.dueDateRequired,
                         border: OutlineInputBorder(),
                       ),
                       onTap: () async {
@@ -486,7 +437,7 @@ class _OdevScreenState extends State<OdevScreen> {
                     ),
                     const SizedBox(height: 16),
                     CheckboxListTile(
-                      title: const Text("Hepsi"),
+                      title:  Text(AppLocalizations.of(context)!.selectAll),
                       value: hepsiSecili,
                       onChanged: (v) {
                         setDialogState(() {
@@ -510,7 +461,7 @@ class _OdevScreenState extends State<OdevScreen> {
                     }),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.attach_file),
-                      label: const Text("Dosya Ekle"),
+                      label:  Text(AppLocalizations.of(context)!.addFile),
                       onPressed: () async {
                         final result =
                         await FilePicker.platform.pickFiles(
@@ -532,9 +483,9 @@ class _OdevScreenState extends State<OdevScreen> {
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("İptal")),
+                    child:  Text(AppLocalizations.of(context)!.cancel)),
                 ElevatedButton(
-                  child: const Text("Kaydet"),
+                  child:  Text(AppLocalizations.of(context)!.save),
                   onPressed: () async {
                     final secilenOgrenciler = ogrenciSecim.entries
                         .where((e) => e.value)
@@ -546,8 +497,8 @@ class _OdevScreenState extends State<OdevScreen> {
                         expireCtrl.text.isEmpty ||
                         secilenOgrenciler.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text("Zorunlu alanları doldurun")),
+                         SnackBar(
+                            content: Text(AppLocalizations.of(context)!.fillRequiredFields)),
                       );
                       return;
                     }
@@ -582,7 +533,7 @@ class _OdevScreenState extends State<OdevScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ödevler', style: AppStyles.titleLarge),
+        title:  Text(AppLocalizations.of(context)!.homeworkTitle, style: AppStyles.titleLarge),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -623,7 +574,7 @@ class _OdevScreenState extends State<OdevScreen> {
                       }
                     },
                     icon: const Icon(Icons.add, color: AppColors.onPrimary),
-                    label: const Text('Yeni Ödev Oluştur'),
+                    label:  Text(AppLocalizations.of(context)!.createHomework),
                     style: AppStyles.buttonStyle,
                   ),
                 ),
@@ -634,9 +585,9 @@ class _OdevScreenState extends State<OdevScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : odevler.isEmpty
-                  ? const Center(
+                  ?  Center(
                 child: Text(
-                  "Henüz ödev yok.",
+                  AppLocalizations.of(context)!.noHomeworkYet,
                   style:
                   TextStyle(color: Colors.white, fontSize: 16),
                 ),
@@ -666,33 +617,15 @@ class _OdevScreenState extends State<OdevScreen> {
                       onTap: () {
                         _showOdevDetayPopup(odev);
                       },
-
-                     /* title: Text(
-                        odev['DersAdi'] ?? '-',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),*/
                       title: Text( getDersAdi(odev['DersId']),
                         style: const TextStyle( fontWeight: FontWeight.bold,
                           fontSize: 16, ), ),
-
-                      /*subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          odev['ExpireDate'] != null
-                              ? "Son Teslim: ${DateFormat('dd.MM.yyyy').format(DateTime.parse(odev['ExpireDate']))}"
-                              : "Son Teslim: -",
-                          style: const TextStyle(color: Colors.black87),
-                        ),
-                      ),*/
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           odev['ExpireDate'] != null
-                              ? "Son Teslim: ${DateFormat('dd.MM.yyyy').format(DateTime.parse(odev['ExpireDate']))}"
-                              : "Son Teslim: -",
+                              ? AppLocalizations.of(context)!.dueDate+": ${DateFormat('dd.MM.yyyy').format(DateTime.parse(odev['ExpireDate']))}"
+                              : AppLocalizations.of(context)!.dueDate+": -",
                           style: TextStyle(
                             color: isGecmisTarih(odev['ExpireDate'])
                                 ? Colors.red
@@ -711,14 +644,14 @@ class _OdevScreenState extends State<OdevScreen> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.edit, color: Colors.blue),
-                            tooltip: "Güncelle",
+                            tooltip: AppLocalizations.of(context)!.update,
                             onPressed: () {
                               odevGuncelle(odev);
                             },
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            tooltip: "Sil",
+                            tooltip: AppLocalizations.of(context)!.delete,
                             onPressed: () {
                               odevSil(odev['Id']);
                             },
@@ -729,62 +662,7 @@ class _OdevScreenState extends State<OdevScreen> {
                     ),
                   );
 
-                  /* return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    color: Colors.white.withOpacity(0.9),
-                    child: ListTile(
-                      onTap: () {
-                        _showOdevDetayPopup(odev); // 👈 SATIRA TIKLANINCA
-                      },
-                      title: Text(
-                        "$ogrenciAd\n$aciklama",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-
-                      // 👉 SAĞ TARAF BUTONLAR
-                      trailing: globals.globalKullaniciTipi == "T"
-                          ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            tooltip: "Güncelle",
-                            onPressed: () {
-                              odevGuncelle(odev);
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            tooltip: "Sil",
-                            onPressed: () {
-                              odevSil(odev['Id']);
-                            },
-                          ),
-                        ],
-                      )
-                          : null,
-                    ),
-                  );
-*/
-                /*  return Card(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    color: Colors.white.withOpacity(0.9),
-                    child: ListTile(
-                      title: Text(
-                        "$ogrenciAd\n$aciklama",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  );
-                */},
+                 },
               ),
             ),
           ],

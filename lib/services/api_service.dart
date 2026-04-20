@@ -18,7 +18,8 @@ import 'package:geolocator/geolocator.dart';
 
 class ApiService {
   static final String baseUrl = globals.serverAdrr;
-  final logger = Logger();
+  static final Logger logger = Logger();
+
 
   /// ------------------------------------------------------------
   /// TOKEN YÖNETİMİ
@@ -208,6 +209,132 @@ await apiService.putRequest(
     }
   }
 
+  /// Person Gallery Listeleme
+ /* Future<List<String>> getPersonGallery(
+   List<String> tcknOrigList,
+   {int take = 18, int skip = 0, String token=""}
+  ) async {
+    try {
+      logger.i("GetPersonGallery başladı");
+
+      /// 🔹 Query oluştur
+      final queryParameters = {
+        "take": take.toString(),
+        "skip": skip.toString(),
+      };
+
+      /// personIds query'e tek tek eklenmeli
+      final uri = Uri.parse("${ApiService.baseUrl}/api/school/get-person-gallery")
+          .replace(queryParameters: queryParameters);
+
+      final finalUri = Uri.parse(
+        uri.toString() +
+            tcknOrigList.map((e) => "&tcknOrigList=$e").join(),
+      );
+
+      logger.d("Request URI: $finalUri");
+
+      final response = await http.get(
+        finalUri,
+        headers: {
+          "Authorization": "Bearer $token", // varsa
+        },
+      );
+
+      logger.i("StatusCode: ${response.statusCode}");
+      logger.d("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        if (response.body.isEmpty) return [];
+
+        /// Backend text/plain dönüyor:
+        /// url1,url2,url3
+        final urls = response.body
+            .split(',')
+            .where((e) => e.trim().isNotEmpty)
+            .toList();
+
+        return urls;
+      }
+
+      throw Exception("Gallery alınamadı");
+    } catch (e) {
+      logger.e("GetPersonGallery hata: $e");
+      rethrow;
+    }
+  }*/
+
+
+  Future<List<Map<String, String>>> getPersonGallery(
+      List<String> tcknOrigList,
+      {int take = 18, int skip = 0, String token=""}
+      ) async  {
+
+    try {
+      logger.i("GetPersonGallery başladı");
+
+      /// 🔹 Query oluştur
+      final queryParameters = {
+        "take": take.toString(),
+        "skip": skip.toString(),
+      };
+
+      /// personIds query'e tek tek eklenmeli
+      final uri = Uri.parse("${ApiService.baseUrl}/api/school/get-person-gallery")
+          .replace(queryParameters: queryParameters);
+
+      final finalUri = Uri.parse(
+        uri.toString() +
+            tcknOrigList.map((e) => "&tcknOrigList=$e").join(),
+      );
+
+      logger.d("Request URI: $finalUri");
+
+      final response = await http.get(
+        finalUri,
+        headers: {
+          "Authorization": "Bearer $token", // varsa
+        },
+      );
+     /* final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception("StatusCode: ${response.statusCode}, Body: ${response.body}");
+      }*/
+
+      final body = response.body.trim();
+      if (body.isEmpty) return [];
+
+      final urls = body.split(',').map((e) => e.trim()).toList();
+
+      // Sadece _K ve _B eşlemesini yap
+      final Map<String, String> thumbs = {};
+      final Map<String, String> fulls = {};
+
+      for (var url in urls) {
+        if (url.contains("_K")) {
+          final key = url.split("_K")[0];
+          thumbs[key] = url;
+        } else if (url.contains("_B")) {
+          final key = url.split("_B")[0];
+          fulls[key] = url;
+        }
+      }
+
+      final List<Map<String, String>> images = [];
+      for (var key in thumbs.keys) {
+        images.add({
+          "thumb": thumbs[key]!,
+          "full": fulls[key] ?? thumbs[key]!, // _B yoksa _K kullan
+        });
+      }
+
+      logger.i("GetPersonGallery images: $images");
+      return images;
+    } catch (e, st) {
+      logger.e("GetPersonGallery error: $e");
+      rethrow;
+    }
+  }
 
   Future<bool> yoklamaBulkAdd(List<String> tcknList, DateTime date) async {
     try {
@@ -1147,11 +1274,7 @@ await apiService.putRequest(
    logger.i("kullanıcı tipi:"+globals.globalKullaniciTipi );
 
     globals.fotoVersion     = parsedResponse["FotoVersion"];
-    if (parsedResponse["UnreadDuyuruCount"]==0){
-      globals.duyuruVar= false;
-    } else{
-      globals.duyuruVar= true;
-    }
+    globals.duyuruVar.value = (parsedResponse["UnreadDuyuruCount"] ?? 0) != 0;
 
     globals.globalSchoolId = parsedResponse["SchoolId"].toString();
     globals.globalKonumEnlem = parsedResponse["KonumEnlem"].toString();
@@ -1279,10 +1402,10 @@ await apiService.putRequest(
     globals.sinifAdi  = p["ClassName"] ?? "";
     globals.ogrenciOkulNo = p["SchoolNumber"] ?? "";
 
-    globals.duyuruVar = ValueNotifier((p["UnreadDuyuruCount"] ?? 0) > 0);
-    globals.anketVar = ValueNotifier((p["SurveyCount"] ?? 0) > 0);
-    globals.etkinlikVar = ValueNotifier((p["ActivityCount"] ?? 0) > 0);
-    globals.mesajVar = ValueNotifier((p["UnreadMesajCount"] ?? 0) > 0);
+    globals.duyuruVar.value = (p["UnreadDuyuruCount"] ?? 0) > 0;
+    globals.anketVar.value = (p["SurveyCount"] ?? 0) > 0;
+    globals.etkinlikVar.value = (p["ActivityCount"] ?? 0) > 0;
+    globals.mesajVar.value = (p["UnreadMesajCount"] ?? 0) > 0;
 
     globals.globalSchoolId = p["SchoolId"]?.toString() ?? "";
     globals.kullaniciTCKN = globals.orjKullaniciTCKN+"_"+globals.globalSchoolId+"_"+globals.globalKullaniciTipi;
@@ -1308,6 +1431,8 @@ await apiService.putRequest(
       });
     }
 
+    print("ogrenci listesi:"+globals.globalOgrenciListesi.toString());
+
     /// Öğretmenler
     globals.globalOgretmenListesi = (p["Teachers"] ?? []).map<Map<String, dynamic>>((e) => {
       "TeacherName": e["TeacherName"] ?? "",
@@ -1329,6 +1454,8 @@ await apiService.putRequest(
       "Id": e["Id"],
       "Ad": e["Ad"],
     }).toList();
+
+    print("sinif listesi:"+globals.globalSinifListesi.toString());
   }
 
 
@@ -1432,7 +1559,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/Mesaj/MarkConversationAsRead?gonderenTckn=$gonderenTckn&alanTckn=$alanTckn";
     final response = await http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'gonderenTckn': gonderenTckn,'alanTckn': alanTckn}));
 
-    if (response.statusCode == 200) globals.duyuruVar = false as ValueNotifier<bool>;
+    if (response.statusCode == 200) globals.mesajVar.value = false;
     return response.statusCode == 200;
   }
 
@@ -1441,7 +1568,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/Duyuru/MarkAsRead?duyuruId=$duyuruId";
     final response = await http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'duyuruId': duyuruId}));
 
-    if (response.statusCode == 200) globals.duyuruVar = false as ValueNotifier<bool>;
+    if (response.statusCode == 200) globals.duyuruVar.value = false;
     return response.statusCode == 200;
   }
 
@@ -1503,6 +1630,7 @@ await apiService.putRequest(
     }
     return 0;
   }
+
 
 
   /// Galeri listesini alır
@@ -1914,6 +2042,29 @@ await apiService.putRequest(
     }
   }
 
+  /// İlaç takip kaydını pasife alır (siler).
+  /// [id]   → silinecek kaydın Id'si
+  /// [tckn] → işlemi yapan kullanıcının TCKN'si
+  Future<void> deactivateIlacTakip({
+    required int id,
+    required String tckn,
+  }) async {
+    final url = Uri.parse("${ApiService.baseUrl}/api/IlacTakip/deactivate");
+
+    final request = http.MultipartRequest('POST', url);
+    request.fields['id'] = id.toString();
+    request.fields['tckn'] = tckn;
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 10));
+    final statusCode = streamedResponse.statusCode;
+
+    if (statusCode != 200) {
+      final body = await streamedResponse.stream.bytesToString();
+      logger.e("deactivateIlacTakip hata: $statusCode - $body");
+      throw Exception("İlaç kaydı silinemedi: $statusCode");
+    }
+  }
+
   Future<String> onGatePressed(BuildContext context) async{
     // TODO: API çağrısı buraya eklenecek
     final String baseUrl =
@@ -2225,6 +2376,58 @@ await apiService.putRequest(
     }
   }
 
+  static Future<Map<String, dynamic>> uploadPersonGallery({
+    required List<String> tcknOrigList,
+    required List<File> files,
+  }) async {
+    try {
+      final uri = Uri.parse("${ApiService.baseUrl}/api/school/upload-person-gallery");
+
+      var request = http.MultipartRequest("POST", uri);
+
+      /// PERSON IDS
+      for (var students in tcknOrigList) {
+        request.files.add(
+          http.MultipartFile.fromString(
+            'tcknOrigList',
+            students.toString(),
+          ),
+        );
+      }
+
+      /// FILES
+      for (var file in files) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'files',
+            file.path,
+          ),
+        );
+      }
+
+   /* ????  request.headers.addAll({
+        "Authorization": "Bearer ${globals.token}",
+      });*/
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+
+      logger.i("Response Code: ${response.statusCode}");
+      logger.d("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return {"success": true};
+      }
+
+      return {"success": false, "message": response.body};
+    } catch (e) {
+      logger.e(e);
+      return {"success": false, "message": e.toString()};
+    }
+  }
+
+
+
   static Future<String?> generateOtp(String tckn, String name) async {
     final url = Uri.parse('${ApiService.baseUrl}/api/otp/generate');
     print("OTP Generate URL: $url");
@@ -2434,4 +2637,262 @@ await apiService.putRequest(
       return null;
     }
   }
+
+  Future<List<dynamic>> getOkulaTanimliOlcekler({
+    required String tckn,
+  }) async {
+
+    final url = Uri.parse("${ApiService.baseUrl}/api/degerlendirme-olcegi/okula-tanimli?tckn=$tckn");
+
+
+      final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Okula tanımlı ölçekler alınamadı");
+    }
+  }
+
+  Future<Map<String, dynamic>> getOlcekAyrinti({
+    required int olcekId,
+    String? tckn,
+  }) async {
+    final query = tckn != null ? "?tckn=$tckn" : "";
+
+    final url = Uri.parse(
+      "${ApiService.baseUrl}/api/degerlendirme-olcegi/ayrinti/$olcekId$query",
+    );
+
+    final response = await http.get(url);
+
+    /// ✅ BAŞARILI
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    /// ⚠️ DAHA ÖNCE DOLDURULMUŞ
+    else if (response.statusCode == 400) {
+      throw Exception("Bu ölçeği daha önce doldurdunuz");
+    }
+
+    /// ❌ BULUNAMADI
+    else if (response.statusCode == 404) {
+      throw Exception("Ölçek bulunamadı");
+    }
+
+    /// ❌ DİĞER HATALAR
+    else {
+      throw Exception("Ölçek detay alınamadı: ${response.body}");
+    }
+  }
+
+  Future<void> submitOlcek({
+    required String tckn,
+    required int olcekId,
+    required List<Map<String, dynamic>> cevaplar,
+  }) async {
+    final url = Uri.parse(
+      "${ApiService.baseUrl}/api/degerlendirme-olcegi/cevaplari-kaydet",
+    );
+
+    final body = {
+      "tckn": tckn,
+      "olcekId": olcekId,
+      "cevaplar": cevaplar,
+    };
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      if (data["success"] == true) {
+        return;
+      } else {
+        throw Exception("Kayıt başarısız");
+      }
+    } else {
+      throw Exception("Hata: ${response.body}");
+    }
+  }
+
+  Future<dynamic> getKisiSonuclari({
+    String? tckn,
+    int? olcekId,
+    int? personId ,
+    int? okulId,
+  }) async {
+    Map<String, String> queryParams = {};
+
+    if (tckn != null && olcekId != null) {
+      queryParams["tckn"] = tckn;
+      queryParams["olcekId"] = olcekId.toString();
+    } else if (personId != null && okulId != null && olcekId != null) {
+      queryParams["personId"] = personId.toString();
+      queryParams["okulId"] = okulId.toString();
+      queryParams["olcekId"] = olcekId.toString();
+    } else {
+      throw Exception("Parametre hatası");
+    }
+
+    final uri = Uri.parse(
+      "${ApiService.baseUrl}/api/degerlendirme-olcegi/kisi-sonuclari",
+    ).replace(queryParameters: queryParams);
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Sonuçlar alınamadı: ${response.body}");
+    }
+  }
+
+  Future<List<int>> getOlcekSonucPdf({
+    required String tckn,
+    required int olcekId,
+  }) async {
+    final uri = Uri.parse(
+      "${ApiService.baseUrl}/api/document/olcek-sonuc-dosyasi?tckn=$tckn&olcekId=$olcekId",
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      return response.bodyBytes; // ✅ PDF byte
+    } else {
+      //throw Exception("PDF indirilemedi");
+      throw Exception(response.body);
+
+    }
+  }
+
+////GELISIM
+  Future<List<dynamic>?> getGelisimTipleri(int schoolId) async {
+    final url = Uri.parse('${ApiService.baseUrl}/api/gelisim/getGelisimTipleri?okulId='+schoolId.toString());
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gelisim tipleri alınamadı");
+    }
+  }
+
+  Future<Map<String, dynamic>> addGelisim({
+    required String tckn,
+    required String deger,
+    required int tipId,
+  }) async {
+
+    final url = Uri.parse('${ApiService.baseUrl}/api/gelisim/addGelisim');
+
+    final request = http.MultipartRequest("POST", url);
+
+    request.fields['tckn'] = tckn;
+    request.fields['deger'] = deger;
+    request.fields['tipId'] = tipId.toString();
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gelisim eklenemedi");
+    }
+  }
+
+  Future<List<dynamic>?> getGelisimByTip({
+    required String tckn,
+    required int tipId,
+    String? startDate,
+    String? endDate,
+  }) async {
+
+    final queryParams = {
+      'tckn': tckn,
+      'tipId': tipId.toString(),
+      if (startDate != null) 'startDate': startDate,
+      if (endDate != null) 'endDate': endDate,
+    };
+
+    final url = Uri.parse('${ApiService.baseUrl}/api/gelisim/getGelisimByTip')
+        .replace(queryParameters: queryParams);
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gelisim kayıtları alınamadı");
+    }
+  }
+
+  Future<List<dynamic>?> getGelisimOzet(String tckn) async {
+
+    final url = Uri.parse(
+        '$baseUrl/api/gelisim/getGelisimOzet?tckn=$tckn');
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gelisim özeti alınamadı");
+    }
+  }
+
+  Future<Map<String, dynamic>> updateGelisim({
+    required int id,
+    String? deger,
+    String? insertDate,
+  }) async {
+
+    final url = Uri.parse('${ApiService.baseUrl}/api/gelisim/updateGelisim');
+
+    final request = http.MultipartRequest("PUT", url);
+
+    request.fields['id'] = id.toString();
+
+    if (deger != null) {
+      request.fields['deger'] = deger;
+    }
+
+    if (insertDate != null) {
+      request.fields['insertDate'] = insertDate;
+    }
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gelisim güncellenemedi");
+    }
+  }
+
+  Future<Map<String, dynamic>> removeGelisim(int id) async {
+
+    final url = Uri.parse(
+        '${ApiService.baseUrl}/api/gelisim/removeGelisim?id=$id');
+
+    final response = await http.delete(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gelisim silinemedi");
+    }
+  }
+
 }

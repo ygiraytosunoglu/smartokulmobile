@@ -271,11 +271,13 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
     _scrollAlta();
 
     await ApiService().sendMesaj(
-     widget.tckn,// globals.kullaniciTCKN,
+      widget.tckn,
       [widget.alanTckn],
       "SmartOkul",
       text,
     );
+
+    await ApiService().bildirimGonder();
   }
 
   bool get _mesajYazabilirMi {
@@ -339,14 +341,25 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
       body: Column(
         children: [
           Expanded(
-            child: isLoading
-                ? const Center(
-                child: CircularProgressIndicator())
-                : ListView.builder(
-              controller: _scrollController,
-              itemCount: mesajlar.length,
-              itemBuilder: (context, index) =>
-                  _mesajBalonu(mesajlar[index]),
+            child: Column(
+              children: [
+
+                /// ✅ STICKY WARNING
+                _konusmaUyariBanner(),
+
+                /// ✅ MESAJ LİSTESİ
+                Expanded(
+                  child: isLoading
+                      ? const Center(
+                      child: CircularProgressIndicator())
+                      : ListView.builder(
+                    controller: _scrollController,
+                    itemCount: mesajlar.length,
+                    itemBuilder: (context, index) =>
+                        _mesajBalonu(mesajlar[index]),
+                  ),
+                ),
+              ],
             ),
           ),
           if (_mesajYazabilirMi)
@@ -378,4 +391,21 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
       ),
     );
   }
+}
+Widget _konusmaUyariBanner() {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(
+        vertical: 8, horizontal: 12),
+    color: Colors.red.withOpacity(0.08),
+    child: const Text(
+      "* Konuşma metni okul yönetimi gözetimindedir",
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: Colors.red,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }

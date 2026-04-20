@@ -2,13 +2,17 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:smart_okul_mobile/screens/gelisim_screen.dart';
+import 'package:smart_okul_mobile/screens/guidance_screen.dart';
 import 'package:smart_okul_mobile/screens/mesaj_ana_screen.dart';
 import 'package:smart_okul_mobile/screens/mesaj_ana_screen_m.dart';
 import 'package:smart_okul_mobile/screens/odev_screen.dart';
 import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
+import 'package:smart_okul_mobile/screens/photo_gallery_screen_sinif.dart';
 
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 
 import 'login_screen.dart';
@@ -55,18 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadStudentPhoto();
     }
   }
-
- /* void _loadStudentPhoto() async{
-    if (selectedStudent == null) return;
-
-    final tckn = selectedStudent!['TCKN'];
-    final fotoVersion = selectedStudent!['FotoVersion'].toString();
-
-     _studentPhotoFuture = await ApiService().getPhoto(
-      tckn,
-      "${tckn}_$fotoVersion",
-    );
-  }*/
 
   void _loadStudentPhoto() {
     if (selectedStudent == null) return;
@@ -174,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ValueListenableBuilder<bool>(
                     valueListenable: globals.mesajVar,
                     builder: (context, mesajVar, _) {
-                      return buildSquareIconButton(context, 'mesajlar.png', "MESAJLAR",() { _mesajSayfasiniAc(context); },
+                      return buildSquareIconButton(context, 'mesajlar.png', AppLocalizations.of(context)!.messages,() { _mesajSayfasiniAc(context); },
                         showRedBorder: mesajVar, );
                     },
                   ),
@@ -182,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'galeri.png',
-                      "GALERİ",
+                      AppLocalizations.of(context)!.gallery,//"GALERİ",
                           () => _galeriSayfasiniAc(context),
                     ),
 
@@ -190,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'anons.png',
-                      "ANONS",
+                      AppLocalizations.of(context)!.notification,
                           () => _bildirimYeni(context),
                     ),
 
@@ -214,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'profil.png',
-                      "PROFİL",
+                      AppLocalizations.of(context)!.profile,
                           () => _profilSayfasiniAc(context),
                     ),
 
@@ -222,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ValueListenableBuilder<bool>(
                       valueListenable: globals.duyuruVar,
                       builder: (context, duyuruVar, _) {
-                        return buildSquareIconButton(context, 'duyurular.png', "DUYURULAR",() { _duyuruListesiSayfasiniAc(context); },
+                        return buildSquareIconButton(context, 'duyurular.png', AppLocalizations.of(context)!.anouncement,() { _duyuruListesiSayfasiniAc(context); },
                           showRedBorder: duyuruVar, );
                       },
                     ),
@@ -230,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'devam.png',
-                      "DEVAM BİLGİSİ",
+                      AppLocalizations.of(context)!.attendance,
                           () => _devamDurumuSayfasiniAc(context),
                     ),
 
@@ -238,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'ilac.png',
-                      "İLAÇ",
+                      AppLocalizations.of(context)!.medicine,
                           () => _ilacSayfasiniAc(context),
                     ),
 
@@ -267,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                   if(globals.menuListesi.contains("AnaKapi")|| globals.menuListesi.contains("Otopark"))
-                    buildSquareIconButton(context, 'kapi.png', "KAPI KONTROL", () { kapiKontrol(context); }),
+                    buildSquareIconButton(context, 'kapi.png', AppLocalizations.of(context)!.gateControl, () { kapiKontrol(context); }),
 
                   if(globals.menuListesi.contains("Plan"))
                     buildSquareIconButton(context, 'planlar.png', "PLANLAR",() { _planSayfasiniAc(context); }),
@@ -275,21 +267,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     ValueListenableBuilder<bool>(
                       valueListenable: globals.etkinlikVar,
                       builder: (context, etkinlikVar, _) {
-                        return buildSquareIconButton(context, 'etkinlikler.png', "ETKINLİKLER",() { _etkinlikSayfasiniAc(context); },
+                        return buildSquareIconButton(context, 'etkinlikler.png', AppLocalizations.of(context)!.activities,() { _etkinlikSayfasiniAc(context); },
                           showRedBorder: etkinlikVar,);
                       },
                     ),
                   if(globals.menuListesi.contains("YemekUykuBilgisi"))
-                    buildSquareIconButton(context, 'gunluk_defterim.png',"GÜNLÜK", () { _gunlukOgrYemekSayfaAc(context); }),
+                    buildSquareIconButton(context, 'gunluk_defterim.png',AppLocalizations.of(context)!.daily, () { _gunlukOgrYemekSayfaAc(context); }),
                   if(globals.menuListesi.contains("YemekList"))
-                    buildSquareIconButton(context, 'yemekler.png',"YEMEK LİSTESİ", () { _yemekListesiSayfasiniAc(context); }),
+                    buildSquareIconButton(context, 'yemekler.png',AppLocalizations.of(context)!.mealList, () { _yemekListesiSayfasiniAc(context); }),
                   if(globals.menuListesi.contains("DersProgrami"))
                     buildSquareIconButton(context, 'ders_programi.png', "DERS PROGRAMI",() { _dersProgramiSayfasiniAc(context); }),
                   if(globals.menuListesi.contains("Anketler"))
                     ValueListenableBuilder<bool>(
                       valueListenable: globals.anketVar,
                       builder: (context, anketVar, _) {
-                        return buildSquareIconButton(context, 'anketler.png', "ANKETLER",() { _anketSayfasiniAc(context); },
+                        return buildSquareIconButton(context, 'anketler.png', AppLocalizations.of(context)!.survey,() { _anketSayfasiniAc(context); },
+                          showRedBorder: anketVar, );
+
+                      },
+                    ),
+                  if(globals.menuListesi.contains("Rehberlik"))
+                    ValueListenableBuilder<bool>(
+                      valueListenable: globals.anketVar,
+                      builder: (context, anketVar, _) {
+                        return buildSquareIconButton(context, 'rehberlik.png', AppLocalizations.of(context)!.guidanceTitle,() { _rehberlikSayfasiniAc(context); },
                           showRedBorder: anketVar, );
 
                       },
@@ -298,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'karekod.png',
-                      "KAREKOD",
+                      AppLocalizations.of(context)!.qrCode,
                           () {
                         if (globals.globalKullaniciTipi == 'P' ||
                             globals.globalKullaniciTipi == 'S') {
@@ -312,8 +313,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     buildSquareIconButton(
                       context,
                       'odevler.png',
-                      "ÖDEV",
+                      AppLocalizations.of(context)!.homework,
                             () => _odevSayfasiniAc(context),
+                    ),
+                if (globals.menuListesi.contains("Gelisim"))
+                    buildSquareIconButton(
+                      context,
+                      'gelisim.png',
+                      AppLocalizations.of(context)!.gelisimTitle,
+                          () => _gelisimSayfasiniAc(context),
                     ),
                 ],
               ),
@@ -647,8 +655,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _galeriSayfasiniAc(BuildContext context) {
-    Navigator.push(context,
-        MaterialPageRoute(builder: (_) => PhotoGalleryScreen()));
+    if (globals.menuListesi.contains("GaleriSecim")){
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PhotoGalleryScreen()));
+    } else {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PhotoGalleryScreenSinif()));
+    }
   }
 
   void _planSayfasiniAc(BuildContext context) {
@@ -704,6 +717,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _gelisimSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => GelisimScreen()),
+    );
+  }
+
   void _open(BuildContext context, Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
@@ -711,6 +731,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _anketSayfasiniAc(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => SurveyScreen()));
+  }
+
+  void _rehberlikSayfasiniAc(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => GuidanceScreen()));
   }
 
   void _kapiKontrolSayfasiniAc(BuildContext context) {

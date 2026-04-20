@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+
 
 class IlacScreen extends StatefulWidget {
   @override
@@ -65,27 +67,53 @@ class _IlacScreenState extends State<IlacScreen> {
     }
   }
 
-  /* Future<void> _loadIlaclar() async {
+  Future<void> _ilacSil(Map<String, dynamic> ilac) async {
+    final int? id = ilac['Id'] is int
+        ? ilac['Id']
+        : int.tryParse(ilac['Id']?.toString() ?? '');
+
+    if (id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.deleteMedicineTitle),
+        content: Text(AppLocalizations.of(context)!.deleteMedicineConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              AppLocalizations.of(context)!.delete,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
-      final data = await ApiService().getIlacList(globals.kullaniciTCKN);
-      setState(() {
-        ilaclar = data ?? []; // null gelirse boş liste ata
-        print("etkinlikler:");
-        for (var ilac in ilaclar) {
-          ilac.forEach((key, value) {
-            print("$key: $value");
-          });
-        }
-         isLoading = false;
-      });
+      await ApiService().deactivateIlacTakip(
+        id: id,
+        tckn: globals.kullaniciTCKN,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.medicineDeactivated)),
+      );
+      _loadIlaclar();
     } catch (e) {
-      print('Hata _loadIlaclar: $e');
-      setState(() {
-        ilaclar = []; // hata olsa bile liste boş kalır
-        isLoading = false;
-      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppLocalizations.of(context)!.err}: $e')),
+      );
     }
-  }*/
+  }
 
   Future<void> _ilacaTiklandi(String? data) async {
     String aciklamaMetni = "";
@@ -108,14 +136,14 @@ class _IlacScreenState extends State<IlacScreen> {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('İlaç Detayı'),
+        title: Text(AppLocalizations.of(context)!.medicineDetailTitle),
         content: Text(
-          "Açıklama: ${aciklamaMetni.isNotEmpty ? aciklamaMetni : 'Yok'}",
+          AppLocalizations.of(context)!.description+ ": ${aciklamaMetni.isNotEmpty ? aciklamaMetni : AppLocalizations.of(context)!.noDescription}",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Tamam'),
+            child:  Text(AppLocalizations.of(context)!.ok),
           ),
         ],
       ),
@@ -142,7 +170,7 @@ class _IlacScreenState extends State<IlacScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Yeni İlaç Bilgisi Oluştur'),
+              title:  Text(AppLocalizations.of(context)!.createMedicineTitle),
               content: SingleChildScrollView(
                 child: Column(
                   children: [
@@ -150,8 +178,8 @@ class _IlacScreenState extends State<IlacScreen> {
                     TextField(
                       controller: tarihBasController,
                       readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'İlaç Başlangıç Günü',
+                      decoration:  InputDecoration(
+                        labelText: AppLocalizations.of(context)!.medicineStartDay,
                         border: OutlineInputBorder(),
                       ),
                       onTap: () async {
@@ -226,15 +254,15 @@ class _IlacScreenState extends State<IlacScreen> {
                     // 👦 Öğrenci Seçimi
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: const Text(
-                        "Öğrenci Seçin:",
+                      child:  Text(
+                        AppLocalizations.of(context)!.selectStudent,
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
 
                     Column(
                       children: globals.globalOgrenciListesi.map<Widget>((ogrenci) {
-                        String adSoyad = ogrenci['Name'] ?? "Öğrenci";
+                        String adSoyad = ogrenci['Name'] ??AppLocalizations.of(context)!.student;
                         String tckn = ogrenci['TCKN'] ?? "";
 
                         return RadioListTile<String>(
@@ -257,7 +285,7 @@ class _IlacScreenState extends State<IlacScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () => Navigator.of(context).pop(),
-                  child: const Text('İptal'),
+                  child:  Text(AppLocalizations.of(context)!.cancel),
                 ),
                 ElevatedButton(
                   onPressed: isSubmitting
@@ -267,16 +295,25 @@ class _IlacScreenState extends State<IlacScreen> {
                         tarihBitController.text.isEmpty ||
                         saatController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Tüm tarih alanlarını doldurunuz.')),
+                         SnackBar(
+                            content: Text(AppLocalizations.of(context)!.fillAllDateFields)),
                       );
                       return;
                     }
 
                     if (seciliOgrenciTckn == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Bir öğrenci seçmelisiniz.')),
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text(AppLocalizations.of(context)!.selectStudent),
+                          content: Text(AppLocalizations.of(context)!.selectStudentError),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text(AppLocalizations.of(context)!.ok),
+                            ),
+                          ],
+                        ),
                       );
                       return;
                     }
@@ -286,16 +323,6 @@ class _IlacScreenState extends State<IlacScreen> {
                     });
 
                     try {
-                     /* await ApiService().addIlacTakip({
-                        'tckn': globals.kullaniciTCKN,
-                        'studentTckn': seciliOgrenciTckn,
-                        'ilacDateStart': tarihBasController.text,
-                        'ilacDateEnd': tarihBitController.text,
-                        'ilacTime': saatController.text,
-                        'data': jsonEncode({
-                          'aciklama': aciklamaController.text,
-                        }),
-                      });*/
                       final DateFormat inputFormat = DateFormat('dd.MM.yyyy'); // TextField’den gelen format
                       final DateFormat isoFormat = DateFormat('yyyy-MM-dd');  // API formatı
                       final result = await ApiService().addIlacTakip(
@@ -304,9 +331,9 @@ class _IlacScreenState extends State<IlacScreen> {
                         ilacDateStart: isoFormat.format(inputFormat.parse(tarihBasController.text)), // "dd.MM.yyyy"
                         ilacDateEnd: isoFormat.format(inputFormat.parse(tarihBitController.text)),   // "dd.MM.yyyy"
                         ilacTime: saatController.text,          // "HH:mm"
-                        data: jsonEncode({
+                        data:aciklamaController.text, /*jsonEncode({
                           "aciklama": aciklamaController.text,
-                        }),
+                        }),*/
                       );
 
 
@@ -314,13 +341,13 @@ class _IlacScreenState extends State<IlacScreen> {
 
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('İlaç bilgisi başarıyla oluşturuldu.')),
+                         SnackBar(
+                            content: Text(AppLocalizations.of(context)!.medicineCreated)),
                       );
                       _loadIlaclar();
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Hata: $e')),
+                        SnackBar(content: Text(AppLocalizations.of(context)!.err+': $e')),
                       );
                       setState(() {
                         isSubmitting = false;
@@ -328,7 +355,7 @@ class _IlacScreenState extends State<IlacScreen> {
                     }
                   },
                   child: Text(
-                    isSubmitting ? 'Oluşturuluyor...' : 'Oluştur',
+                    isSubmitting ?AppLocalizations.of(context)!.creating : AppLocalizations.of(context)!.create,
                   ),
                 ),
               ],
@@ -343,9 +370,9 @@ class _IlacScreenState extends State<IlacScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            'İlaç Listesi',
+            AppLocalizations.of(context)!.medicineListTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -378,7 +405,7 @@ class _IlacScreenState extends State<IlacScreen> {
                     },
                     icon: const Icon(Icons.add, color: AppColors.onPrimary),
                     label:  Text(
-                      'Yeni İlaç Oluştur',
+                      AppLocalizations.of(context)!.createNewMedicine,
                       //style: TextStyle(color: Colors.blue),
                     ),
                     style: AppStyles.buttonStyle,
@@ -396,9 +423,9 @@ class _IlacScreenState extends State<IlacScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : (ilaclar.isEmpty)
-                  ? const Center(
+                  ?  Center(
                 child: Text(
-                  "Henüz ilaç bilgisi yok.",
+                  AppLocalizations.of(context)!.noMedicineYet,
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               )
@@ -487,12 +514,17 @@ class _IlacScreenState extends State<IlacScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                         // if (sinifAdlari.isNotEmpty) Text('Sınıf/lar: $sinifAdlari', style: TextStyle(color: renk)),
-                         // if (yer.isNotEmpty) Text('Yer: $yer', style: TextStyle(color: renk)),
-                          if (tarih.isNotEmpty) Text('Tarih: $tarih', style: TextStyle(color: renk)),
+                          if (tarih.isNotEmpty) Text(AppLocalizations.of(context)!.date+': $tarih', style: TextStyle(color: renk)),
                         ],
                       ),
-                      onTap: () => null,//_etkinligeTiklandi(etkinlik['Data']),
+                      onTap: () => null,
+                      trailing: globals.globalKullaniciTipi == 'P'
+                          ? IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              tooltip: AppLocalizations.of(context)!.delete,
+                              onPressed: () => _ilacSil(ilac),
+                            )
+                          : null,
                     ),
                   );
                 },

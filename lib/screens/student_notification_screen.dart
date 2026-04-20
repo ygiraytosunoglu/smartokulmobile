@@ -5,6 +5,8 @@ import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import 'dart:typed_data';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class StudentNotificationScreen extends StatefulWidget {
   const StudentNotificationScreen({Key? key}) : super(key: key);
@@ -35,8 +37,8 @@ class _StudentNotificationScreenState
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text(
-          "Öğrenci Anons",
+        title:  Text(
+          AppLocalizations.of(context)!.studentNotification,// "Öğrenci Anons",
           style: AppStyles.titleLarge,
         ),
         backgroundColor: AppColors.newAppBar,
@@ -143,8 +145,8 @@ class _StudentNotificationScreenState
                   ),
                   child: Text(
                     globals.globalKullaniciTipi == "H"
-                        ? "Bıraktım"
-                        : "Yaklaştım",
+                        ? AppLocalizations.of(context)!.notification1 //"Bıraktım"
+                        : AppLocalizations.of(context)!.notification2,//"Yaklaştım",
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
@@ -168,8 +170,8 @@ class _StudentNotificationScreenState
                   ),
                   child: Text(
                     globals.globalKullaniciTipi == "H"
-                        ? "Aldım"
-                        : "Geldim",
+                        ? AppLocalizations.of(context)!.notification3//"Aldım"
+                        : AppLocalizations.of(context)!.notification4, //"Geldim",
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
@@ -197,8 +199,8 @@ class _StudentNotificationScreenState
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    "Ana Sayfa",
+                  child:  Text(
+                    AppLocalizations.of(context)!.mainScreen,
                     style: TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
@@ -241,7 +243,7 @@ class _StudentNotificationScreenState
     }
 
     if (selectedStudents.isEmpty) {
-      await _showMessage("En az bir öğrenci seçilmelidir");
+      await _showMessage(AppLocalizations.of(context)!.studentLengthMsg);
       setState(() => isButtonEnabled = true);
       return;
     }
@@ -259,8 +261,8 @@ class _StudentNotificationScreenState
     );
 
     await _showMessage(response == "200"
-        ? "Bildirim gönderildi"
-        : "Bildirim gönderilemedi");
+        ? AppLocalizations.of(context)!.notificationSuccessMsg
+        : AppLocalizations.of(context)!.notificationFailMsg);
 
     setState(() => isButtonEnabled = true);
 

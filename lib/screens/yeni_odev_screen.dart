@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class YeniOdevScreen extends StatefulWidget {
   const YeniOdevScreen({Key? key}) : super(key: key);
@@ -76,7 +77,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yeni Ödev Oluştur', style: AppStyles.titleLarge),
+        title:  Text(AppLocalizations.of(context)!.createHomework, style: AppStyles.titleLarge),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -99,8 +100,8 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
             children: [
               /// 📘 Ders
               DropdownButtonFormField<dynamic>(
-                decoration: const InputDecoration(
-                  labelText: "Ders *",
+                decoration:  InputDecoration(
+                  labelText: AppLocalizations.of(context)!.lesson +" *",
                   border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
@@ -124,8 +125,8 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
               TextField(
                 controller: aciklamaCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: "Açıklama *",
+                decoration:  InputDecoration(
+                  labelText: AppLocalizations.of(context)!.activityDescription+" *",
                   border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
@@ -138,8 +139,8 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
               TextField(
                 controller: expireCtrl,
                 readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: "Son Teslim Tarihi *",
+                decoration:  InputDecoration(
+                  labelText: AppLocalizations.of(context)!.dueDate+" *",
                   border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
@@ -162,7 +163,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
               /// 👥 Öğrenciler
               CheckboxListTile(
-                title: const Text("Hepsi"),
+                title:  Text(AppLocalizations.of(context)!.allOfThem),
                 value: hepsiSecili,
                 onChanged: (v) {
                   setState(() {
@@ -192,7 +193,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
               /// 📎 Dosya Ekle
               ElevatedButton.icon(
                 icon: const Icon(Icons.attach_file),
-                label: const Text("Dosya Ekle"),
+                label:  Text(AppLocalizations.of(context)!.addFile),
                 onPressed: () async {
                   final result =
                   await FilePicker.platform.pickFiles(
@@ -227,7 +228,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: AppStyles.buttonStyle,
-                  child: const Text("Kaydet"),
+                  child:  Text(AppLocalizations.of(context)!.save),
                   onPressed: () async {
                     final List<String> secilenOgrenciler =
                     ogrenciSecim.entries
@@ -240,9 +241,9 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                         expireCtrl.text.isEmpty ||
                         secilenOgrenciler.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                         SnackBar(
                           content:
-                          Text("Zorunlu alanları doldurun"),
+                          Text(AppLocalizations.of(context)!.fillRequiredFields),
                         ),
                       );
                       return;

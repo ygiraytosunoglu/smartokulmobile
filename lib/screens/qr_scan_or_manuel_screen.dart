@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class QRScanOrManualScreen extends StatefulWidget {
   const QRScanOrManualScreen({super.key});
@@ -68,28 +69,6 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
 
     try {
       // QR format: TCKN=12345678901;OTP=ABC123
-      /*    final parts = data.split(';');
-      //String? tckn;
-      String? otp;
-
-      for (var p in parts) {
-        /*if (p.startsWith('TCKN=')) {
-          tckn = p.replaceFirst('TCKN=', '').trim();
-        } else */
-        if (p.startsWith('OTP=')) {
-          otp = p.replaceFirst('OTP=', '').trim();
-        }
-      }
-
-      if (//tckn == null ||
-          otp == null) {
-        setState(() {
-          verifyMessage = "Geçersiz QR kod formatı ❌";
-          isVerifying = false;
-        });
-        return;
-      }
-*/
 
       final result = await ApiService.verifyOtp(globals.kullaniciTCKN, data);
 
@@ -110,16 +89,17 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
             return "• $logName - $personName";
           }).join("\n");
           print("karekod message"+verifyMessage.toString());
-          verifyMessage = "✅ Kod Doğrulandı:\n$verifyMessage";
+          verifyMessage = AppLocalizations.of(context)!.verifySuccessTitle +
+          "\n$verifyMessage";
         }
         else {
-          verifyMessage = "❌ OTP geçersiz veya süresi dolmuş";
+          verifyMessage =AppLocalizations.of(context)!.verifyInvalid;
         }
       });
     } catch (e) {
       setState(() {
         isVerifying = false;
-        verifyMessage = "Hata: $e";
+        verifyMessage = AppLocalizations.of(context)!.errorMessage(e.toString());
       });
     }
   }
@@ -132,7 +112,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
     if (//tckn.isEmpty ||
         otp.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("OTP boş olamaz")),
+         SnackBar(content: Text(AppLocalizations.of(context)!.otpEmptyError)),
       );
       return;
     }
@@ -154,9 +134,9 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
           return "• $logName - $personName";
         }).join("\n");
         print("karekod message"+verifyMessage.toString());
-        verifyMessage = "✅ Kod Doğrulandı:\n$verifyMessage";
+        verifyMessage = AppLocalizations.of(context)!.verifySuccessTitle+"\n$verifyMessage";
       } else {
-        verifyMessage = "❌ OTP geçersiz veya süresi dolmuş";
+        verifyMessage = AppLocalizations.of(context)!.verifyInvalid;
       }
     });
   }
@@ -174,9 +154,9 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            "QR / Kod Doğrulama",
+            AppLocalizations.of(context)!.qrVerifyTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -187,14 +167,14 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
           labelColor: Colors.white,          // Seçili tab yazı & icon
           unselectedLabelColor: Colors.white70, // Seçili olmayanlar
           indicatorColor: Colors.white,      // Alt çizgi
-          tabs: const [
+          tabs:  [
             Tab(
               icon: Icon(Icons.qr_code_scanner),
-              text: "QR Oku",
+              text: AppLocalizations.of(context)!.tabQrScan,
             ),
             Tab(
               icon: Icon(Icons.keyboard),
-              text: "Kod Gir",
+              text: AppLocalizations.of(context)!.tabManualCode,
             ),
           ],
         ),
@@ -261,9 +241,9 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                         ],
                       ),
                       child: scannedData == null
-                          ? const Center(
+                          ?  Center(
                         child: Text(
-                          "Lütfen kamerayı bir QR koda doğru tutun",
+                          AppLocalizations.of(context)!.cameraInstruction,
                           style:
                           TextStyle(fontSize: 16, color: Colors.black54),
                         ),
@@ -301,14 +281,14 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary),
                                 icon: const Icon(Icons.copy),
-                                label: const Text("Kopyala"),
+                                label:  Text(AppLocalizations.of(context)!.copyButton),
                                 onPressed: () {
                                   Clipboard.setData(
                                       ClipboardData(text: scannedData!));
                                   ScaffoldMessenger.of(context)
-                                      .showSnackBar(const SnackBar(
+                                      .showSnackBar( SnackBar(
                                       content:
-                                      Text("Kod panoya kopyalandı")));
+                                      Text(AppLocalizations.of(context)!.copiedToClipboard)));
                                 },
                               ),
                               const SizedBox(width: 16),
@@ -316,7 +296,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green),
                                 icon: const Icon(Icons.share),
-                                label: const Text("Paylaş"),
+                                label:  Text(AppLocalizations.of(context)!.shareButton),
                                 onPressed: () {
                                   Share.share(scannedData!);
                                 },
@@ -326,7 +306,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                           const SizedBox(height: 8),
                           TextButton.icon(
                             icon: const Icon(Icons.qr_code_scanner),
-                            label: const Text("Tekrar Tara"),
+                            label:  Text(AppLocalizations.of(context)!.scanAgain),
                             onPressed: () {
                               setState(() {
                                 scannedData = null;
@@ -349,21 +329,10 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                /*TextField(
-                  controller: _tcknController,
-                  decoration: InputDecoration(
-                    labelText: "TCKN",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),*/
                 TextField(
                   controller: _otpController,
                   decoration: InputDecoration(
-                    labelText: "OTP Kod",
+                    labelText: AppLocalizations.of(context)!.otpLabel,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -375,7 +344,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.onPrimary),
                   icon: const Icon(Icons.check),
-                  label: const Text("Doğrula"),
+                  label:  Text(AppLocalizations.of(context)!.verifyButton),
                   onPressed: isVerifying ? null : _verifyManualOtp,
                 ),
                 const SizedBox(height: 16),
@@ -399,193 +368,3 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
     );
   }
 }
-
-
-/*import 'package:flutter/material.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:flutter/services.dart';
-import '../constants.dart';
-
-class QRScanScreen extends StatefulWidget {
-  const QRScanScreen({super.key});
-
-  @override
-  State<QRScanScreen> createState() => _QRScanScreenState();
-}
-
-class _QRScanScreenState extends State<QRScanScreen> {
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  QRViewController? controller;
-  String? scannedData;
-
-  @override
-  void reassemble() {
-    super.reassemble();
-    if (controller != null) {
-      controller!.pauseCamera();
-      controller!.resumeCamera();
-    }
-  }
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
-  }
-
-  void _onQRViewCreated(QRViewController ctrl) {
-    controller = ctrl;
-    ctrl.scannedDataStream.listen((scanData) {
-      if (scannedData == null) {
-        setState(() {
-          scannedData = scanData.code;
-        });
-        controller?.pauseCamera();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("QR Kod Oku"),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withOpacity(0.8),
-              AppColors.primary.withOpacity(0.6),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 24),
-              Expanded(
-                flex: 4,
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: QRView(
-                      key: qrKey,
-                      onQRViewCreated: _onQRViewCreated,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                flex: 2,
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: scannedData == null
-                      ? const Center(
-                    child: Text(
-                      "Lütfen kamerayı bir QR koda doğru tutun",
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                  )
-                      : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Okunan Kod:",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SelectableText(
-                        scannedData!,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                            ),
-                            icon: const Icon(Icons.copy),
-                            label: const Text("Kopyala"),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: scannedData!));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Kod panoya kopyalandı"),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                            ),
-                            icon: const Icon(Icons.share),
-                            label: const Text("Paylaş"),
-                            onPressed: () {
-                              Share.share(scannedData!);
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton.icon(
-                        icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text("Tekrar Tara"),
-                        onPressed: () {
-                          setState(() => scannedData = null);
-                          controller?.resumeCamera();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}*/

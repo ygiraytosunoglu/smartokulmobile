@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
 import 'globals.dart' as globals;
@@ -102,7 +103,17 @@ class _MyAppState extends State<MyApp> {
     super.initState();
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      globals.duyuruVar.value = true;
+      final tipi = (message.data['tipi'] ?? message.data['type'] ?? '').toString().toLowerCase();
+      if (tipi == 'mesaj' || tipi == 'message') {
+        globals.mesajVar.value = true;
+      } else if (tipi == 'duyuru' || tipi == 'announcement') {
+        globals.duyuruVar.value = true;
+      } else {
+        // Tip bilinmiyorsa her ikisini de işaretle
+        globals.duyuruVar.value = true;
+        globals.mesajVar.value = true;
+      }
+      
       _showLocalNotification(message);
     });
   }

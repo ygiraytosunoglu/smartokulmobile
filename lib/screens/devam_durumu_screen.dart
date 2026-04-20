@@ -4,6 +4,7 @@ import 'package:intl/intl.dart'; // Tarih formatlamak için
 import 'package:smart_okul_mobile/constants.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
 import 'package:smart_okul_mobile/services/api_service.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class DevamDurumuScreen extends StatefulWidget {
   final String tckn; // parametre
@@ -30,9 +31,9 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
   void _getOgrenciAdi() {
     final ogrenci = globals.globalOgrenciListesi.firstWhere(
           (e) => e['TCKN'] == widget.tckn,
-      orElse: () => {"Name": "Bilinmeyen"},
+      orElse: () => {"Name": AppLocalizations.of(context)!.unknownStudent},
     );
-    _ogrenciAdi = ogrenci['Name'] ?? "Bilinmeyen";
+    _ogrenciAdi = ogrenci['Name'] ?? AppLocalizations.of(context)!.unknownStudent;
   }
 
   Future<void> _getDevamDurumu() async {
@@ -60,7 +61,7 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
       appBar: AppBar(
         title:
         Text(
-            "Devam Durumu",
+            AppLocalizations.of(context)!.attendanceStatusTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -95,7 +96,7 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
           // Devam durumu listesi
           Expanded(
             child: _devamListesi.isEmpty
-                ? const Center(child: Text("Devam durumu bulunamadı."))
+                ?  Center(child: Text(AppLocalizations.of(context)!.attendanceNotFound))
                 : ListView.builder(
               itemCount: _devamListesi.length,
               itemBuilder: (context, index) {
@@ -150,7 +151,7 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
                         ],
                       ),
                       title: Text(
-                        devam ? "Devam etti" : "Devamsız",
+                        devam ? AppLocalizations.of(context)!.attended : AppLocalizations.of(context)!.absent,
                         style: TextStyle(
                           color:
                           isSelected ? Colors.blue : Colors.black,

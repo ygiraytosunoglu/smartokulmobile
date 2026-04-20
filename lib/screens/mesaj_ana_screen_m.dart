@@ -4,7 +4,7 @@ import 'package:smart_okul_mobile/screens/mesaj_detay_screen.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
-
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 class MesajAnaScreenM extends StatefulWidget {
   const MesajAnaScreenM({Key? key}) : super(key: key);
 
@@ -86,7 +86,7 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Öğretmenler", style: AppStyles.titleLarge),
+        title: Text(AppLocalizations.of(context)!.teachersTitle, style: AppStyles.titleLarge),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -104,9 +104,9 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : globals.globalOgretmenListesi.isEmpty
-            ? const Center(
+            ?  Center(
           child: Text(
-            "Öğretmen bulunamadı",
+            AppLocalizations.of(context)!.teacherNotFound,
             style: TextStyle(fontSize: 16),
           ),
         )
@@ -154,7 +154,7 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
                       ),
                       title: Text(
                         ogretmen["Name"] ??
-                            "İsimsiz Öğretmen",
+                            AppLocalizations.of(context)!.unnamedTeacher,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight:
@@ -186,8 +186,8 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
                         child: OutlinedButton.icon(
                           icon: const Icon(
                               Icons.message),
-                          label: const Text(
-                              "Veli Mesajlaşmaları"),
+                          label:  Text(
+                              AppLocalizations.of(context)!.parentMessages,),
                           style: OutlinedButton
                               .styleFrom(
                             foregroundColor:

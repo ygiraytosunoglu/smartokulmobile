@@ -4,6 +4,7 @@ import '../constants.dart';
 import '../globals.dart' as globals;
 import 'create_survey_screen.dart';
 import '../services/api_service.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class SurveyScreen extends StatefulWidget {
   const SurveyScreen({super.key});
@@ -29,7 +30,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
       final data = await apiService.getSurveysByTckn(globals.kullaniciTCKN);
       setState(() => surveys = data);
     } catch (e) {
-      debugPrint("Hata: $e");
+      debugPrint(AppLocalizations.of(context)!.err+": $e");
     } finally {
       setState(() => isLoading = false);
     }
@@ -108,7 +109,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text(surveyData["subject"] ?? "Anket"),
+              title: Text(surveyData["subject"] ?? AppLocalizations.of(context)!.survey),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,8 +139,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
                     // 🔹 ÖĞRETMEN / MÜDÜR DETAY
                     if (groupedAnswers != null) ...[
                       const Divider(),
-                      const Text(
-                        "Cevap Detayları",
+                       Text(
+                         AppLocalizations.of(context)!.answerDetails,
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
@@ -181,48 +182,18 @@ class _SurveyScreenState extends State<SurveyScreen> {
                           ],
                         );
                       }).toList(),
-                     /* ...groupedAnswers.entries.map((e) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "${e.key} (${e.value.length})",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            e.value.isEmpty
-                                ? const Text("—")
-                                : Wrap(
-                              spacing: 6,
-                              children: e.value
-                                  .map(
-                                    (kisi) => Chip(
-                                  label: Text(kisi),
-                                  backgroundColor:
-                                  Colors.grey.shade200,
-                                ),
-                              )
-                                  .toList(),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        );
-                      }).toList(),
-                   */ ],
+                    ],
                   ],
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Kapat"),
+                  child:  Text(AppLocalizations.of(context)!.close),
                 ),
                 if (["P", "S"].contains(globals.globalKullaniciTipi))
             ElevatedButton(
-            child: const Text("Gönder"),
+            child:  Text(AppLocalizations.of(context)!.send),
             onPressed: () async {
             if (selectedOption == null) return;
 
@@ -239,7 +210,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
             debugPrint("Submit hata: $e");
             if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Cevap gönderilemedi")),
+             SnackBar(content: Text(AppLocalizations.of(context)!.submitError)),
             );
             }
             }
@@ -259,9 +230,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const
+        title:
         Text(
-            "Anket Listesi",
+            AppLocalizations.of(context)!.surveyListTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -291,17 +262,10 @@ class _SurveyScreenState extends State<SurveyScreen> {
                       onPressed: _createSurvey,
                       icon: const Icon(Icons.add, color: AppColors.onPrimary),
                       label:  Text(
-                        "Yeni Anket Oluştur",
+                        AppLocalizations.of(context)!.newSurvey,
                         style: AppStyles.buttonTextStyle,//TextStyle(color: AppColors.primary),
                       ),
                       style: AppStyles.buttonStyle,
-                      /*ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),*/
                     ),
                   ),
                 ),
@@ -309,15 +273,15 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : surveys.isEmpty
-                    ? const Center(child: Text("Henüz anket bulunmuyor."))
+                    ?  Center(child: Text(AppLocalizations.of(context)!.noSurvey))
                     : ListView.builder(
                   itemCount: surveys.length,
                   itemBuilder: (context, index) {
                     final survey = surveys[index];
-                    String subject = "Başlıksız";
+                    String subject = AppLocalizations.of(context)!.noTitle;
                     try {
                       final parsed = jsonDecode(survey["Data"]);
-                      subject = parsed["subject"] ?? "Başlıksız";
+                      subject = parsed["subject"] ?? AppLocalizations.of(context)!.noTitle;
                     } catch (_) {}
 
                     final answered = survey["Answer"] != null &&
@@ -325,7 +289,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
 
                     final answerText = answered
                         ? survey["Answer"].toString()
-                        : "Cevaplanmamış";
+                        : AppLocalizations.of(context)!.unanswered;
 
                     return Opacity(
                       opacity: answered ? 0.5 : 1.0, // ✅ Soluk görünüm
@@ -345,7 +309,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                             subtitle: globals.globalKullaniciTipi == 'P'
                                 ? Padding(
                               padding: const EdgeInsets.only(top: 8.0),
-                              child: Text("Cevap: $answerText"),
+                              child: Text(AppLocalizations.of(context)!.answer+": $answerText"),
                             )
                                 : null,
                             leading: const Icon(
@@ -382,24 +346,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                                 _fetchSurveys();
                               }
                             },
-
-
                           ),
-
-                          /*child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(
-                              subject,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text("Cevap: $answerText"),
-                            ),
-                            leading: const Icon(Icons.poll,
-                                size: 36, color: AppColors.primary),
-                            onTap: () => _showSurveyDialog(survey),
-                          ),*/
                         ),
                       ),
                     );
@@ -419,20 +366,20 @@ class _SurveyScreenState extends State<SurveyScreen> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Silme Onayı'),
-          content: const Text(
-            'Bu anketi silmek istediğinize emin misiniz?',
+          title:  Text(AppLocalizations.of(context)!.deleteConfirmTitle),
+          content:  Text(
+            AppLocalizations.of(context)!.deleteConfirmMessage,
           ),
           actions: [
             TextButton(
-              child: const Text('İptal'),
+              child:  Text(AppLocalizations.of(context)!.cancel),
               onPressed: () => Navigator.pop(context, false),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: const Text('Sil'),
+              child:  Text(AppLocalizations.of(context)!.delete),
               onPressed: () => Navigator.pop(context, true),
             ),
           ],
@@ -455,8 +402,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aktivite silindi'),
+           SnackBar(
+            content: Text(AppLocalizations.of(context)!.deleteSuccess),
             backgroundColor: Colors.green,
           ),
         );
@@ -465,8 +412,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
         await _fetchSurveys();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Silme yetkiniz yok'),
+           SnackBar(
+            content: Text(AppLocalizations.of(context)!.noDeletePermission),
             backgroundColor: Colors.red,
           ),
         );
@@ -474,512 +421,10 @@ class _SurveyScreenState extends State<SurveyScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Silme hatası: $e'),
+          content: Text(AppLocalizations.of(context)!.activityDeleteError+' $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
- /* @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text("Anket Listesi", style: AppStyles.titleLarge),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        itemCount: surveys.length,
-        itemBuilder: (context, i) {
-          final survey = surveys[i];
-          final parsed = jsonDecode(survey["Data"]);
-          final answered =
-              survey["Answer"] != null && survey["Answer"].toString() != "";
-
-          return Opacity(
-            opacity: answered ? 0.5 : 1,
-            child: Card(
-              margin:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              child: ListTile(
-                leading: const Icon(Icons.poll,
-                    color: AppColors.primary, size: 36),
-                title: Text(parsed["subject"] ?? ""),
-                subtitle: Text(
-                  answered
-                      ? "Cevap: ${survey["Answer"]}"
-                      : "Cevaplanmamış",
-                ),
-                onTap: () => _showSurveyDialog(survey),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }*/
 }
-
-
-/*import 'package:flutter/material.dart';
-import 'dart:convert';
-import '../constants.dart';
-import '../globals.dart' as globals;
-import 'create_survey_screen.dart';
-import '../services/api_service.dart';
-
-class SurveyScreen extends StatefulWidget {
-  const SurveyScreen({super.key});
-
-  @override
-  State<SurveyScreen> createState() => _SurveyScreenState();
-}
-
-class _SurveyScreenState extends State<SurveyScreen> {
-  final ApiService apiService = ApiService();
-  List<dynamic> surveys = [];
-  bool isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchSurveys();
-  }
-
-  Future<void> _fetchSurveys() async {
-    setState(() => isLoading = true);
-    try {
-      final data = await apiService.getSurveysByTckn(globals.kullaniciTCKN);
-      setState(() {
-        surveys = data;
-      });
-    } catch (e) {
-      debugPrint("Hata: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Anketler yüklenemedi.")),
-      );
-    } finally {
-      setState(() => isLoading = false);
-    }
-  }
-
-  Future<void> _createSurvey() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CreateSurveyScreen()),
-    );
-    if (result == true) {
-      _fetchSurveys();
-    }
-  }
-
-  Future<bool> _showDeleteConfirmDialog(BuildContext context) async {
-    return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Silme Onayı'),
-          content: const Text(
-            'Bu anketi silmek istediğinize emin misiniz?',
-          ),
-          actions: [
-            TextButton(
-              child: const Text('İptal'),
-              onPressed: () => Navigator.pop(context, false),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Sil'),
-              onPressed: () => Navigator.pop(context, true),
-            ),
-          ],
-        );
-      },
-    ) ??
-        false;
-  }
-
-  Future<void> _deleteSurvey(int surveyId) async {
-    final confirm = await _showDeleteConfirmDialog(context);
-
-    if (!confirm) return;
-
-    try {
-       final success = await ApiService().deleteSurvey(
-        tckn: globals.kullaniciTCKN,
-        surveyId: surveyId,
-      );
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aktivite silindi'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // 🔄 LİSTEYİ YENİDEN ÇEK
-        await _fetchSurveys();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Silme yetkiniz yok'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Silme hatası: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Map<String, List<String>> groupAnswersByOption(
-      Map<String, dynamic> summaryData,
-      List<dynamic> options,
-      ) {
-    final Map<String, List<String>> grouped = {};
-
-    // seçenek adlarını al (a, b, c gibi)
-    final optionKeys = options
-        .map((o) => o["secenekKey"] ?? o["secenekAdi"])
-        .toList();
-
-    for (var key in optionKeys) {
-      grouped[key] = [];
-    }
-
-    grouped["Cevapsız"] = [];
-
-    final detay = summaryData["detay"] as Map<String, dynamic>;
-
-    detay.forEach((name, answer) {
-      if (answer == "-" || answer == null) {
-        grouped["Cevapsız"]!.add(name);
-      } else {
-        grouped.putIfAbsent(answer, () => []);
-        grouped[answer]!.add(name);
-      }
-    });
-
-    return grouped;
-  }
-
-
-  void _showSurveyDialog(Map<String, dynamic> survey) async {
-    // ✅ Eğer cevap verilmişse, uyarı popup olarak göster
-   /* if (survey["Answer"] != null && survey["Answer"].toString().trim().isNotEmpty) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("Zaten Cevapladınız"),
-          content: const Text(
-              "Bu anketi daha önce cevapladınız, tekrar cevaplayamazsınız."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Tamam"),
-            ),
-          ],
-        ),
-      );
-      return;
-    }*/
-
-    final surveyData = jsonDecode(survey["Data"]);
-    final surveyId = survey["SurveyId"];
-    final List<dynamic> options = surveyData["secenek"];
-    String? selectedOption;
-
-    Map<String, dynamic>? summaryData;
-
-    if (["M", "T"].contains(globals.globalKullaniciTipi)) {
-      try {
-        final classesParam =
-        globals.globalSinifListesi.map((c) => c["Id"].toString()).join(",");
-        summaryData = await apiService.getSurveySummary(
-          surveyId: surveyId,
-          tckn: globals.kullaniciTCKN,
-          classes: classesParam,
-        );
-      } catch (e) {
-        debugPrint("Summary Hata: $e");
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: Text(surveyData["subject"] ?? "Başlıksız Anket"),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(surveyData["aciklama"] ?? ""),
-                    const SizedBox(height: 16),
-                    if (["P", "S"].contains(globals.globalKullaniciTipi))
-                      ...options.map((o) {
-                        final optionText = o["secenekAdi"] ?? "";
-                        return RadioListTile<String>(
-                          title: Text(optionText),
-                          value: optionText,
-                          groupValue: selectedOption,
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              selectedOption = value;
-                            });
-                          },
-                        );
-                      }).toList(),
-                    if (summaryData != null) ...[
-                      const Divider(),
-                      const Text("Özet:", style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Table(
-                        border: TableBorder.all(color: Colors.grey.shade300),
-                        children: [
-                          const TableRow(
-                            decoration: BoxDecoration(color: Colors.grey),
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.all(4),
-                                child: Text("Seçenek",
-                                    style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.all(4),
-                                child: Text("Oy Sayısı",
-                                    style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                          ...summaryData.entries.map((e) {
-                            return TableRow(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Text(e.key),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Text("${e.value}"),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Kapat"),
-                ),
-                if (["P", "S"].contains(globals.globalKullaniciTipi))
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (selectedOption == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Lütfen bir seçenek seçin")),
-                        );
-                        return;
-                      }
-
-                      Navigator.pop(context);
-
-                      try {
-                        await apiService.submitSurvey(
-                          tckn: globals.kullaniciTCKN,
-                          surveyId: surveyId,
-                          answer: selectedOption!,
-                        );
-
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Cevabınız gönderildi")),
-                          );
-                        }
-
-                        setState(() {
-                          survey["Answer"] = selectedOption; // ✅ artık cevap var
-                        });
-                      } catch (e) {
-                        debugPrint("Submit Hata: $e");
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Cevap gönderilemedi")),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text("Gönder"),
-                  ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const
-        Text(
-            "Anket Listesi",
-            textAlign: TextAlign.center,
-            style: AppStyles.titleLarge
-        ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.background.withOpacity(0.8),
-              AppColors.background.withOpacity(0.6),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              if (["M", "T"].contains(globals.globalKullaniciTipi))
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _createSurvey,
-                      icon: const Icon(Icons.add, color: AppColors.onPrimary),
-                      label:  Text(
-                        "Yeni Anket Oluştur",
-                        style: AppStyles.buttonTextStyle,//TextStyle(color: AppColors.primary),
-                      ),
-                      style: AppStyles.buttonStyle,
-                      /*ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),*/
-                    ),
-                  ),
-                ),
-              Expanded(
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : surveys.isEmpty
-                    ? const Center(child: Text("Henüz anket bulunmuyor."))
-                    : ListView.builder(
-                  itemCount: surveys.length,
-                  itemBuilder: (context, index) {
-                    final survey = surveys[index];
-                    String subject = "Başlıksız";
-                    try {
-                      final parsed = jsonDecode(survey["Data"]);
-                      subject = parsed["subject"] ?? "Başlıksız";
-                    } catch (_) {}
-
-                    final answered = survey["Answer"] != null &&
-                        survey["Answer"].toString().trim().isNotEmpty;
-
-                    final answerText = answered
-                        ? survey["Answer"].toString()
-                        : "Cevaplanmamış";
-
-                    return Opacity(
-                      opacity: answered ? 0.5 : 1.0, // ✅ Soluk görünüm
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Card(
-                          elevation: 8,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(
-                              subject,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text("Cevap: $answerText"),
-                            ),
-                            leading: const Icon(
-                              Icons.poll,
-                              size: 36,
-                              color: AppColors.primary,
-                            ),
-
-                            // 👇 SAĞ TARAF BUTONLARI
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if(globals.globalKullaniciTipi!='P')
-                                  IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  tooltip: "Sil",
-                                  onPressed: () {
-                                    _deleteSurvey(survey["SurveyId"]);
-                                  },
-                                ),
-                              ],
-                            ),
-
-                            onTap: () => _showSurveyDialog(survey),
-                          ),
-
-                          /*child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(
-                              subject,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text("Cevap: $answerText"),
-                            ),
-                            leading: const Icon(Icons.poll,
-                                size: 36, color: AppColors.primary),
-                            onTap: () => _showSurveyDialog(survey),
-                          ),*/
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-*/

@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../models/meal_model.dart';
 import '../globals.dart' as globals;
 import 'package:http/http.dart' as http;
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 bool isLoading = false;
 
@@ -20,23 +21,95 @@ class TeacherStudentsMealScreen extends StatefulWidget {
 }
 
 class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
+  AppLocalizations get t => AppLocalizations.of(context)!;
+
   Future<MealModel?>? futureMeal;
 
   Map<int, Map<String, Map<String, int>>> studentMealSelections = {};
   Map<int, int> studentSleepSelection = {};
   Map<int, String> studentSleepNotes = {};
   Map<int, int> studentMoodSelection = {};
+  Map<int, bool> studentAllEaten = {};
 
+  List<String> get mealKeys => [t.breakfast, t.lunch, t.snack];
+  List<String> get moodChoices => [
+    t.moodHappy,
+    t.moodSad,
+    t.moodTired,
+    t.moodPeaceful,
+    t.moodAngry
+  ];
+  List<String> get sleepChoices => [
+    t.sleepNone,
+    t.sleepLittle,
+    t.sleepSlept
+  ];
+  List<String> get mealChoices => [
+    t.didNotEat,
+    t.ateLittle,
+    t.ateAll
+  ];
+  final List<String> moodEmojis = ["😊", "😢", "😴", "😌", "😡"];
+/*
   final List<String> mealChoices = ["Yemedi", "Az Yedi", "Tamamını Yedi"];
+
   final List<String> sleepChoices = ["Uyumadı", "Az Uyudu", "Uyudu"];
   final List<String> moodChoices = ["Mutlu", "Üzgün", "Yorgun", "Huzurlu", "Sinirli"];
   final List<String> moodEmojis = ["😊", "😢", "😴", "😌", "😡"];
   final List<String> mealKeys = ["Kahvaltı", "Öğle", "İkindi"];
-
+*/
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  void setAllMealsEaten(int studentIndex, MealModel? meal) {
+    if (meal == null) return;
+
+    studentMealSelections.putIfAbsent(studentIndex, () => {});
+
+    final meals = {
+      t.breakfast: meal.meal1,
+      t.lunch: meal.meal2,
+      t.snack: meal.meal3,
+    };
+
+    meals.forEach((mealName, items) {
+      studentMealSelections[studentIndex]!.putIfAbsent(mealName, () => {});
+
+      for (var item in items) {
+        studentMealSelections[studentIndex]![mealName]![item] = 2; // Tamamını Yedi
+      }
+    });
+  }
+
+  Widget buildAllEatenCheckbox(int studentIndex, MealModel? meal) {
+    bool value = studentAllEaten[studentIndex] ?? false;
+
+    return Row(
+      children: [
+        Checkbox(
+          value: value,
+          onChanged: (val) {
+            setState(() {
+              studentAllEaten[studentIndex] = val ?? false;
+
+              if (val == true) {
+                setAllMealsEaten(studentIndex, meal);
+              }
+            });
+          },
+        ),
+         Text(
+          t.ateAll,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
+          ),
+        ),
+      ],
+    );
   }
 
   void _loadData() async {
@@ -232,7 +305,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
       Map<String, dynamic> student,
       MealModel? meal,
       ) {
-    String studentName = student['Name'] ?? 'Öğrenci';
+    String studentName = student['Name'] ?? t.student;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -258,11 +331,14 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
             ),
 
             const Divider(height: 1),
-
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: buildAllEatenCheckbox(studentIndex, meal),
+            ),
             if (meal != null) ...[
               ExpansionTile(
-                title: const Text(
-                  "Kahvaltı",
+                title:  Text(
+                  t.breakfast,
                   style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary),
@@ -273,8 +349,8 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
               ),
 
               ExpansionTile(
-                title: const Text(
-                  "Öğle",
+                title:  Text(
+                  t.lunch,
                   style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary),
@@ -285,8 +361,8 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
               ),
 
               ExpansionTile(
-                title: const Text(
-                  "İkindi",
+                title:  Text(
+                  t.snack,
                   style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary),
@@ -331,6 +407,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
 
         final finalDataStr = "$mealDataStr|$sleep|$mood|$note";
 
+        print("finalDataStr:"+finalDataStr);
         final url = Uri.parse(
             "${globals.serverAdrr}/api/student/addMeal"
                 "?schoolId=${globals.globalSchoolId}"
@@ -359,10 +436,10 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
 
     if (!hataVar) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("✅ Tüm bilgiler kaydedildi")));
+          .showSnackBar( SnackBar(content: Text("✅ "+t.savedAll)));
     } else {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("❌ Kaydetme hatası")));
+          .showSnackBar( SnackBar(content: Text("❌ "+t.saveError )));
     }
   }
 
@@ -373,7 +450,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text("Günlük Bilgilendirme", style: AppStyles.titleLarge),
+        title:  Text(t.dailyInfoTitle, style: AppStyles.titleLarge),
       ),
       body: FutureBuilder<MealModel?>(
         future: futureMeal,
@@ -394,7 +471,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
 
 
           if (globals.globalOgrenciListesi.isEmpty) {
-            return const Center(child: Text("Öğrenci bulunamadı.", style: TextStyle(color: AppColors.primary)));
+            return  Center(child: Text(t.studentNotFound, style: TextStyle(color: AppColors.primary)));
           }
 
           return Column(
@@ -416,7 +493,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                        child: const Text("Vazgeç"),
+                        child:  Text(t.cancel),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -426,7 +503,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
                         style: AppStyles.buttonStyle,
                         child: isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text("Kaydet"),
+                            :  Text(t.save),
                       ),
                     ),
                   ],
