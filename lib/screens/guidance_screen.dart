@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
@@ -10,6 +10,7 @@ import '../globals.dart' as globals;
 import 'create_survey_screen.dart';
 import '../services/api_service.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 import 'olcek_sonuc_screen.dart';
 //import 'olcek_detay_screen.dart'; // 🔥 EKLENDİ
@@ -132,7 +133,7 @@ class _GuidanceScreenState extends State<GuidanceScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title:  Text(""),
-          content: Text(e.toString().replaceAll("Exception:","")),
+          content: Text(translateError(e.toString(), context)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -201,7 +202,7 @@ class _GuidanceScreenState extends State<GuidanceScreen> {
                             if (isOlcekLoading)
                               const CircularProgressIndicator()
                             else if (olcekList.isEmpty)
-                              const Text("Ölçek bulunamadı")
+                              Text("Ölçek bulunamadı")
                             else
                               Container(
                                 decoration: BoxDecoration(

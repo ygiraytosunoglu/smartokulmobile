@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/constants.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -89,7 +89,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: _changePassword,
-                child: const Text('Şifreyi Değiştir'),
+                child: Text('Şifreyi Değiştir'),
               ),
             ],
           ),

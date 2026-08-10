@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/constants.dart';
 
 class MealListScreen extends StatelessWidget {
@@ -31,7 +31,7 @@ class MealListScreen extends StatelessWidget {
                       onPressed: () => Navigator.pop(context),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'Yemek Listesi',
                       style: TextStyle(
                         fontSize: 24,

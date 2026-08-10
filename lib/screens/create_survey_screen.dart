@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../constants.dart';
@@ -270,7 +270,7 @@ class _CreateSurveyScreenState extends State<CreateSurveyScreen> {
                         maxLines: 3,
                       ),
                       const SizedBox(height: 12),
-                      const Text("Seçenekler",
+                      Text("Seçenekler",
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       ..._optionControllers.asMap().entries.map((entry) {
                         int index = entry.key;
@@ -299,12 +299,12 @@ class _CreateSurveyScreenState extends State<CreateSurveyScreen> {
                       TextButton.icon(
                         onPressed: _addOption,
                         icon: const Icon(Icons.add),
-                        label: const Text("Seçenek Ekle"),
+                        label: Text("Seçenek Ekle"),
                       ),
                       const SizedBox(height: 12),
 
                       // sınıflar listesi
-                      const Text("Sınıflar",
+                      Text("Sınıflar",
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       ...globals.globalSinifListesi.map((sinif) {
                         final id = sinif["Id"] as int;

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -98,7 +98,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ödev Güncelle', style: AppStyles.titleLarge),
+        title: Text('Ödev Güncelle', style: AppStyles.titleLarge),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -173,7 +173,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
 
                   // 📎 MEVCUT DOSYALAR
                   if (mevcutDosyalar.isNotEmpty) ...[
-                    const Text(
+                    Text(
                       "Mevcut Dosyalar",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -215,7 +215,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
                   ElevatedButton.icon(
                     icon: const Icon(Icons.attach_file),
                     style: AppStyles.buttonStyle,
-                    label: const Text("Dosya Ekle"),
+                    label: Text("Dosya Ekle"),
                     onPressed: () async {
                       final result = await FilePicker.platform
                           .pickFiles(allowMultiple: true);
@@ -234,7 +234,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
 
                   // GÜNCELLE
                   ElevatedButton(
-                    child: const Text("Güncelle"),
+                    child: Text("Güncelle"),
                     style: AppStyles.buttonStyle,
                     onPressed: () async {
                       await ApiService().updateOdev(
@@ -348,7 +348,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ödev Güncelle', style: AppStyles.titleLarge),
+        title: Text('Ödev Güncelle', style: AppStyles.titleLarge),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -423,7 +423,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
 
                   ElevatedButton.icon(
                     icon: const Icon(Icons.attach_file),
-                    label: const Text("Dosya Ekle"),
+                    label: Text("Dosya Ekle"),
                     onPressed: () async {
                       final result = await FilePicker.platform
                           .pickFiles(allowMultiple: true);
@@ -441,7 +441,7 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
                   const SizedBox(height: 24),
 
                   ElevatedButton(
-                    child: const Text("Güncelle"),
+                    child: Text("Güncelle"),
                     onPressed: () async {
                       await ApiService().updateOdev(
                         odevId: widget.odev['Id'],

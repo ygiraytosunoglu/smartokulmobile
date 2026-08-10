@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -18,6 +18,7 @@ import 'package:wechat_camera_picker/wechat_camera_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 final logger = Logger();
 class PhotoGalleryScreen extends StatefulWidget {
@@ -137,7 +138,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     /// HEPSİ
                     CheckboxListTile(
                       value: _selectAllStudents,
-                      title: const Text(
+                      title: Text(
                         "Hepsi",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
@@ -247,7 +248,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       print("Galeri yükleme hatası: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.galleryLoadError(e.toString()))),
+          SnackBar(content: Text(AppLocalizations.of(context)!.galleryLoadError(translateError(e.toString(), context)))),
         );
       }
     } finally {
@@ -353,6 +354,36 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
     final files = await convertToFiles(assets);
 
+    // 1 GB üzeri dosya kontrolü
+    const int maxBytes = 1 * 1024 * 1024 * 1024;
+    final oversized = files.where((f) => f.lengthSync() > maxBytes).toList();
+    if (oversized.isNotEmpty) {
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Dosya Çok Büyük'),
+              ],
+            ),
+            content: Text(
+              'Seçtiğiniz videonun boyutu çok büyük olduğu için yükleyemezsiniz.\n\nLütfen 1 GB\'dan küçük bir dosya seçin.',
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Tamam'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isUploading = true);
 
 
@@ -424,7 +455,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.err+" $e")),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     }
@@ -560,7 +591,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     } catch (e) {
       logger.e("Medya silme hatası", error: e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(translateError(e.toString(), context)))),
       );
     }
   }

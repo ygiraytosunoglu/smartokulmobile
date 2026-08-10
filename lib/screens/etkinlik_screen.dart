@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +6,7 @@ import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 class EtkinlikScreen extends StatefulWidget {
   @override
@@ -273,7 +274,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content:
-                            Text(t.activityCreateError+' $e')),
+                            Text(translateError(e.toString(), context))),
                       );
                       setState(() {
                         isSubmitting = false;
@@ -297,20 +298,20 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Silme Onayı'),
-          content: const Text(
+          title: Text('Silme Onayı'),
+          content: Text(
             'Bu etkinliği silmek istediğinize emin misiniz?',
           ),
           actions: [
             TextButton(
-              child: const Text('İptal'),
+              child: Text('İptal'),
               onPressed: () => Navigator.pop(context, false),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: const Text('Sil'),
+              child: Text('Sil'),
               onPressed: () => Navigator.pop(context, true),
             ),
           ],
@@ -351,7 +352,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(t.activityDeleteError+' $e'),
+          content: Text(translateError(e.toString(), context)),
           backgroundColor: Colors.red,
         ),
       );
@@ -538,7 +539,7 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                       setStateDialog(() => isSubmitting = false);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(t.activityUpdateError+" $e"),
+                          content: Text(translateError(e.toString(), context)),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -671,52 +672,47 @@ class _EtkinlikScreenState extends State<EtkinlikScreen> {
                     }
                   }
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    color: Colors.white.withOpacity(0.9),
-                    child: ListTile(
-                      title: Text(
-                        aciklama.isNotEmpty ? aciklama : detay,
-                        style: TextStyle(color: renk, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (sinifAdlari.isNotEmpty)
-                            Text(t.classLabel+': $sinifAdlari', style: TextStyle(color: renk)),
-                          if (yer.isNotEmpty)
-                            Text(t.placeLabel+': $yer', style: TextStyle(color: renk)),
-                          if (tarih.isNotEmpty)
-                            Text(t.dateLabel+': $tarih', style: TextStyle(color: renk)),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // ✏️ Düzenle
-                          if(globals.globalKullaniciTipi!='P')
-                            IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.orange),
-                            tooltip: t.edit,
-                            onPressed: () {
-                              _updateActivity(etkinlik);
-                            },
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Container(
+                      decoration: AppStyles.listCardDecoration,
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        child: ListTile(
+                          title: Text(
+                            aciklama.isNotEmpty ? aciklama : detay,
+                            style: TextStyle(color: renk, fontWeight: FontWeight.bold),
                           ),
-
-                          // 🗑️ Sil
-                          if(globals.globalKullaniciTipi!='P')
-                            IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            tooltip: t.delete,
-                            onPressed: () {
-                              final int activityId = etkinlik['Id'];
-                              _deleteActivity(activityId);
-                            },
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (sinifAdlari.isNotEmpty)
+                                Text(t.classLabel+': $sinifAdlari', style: TextStyle(color: renk)),
+                              if (yer.isNotEmpty)
+                                Text(t.placeLabel+': $yer', style: TextStyle(color: renk)),
+                              if (tarih.isNotEmpty)
+                                Text(t.dateLabel+': $tarih', style: TextStyle(color: renk)),
+                            ],
                           ),
-                        ],
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if(globals.globalKullaniciTipi!='P')
+                                IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.orange),
+                                tooltip: t.edit,
+                                onPressed: () => _updateActivity(etkinlik),
+                              ),
+                              if(globals.globalKullaniciTipi!='P')
+                                IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                tooltip: t.delete,
+                                onPressed: () => _deleteActivity(etkinlik['Id']),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );

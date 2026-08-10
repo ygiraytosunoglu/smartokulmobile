@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
@@ -188,14 +188,14 @@ class _OlcekDetayScreenState extends State<OlcekDetayScreen> {
                       onPressed: () {
                         Navigator.pop(context);
                       },
-                      child: const Text("Vazgeç"),
+                      child: Text("Vazgeç"),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _submit,
-                      child: const Text("Gönder"),
+                      child: Text("Gönder"),
                     ),
                   ),
                 ],

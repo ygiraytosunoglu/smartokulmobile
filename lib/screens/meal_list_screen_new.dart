@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
 import '../constants.dart';
@@ -14,8 +14,7 @@ class MealListScreenNew extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const
-        Text(
+        title: Text(
             "Yemek Listesi",
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge

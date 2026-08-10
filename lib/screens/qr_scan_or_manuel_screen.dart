@@ -31,6 +31,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
   // Verification State
   bool isVerifying = false;
   String? verifyMessage;
+  bool isSuccess = false;
 
   @override
   void initState() {
@@ -79,27 +80,27 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
       }*/
       setState(() {
         isVerifying = false;
-        /*if (result != null && result.isNotEmpty) {
-          verifyMessage = "✅ Kod Doğrulandı: ${result[0]['LogName']}";
-        }*/
-        if (result != null && result.isNotEmpty) {
-          verifyMessage = result.map((item) {
+        final persons = result ?? [];
+        final hasPersons = persons.isNotEmpty &&
+            persons.any((item) => (item['PersonName'] ?? '').toString().trim().isNotEmpty);
+        if (hasPersons) {
+          isSuccess = true;
+          final lines = persons.map((item) {
             final logName = item['LogName'] ?? '';
             final personName = item['PersonName'] ?? '';
             return "• $logName - $personName";
           }).join("\n");
-          print("karekod message"+verifyMessage.toString());
-          verifyMessage = AppLocalizations.of(context)!.verifySuccessTitle +
-          "\n$verifyMessage";
-        }
-        else {
-          verifyMessage =AppLocalizations.of(context)!.verifyInvalid;
+          verifyMessage = "${AppLocalizations.of(context)!.verifySuccessTitle}\n$lines";
+        } else {
+          isSuccess = false;
+          verifyMessage = AppLocalizations.of(context)!.verifyInvalid;
         }
       });
     } catch (e) {
       setState(() {
         isVerifying = false;
-        verifyMessage = AppLocalizations.of(context)!.errorMessage(e.toString());
+        isSuccess = false;
+        verifyMessage = AppLocalizations.of(context)!.verifyInvalid;
       });
     }
   }
@@ -122,23 +123,34 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
       verifyMessage = null;
     });
 
-    final result = await ApiService.verifyOtp(globals.kullaniciTCKN, otp);
+    try {
+      final result = await ApiService.verifyOtp(globals.kullaniciTCKN, otp);
 
-    setState(() {
-      isVerifying = false;
-      if (result != null && result.isNotEmpty) {
-        //verifyMessage = "✅ Kod Doğrulandı: ${result[0]['LogName']}";
-        verifyMessage = result.map((item) {
-          final logName = item['LogName'] ?? '';
-          final personName = item['PersonName'] ?? '';
-          return "• $logName - $personName";
-        }).join("\n");
-        print("karekod message"+verifyMessage.toString());
-        verifyMessage = AppLocalizations.of(context)!.verifySuccessTitle+"\n$verifyMessage";
-      } else {
+      setState(() {
+        isVerifying = false;
+        final persons = result ?? [];
+        final hasPersons = persons.isNotEmpty &&
+            persons.any((item) => (item['PersonName'] ?? '').toString().trim().isNotEmpty);
+        if (hasPersons) {
+          isSuccess = true;
+          final lines = persons.map((item) {
+            final logName = item['LogName'] ?? '';
+            final personName = item['PersonName'] ?? '';
+            return "• $logName - $personName";
+          }).join("\n");
+          verifyMessage = "${AppLocalizations.of(context)!.verifySuccessTitle}\n$lines";
+        } else {
+          isSuccess = false;
+          verifyMessage = AppLocalizations.of(context)!.verifyInvalid;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        isVerifying = false;
+        isSuccess = false;
         verifyMessage = AppLocalizations.of(context)!.verifyInvalid;
-      }
-    });
+      });
+    }
   }
 
   @override
@@ -267,9 +279,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                               verifyMessage!,
                               style: TextStyle(
                                 fontSize: 16,
-                                color: verifyMessage!.contains("✅")
-                                    ? Colors.green
-                                    : Colors.red,
+                                color: isSuccess ? Colors.green : Colors.red,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -311,6 +321,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                               setState(() {
                                 scannedData = null;
                                 verifyMessage = null;
+                                isSuccess = false;
                               });
                               controller?.resumeCamera();
                             },
@@ -355,9 +366,7 @@ class _QRScanOrManualScreenState extends State<QRScanOrManualScreen>
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: verifyMessage!.contains("✅")
-                          ? Colors.green
-                          : Colors.red,
+                      color: isSuccess ? Colors.green : Colors.red,
                     ),
                   ),
               ],

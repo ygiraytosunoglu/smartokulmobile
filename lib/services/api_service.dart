@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -13,24 +14,55 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dio_client.dart';
+
+/// http.BaseClient wrapper — tüm http.get/post/put/delete çağrılarına
+/// otomatik olarak Bearer token ekler (401 yönetimi Dio interceptor'da).
+class _AuthHttpClient extends http.BaseClient {
+  final http.Client _inner = http.Client();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final token = await _storage.read(key: 'jwt_token');
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    return _inner.send(request);
+  }
+}
 
 class ApiService {
   static final String baseUrl = globals.serverAdrr;
   static final Logger logger = Logger();
 
+  /// Tüm http çağrıları bu client üzerinden geçer → otomatik token eklenir.
+  static final _http = _AuthHttpClient();
+
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  static const _tokenKey = 'jwt_token';
 
   /// ------------------------------------------------------------
   /// TOKEN YÖNETİMİ
   /// ------------------------------------------------------------
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
+  static Future<void> _saveToken(String token) async {
+    await _storage.write(key: _tokenKey, value: token);
+    logger.i('JWT token kaydedildi.');
+  }
+
+  static Future<void> clearToken() async {
+    await _storage.delete(key: _tokenKey);
+    logger.i('JWT token silindi.');
   }
 
   /// ------------------------------------------------------------
-  /// ORTAK İSTEK GÖNDERİCİ
+  /// ORTAK İSTEK GÖNDERİCİ  (Dio tabanlı — token & 401 interceptor'da)
   /// ------------------------------------------------------------
   Future<Map<String, dynamic>> _sendRequest(
       String method,
@@ -38,69 +70,45 @@ class ApiService {
         Map<String, String>? headers,
         dynamic body,
       }) async {
-    final token = await _getToken();
-    final fullHeaders = {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-      ...?headers,
-    };
-
-    final url = Uri.parse('$baseUrl$endpoint');
-    http.Response response;
-
-    logger.i('API çağrısı: $method $endpoint');
+    final dio = DioClient.instance.dio;
 
     try {
-      switch (method.toUpperCase()) {
-        case 'GET':
-          response =
-          await http.get(url, headers: fullHeaders).timeout(const Duration(seconds: 15));
-          break;
-        case 'POST':
-          response = await http
-              .post(url, headers: fullHeaders, body: jsonEncode(body))
-              .timeout(const Duration(seconds: 15));
-          break;
-        case 'PUT':
-          response = await http
-              .put(url, headers: fullHeaders, body: jsonEncode(body))
-              .timeout(const Duration(seconds: 15));
-          break;
-        default:
-          throw Exception('Desteklenmeyen HTTP metodu: $method');
-      }
+      final Response response;
+      final options = Options(
+        method: method.toUpperCase(),
+        headers: headers,
+      );
 
-      // Token süresi dolmuşsa, yeniden login veya refresh token tetiklenebilir.
-      if (response.statusCode == 401) {
-        logger.e('401 - Token geçersiz veya süresi dolmuş.');
-        return {'success': false, 'message': 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.'};
-      }
+      response = await dio.request(
+        endpoint,
+        data: body,
+        options: options,
+      );
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final jsonBody =
-        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
-        logger.i('Başarılı: ${response.statusCode} ${response.request?.url}');
-        return {'success': true, 'data': jsonBody};
-      } else {
-        logger.e('Hata: ${response.statusCode} - ${response.body}');
-        return {
-          'success': false,
-          'message': '${response.body}',
-          'details': response.body
-        };
+      final data = response.data;
+      return {
+        'success': true,
+        'data': data is Map<String, dynamic> ? data : <String, dynamic>{},
+      };
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return {'success': false, 'message': 'Sunucu yanıt vermiyor (timeout).'};
       }
-    } on SocketException {
-      logger.e('İnternet bağlantısı yok.');
-      return {'success': false, 'message': 'İnternet bağlantısı yok.'};
-    } on TimeoutException {
-      logger.e('İstek zaman aşımına uğradı.');
-      return {'success': false, 'message': 'Sunucu yanıt vermiyor (timeout).'};
-    } on FormatException {
-      logger.e('JSON parse hatası.');
-      return {'success': false, 'message': 'Veri formatı hatalı.'};
+      if (e.type == DioExceptionType.connectionError) {
+        return {'success': false, 'message': 'İnternet bağlantısı yok.'};
+      }
+      final statusCode = e.response?.statusCode;
+      final responseBody = e.response?.data?.toString() ?? '';
+      logger.e('Dio hatası: $statusCode - $responseBody');
+      return {
+        'success': false,
+        'message': responseBody.isNotEmpty ? responseBody : 'Bir hata oluştu ($statusCode).',
+        'details': responseBody,
+      };
     } catch (e) {
       logger.e('Beklenmeyen hata: $e');
-      return {'success': false, 'message': 'Beklenmeyen hata oluştu. '};//$e
+      return {'success': false, 'message': 'Beklenmeyen hata oluştu.'};
     }
   }
 
@@ -175,7 +183,7 @@ await apiService.putRequest(
     final body = jsonEncode({'tckn': tckn, 'pin': pin//, 'personType':
     });
 
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: body,
@@ -193,7 +201,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/yoklama/has-month?tckn=$tckn";
     logger.i("getDevamDurumu url: $url");
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await _http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         logger.i("Devam durumu listesi alındı body: "+response.body);
         return jsonDecode(response.body);
@@ -234,7 +242,7 @@ await apiService.putRequest(
 
       logger.d("Request URI: $finalUri");
 
-      final response = await http.get(
+      final response = await _http.get(
         finalUri,
         headers: {
           "Authorization": "Bearer $token", // varsa
@@ -290,13 +298,13 @@ await apiService.putRequest(
 
       logger.d("Request URI: $finalUri");
 
-      final response = await http.get(
+      final response = await _http.get(
         finalUri,
         headers: {
           "Authorization": "Bearer $token", // varsa
         },
       );
-     /* final response = await http.get(Uri.parse(url));
+     /* final response = await _http.get(Uri.parse(url));
       if (response.statusCode != 200) {
         throw Exception("StatusCode: ${response.statusCode}, Body: ${response.body}");
       }*/
@@ -347,7 +355,7 @@ await apiService.putRequest(
       request.fields['tcknList'] = tcknString;
       request.fields['date'] = date.toIso8601String();
 
-      final response = await request.send();
+      final response = await ApiService._http.send(request);
       final responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
@@ -369,7 +377,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/yoklama/add";
     final body = {'tckn': tckn, 'date': gun.toIso8601String()};
 
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: body,
@@ -389,7 +397,7 @@ await apiService.putRequest(
       final url = Uri.parse(
           "${ApiService.baseUrl}/api/yoklama/delete?tckn=$tckn&date=$formattedDate");
 
-      final response = await http.delete(url);
+      final response = await _http.delete(url);
 
       if (response.statusCode == 200) {
         logger.i("✅ Yoklama kaydı silindi.");
@@ -408,7 +416,7 @@ await apiService.putRequest(
   Future<String> kvkkEkle(String tckn) async {
     final url = "${ApiService.baseUrl}/api/kvkk/approve?tckn=$tckn";
 
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
     );
@@ -433,7 +441,7 @@ await apiService.putRequest(
       'Data': message,
     };
 
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -455,7 +463,7 @@ await apiService.putRequest(
       'Data': message,
     };
 
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -479,7 +487,7 @@ await apiService.putRequest(
       'Data': message,
     };
 
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -500,7 +508,7 @@ await apiService.putRequest(
         globals.kullaniciTCKN;
     Uri uri = Uri.parse(baseUrl);
     logger.i("_bildirimGonder çağırıldı");
-    //http.Response response = await http.get(uri);
+    //http.Response response = await _http.get(uri);
     http.Response response;
 
     try {
@@ -533,7 +541,7 @@ await apiService.putRequest(
       request.fields['studentTcknList'] = tcknString;
       request.fields['durum'] = durum.toString();
 
-      final response = await request.send();
+      final response = await ApiService._http.send(request);
       final responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
@@ -565,7 +573,7 @@ await apiService.putRequest(
 
       print('DeleteGallery isteği gönderiliyor: $uri');
 
-      final response = await http.delete(
+      final response = await _http.delete(
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -598,7 +606,7 @@ await apiService.putRequest(
   // Duyuru listesi alma
   Future<List<Map<String, dynamic>>> getDuyuruList(String kullaniciTCKN) async {
     final url = "${ApiService.baseUrl}/api/Duyuru/GetDuyurular?tckn=$kullaniciTCKN";
-    final response = await http.get(Uri.parse(url));
+    final response = await _http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final jsonList = jsonDecode(response.body) as List;
@@ -611,7 +619,7 @@ await apiService.putRequest(
   // Mesaj listesi alma
   Future<List<Map<String, dynamic>>> getMesajList(String kullaniciTCKN) async {
     final url = "${ApiService.baseUrl}/api/Mesaj/GetMesajlar?tckn=$kullaniciTCKN";
-    final response = await http.get(Uri.parse(url));
+    final response = await _http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final jsonList = jsonDecode(response.body) as List;
@@ -627,7 +635,7 @@ await apiService.putRequest(
         "${ApiService.baseUrl}/api/ders/GetAll?schoolId=$schoolId",
       );
 
-      final response = await http.get(
+      final response = await _http.get(
         uri,
         headers: {
           "Content-Type": "application/json",
@@ -652,7 +660,7 @@ await apiService.putRequest(
     );
 
     try {
-      final response = await http.get(
+      final response = await _http.get(
         uri,
         headers: {
           "Content-Type": "application/json",
@@ -733,7 +741,7 @@ await apiService.putRequest(
         }
       }
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await ApiService._http.send(request);
       final response =
       await http.Response.fromStream(streamedResponse);
       print( "resp:"+response.body);
@@ -755,7 +763,7 @@ await apiService.putRequest(
         "${ApiService.baseUrl}/api/odev/getByDers?dersId=$dersId",
       );
 
-      final response = await http.get(
+      final response = await _http.get(
         uri,
         headers: {
           "Content-Type": "application/json",
@@ -783,7 +791,7 @@ await apiService.putRequest(
         "${ApiService.baseUrl}/api/odev/remove?odevId=$odevId",
       );
 
-      final response = await http.delete(
+      final response = await _http.delete(
         uri,
         headers: {
           "Content-Type": "application/json",
@@ -858,7 +866,7 @@ await apiService.putRequest(
         // "Authorization": "Bearer ${globals.token}",
       });
 
-      final response = await request.send();
+      final response = await ApiService._http.send(request);
       final responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
@@ -890,7 +898,7 @@ await apiService.putRequest(
             "&take=$take",
       );
 
-      final response = await http.get(
+      final response = await _http.get(
         uri,
         headers: {
           "Content-Type": "application/json",
@@ -921,7 +929,7 @@ await apiService.putRequest(
       'Content-Type': 'application/json',
     };
 
-    final response = await http.post(url, headers: headers);
+    final response = await _http.post(url, headers: headers);
 
     if (response.statusCode == 200) {
       return true;
@@ -934,7 +942,7 @@ await apiService.putRequest(
   Future<Uint8List> getLogo(String tckn) async {
     final url = Uri.parse('${ApiService.baseUrl}/api/school/get-logo?tckn=$tckn');
 
-    final response = await http.get(url);
+    final response = await _http.get(url);
 
     if (response.statusCode == 200) {
       return response.bodyBytes;  // ← LOGO BYTE ARRAY
@@ -967,7 +975,7 @@ await apiService.putRequest(
 
       debugPrint("Gönderilen FormData: ${request.fields}");
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
       var responseBody = await response.stream.bytesToString();
 
       debugPrint("API Status Code: ${response.statusCode}");
@@ -991,7 +999,7 @@ await apiService.putRequest(
 
       final url = Uri.parse("${ApiService.baseUrl}/api/StudentBoyKilo/get?tckn=$tckn");
 
-      final response = await http.get(url);
+      final response = await _http.get(url);
 
       debugPrint("Status Code: ${response.statusCode}");
       debugPrint("Response Body: ${response.body}");
@@ -1044,7 +1052,7 @@ await apiService.putRequest(
       debugPrint("Gönderilen alanlar: ${request.fields}");
       debugPrint("Yüklenen dosya: $fileName");
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
       var responseBody = await response.stream.bytesToString();
 
       debugPrint("Status: ${response.statusCode}");
@@ -1076,7 +1084,7 @@ await apiService.putRequest(
 
       debugPrint("GET URL: $url");
 
-      final response = await http.get(url);
+      final response = await _http.get(url);
 
       debugPrint("Status Code: ${response.statusCode}");
       debugPrint("Response Body: ${response.body}");
@@ -1130,7 +1138,7 @@ await apiService.putRequest(
       debugPrint("Gönderilen FormData: ${request.fields}");
       debugPrint("Yüklenen dosya: $fileName");
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
       var body = await response.stream.bytesToString();
 
       debugPrint("Status Code: ${response.statusCode}");
@@ -1156,7 +1164,7 @@ await apiService.putRequest(
 
       debugPrint("GET URL: $url");
 
-      final response = await http.get(url);
+      final response = await _http.get(url);
 
       debugPrint("Status Code: ${response.statusCode}");
       debugPrint("Response Body: ${response.body}");
@@ -1208,7 +1216,7 @@ await apiService.putRequest(
       debugPrint("Yüklenen dosya: $fileName");
 
       // Gönderim
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
       var body = await response.stream.bytesToString();
 
       debugPrint("Status Code: ${response.statusCode}");
@@ -1228,7 +1236,7 @@ await apiService.putRequest(
     final url = Uri.parse(
         '${ApiService.baseUrl}/api/Document/getDocument?tckn=$tckn&docType=$docType');
 
-    final response = await http.get(url);
+    final response = await _http.get(url);
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -1250,7 +1258,7 @@ await apiService.putRequest(
     // "http://api.exchangeratesapi.io/v1/latest?access_key=";
     logger.i("baseUrl:$baseUrl");
     Uri uri = Uri.parse(baseUrl );
-    http.Response response = await http.get(uri);
+    http.Response response = await _http.get(uri);
     logger.i("response:$response");
     logger.i("response.body:${response.body}");
 
@@ -1367,15 +1375,24 @@ await apiService.putRequest(
   Future<String> kullaniciBilgileriniCek(
       String tckn, String pswd, String sRole) async {
 
-    final response = await http.get(Uri.parse(
-        "${globals.serverAdrr}/api/school/validate-person"
-            "?tckn=$tckn&pin=$pswd&personType=$sRole"));
+    final response = await _http.post(
+      Uri.parse("${globals.serverAdrr}/api/school/validate-person"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'Tckn': tckn, 'Pin': pswd, 'PersonType': sRole}),
+    );
 
     if (response.statusCode != 200) {
       return response.body;
     }
 
     final decoded = jsonDecode(response.body);
+
+    // JWT token'ı secure storage'a kaydet
+    final token = decoded['Token'] as String?;
+    if (token != null && token.isNotEmpty) {
+      await _saveToken(token);
+    }
+
     final List persons = decoded["Persons"] ?? [];
 
     if (persons.isEmpty) {
@@ -1385,12 +1402,35 @@ await apiService.putRequest(
     /// ✅ 1 OKUL → DEVAM
     if (persons.length == 1) {
       parsePerson(persons[0]);
+      // Token zaten kaydedildi; sayaçları arka planda çek.
+      unawaited(fetchLoginCounts());
       return "OK";
     }
 
     /// ⚠️ 1'DEN FAZLA OKUL → SEÇİM GEREKİYOR
     globals.secilebilirOkullar = persons;
     return "SELECT_SCHOOL";
+  }
+
+  /// get-login-counts endpoint'inden bildirim sayaçlarını çeker ve
+  /// ilgili global ValueNotifier'ları günceller.
+  /// Login sonrası ve gerektiğinde (ör. uygulama ön plana geldiğinde) çağrılabilir.
+  static Future<void> fetchLoginCounts() async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/school/get-login-counts',
+      );
+      final data = response.data as Map<String, dynamic>;
+      globals.mesajVar.value   = ((data['UnreadMesajCount']  ?? 0) as int) > 0;
+      globals.duyuruVar.value  = ((data['UnreadDuyuruCount'] ?? 0) as int) > 0;
+      globals.anketVar.value   = ((data['SurveyCount']       ?? 0) as int) > 0;
+      globals.etkinlikVar.value= ((data['ActivityCount']     ?? 0) as int) > 0;
+      logger.i('fetchLoginCounts: $data');
+    } on DioException catch (e) {
+      logger.e('fetchLoginCounts hatası: ${e.response?.statusCode} ${e.message}');
+    } catch (e) {
+      logger.e('fetchLoginCounts beklenmeyen hata: $e');
+    }
   }
 
   void parsePerson(Map<String, dynamic> p) {
@@ -1402,10 +1442,8 @@ await apiService.putRequest(
     globals.sinifAdi  = p["ClassName"] ?? "";
     globals.ogrenciOkulNo = p["SchoolNumber"] ?? "";
 
-    globals.duyuruVar.value = (p["UnreadDuyuruCount"] ?? 0) > 0;
-    globals.anketVar.value = (p["SurveyCount"] ?? 0) > 0;
-    globals.etkinlikVar.value = (p["ActivityCount"] ?? 0) > 0;
-    globals.mesajVar.value = (p["UnreadMesajCount"] ?? 0) > 0;
+    // Bildirim sayaçları artık parsePerson'dan gelmiyor;
+    // fetchLoginCounts() ile ayrıca alınıyor.
 
     globals.globalSchoolId = p["SchoolId"]?.toString() ?? "";
     globals.kullaniciTCKN = globals.orjKullaniciTCKN+"_"+globals.globalSchoolId+"_"+globals.globalKullaniciTipi;
@@ -1557,7 +1595,7 @@ await apiService.putRequest(
   //Mesaj  okundu olarak işaretleme
   Future<bool> setMesajOkundu(String gonderenTckn, String alanTckn) async {
     final url = "${ApiService.baseUrl}/api/Mesaj/MarkConversationAsRead?gonderenTckn=$gonderenTckn&alanTckn=$alanTckn";
-    final response = await http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'gonderenTckn': gonderenTckn,'alanTckn': alanTckn}));
+    final response = await _http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'gonderenTckn': gonderenTckn,'alanTckn': alanTckn}));
 
     if (response.statusCode == 200) globals.mesajVar.value = false;
     return response.statusCode == 200;
@@ -1566,7 +1604,7 @@ await apiService.putRequest(
   // Duyuruyu okundu olarak işaretleme
   Future<bool> setDuyuruOkundu(int duyuruId) async {
     final url = "${ApiService.baseUrl}/api/Duyuru/MarkAsRead?duyuruId=$duyuruId";
-    final response = await http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'duyuruId': duyuruId}));
+    final response = await _http.post(Uri.parse(url), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'duyuruId': duyuruId}));
 
     if (response.statusCode == 200) globals.duyuruVar.value = false;
     return response.statusCode == 200;
@@ -1584,7 +1622,7 @@ await apiService.putRequest(
       );
       logger.i("getYoklamaList çağırıldı");
 
-      final response = await http.get(uri);
+      final response = await _http.get(uri);
 
       if (response.statusCode == 200) {
         // API'den dönen JSON örneği artık List<dynamic>
@@ -1603,7 +1641,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/doortime/check-time?schoolId=$schoolId&personType=$personType";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await _http.get(Uri.parse(url));
       final body = response.body.trim();
 
       logger.i("checkCurrentTime response body: $body");
@@ -1643,7 +1681,7 @@ await apiService.putRequest(
         "skip": skip.toString(),
       });
 
-      final response = await http.get(uri);
+      final response = await _http.get(uri);
 
       if (response.statusCode == 200) {
         final body = response.body.trim();
@@ -1678,7 +1716,7 @@ await apiService.putRequest(
         "skip": skip.toString(),
       });
 
-      final response = await http.get(uri);
+      final response = await _http.get(uri);
 
       if (response.statusCode == 200) {
         // Virgülle ayrılmış stringi listeye çevir
@@ -1699,7 +1737,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/school/get-gallery?tckn=$tckn&skip=$skip&take=$take";
     print("url:"+url);
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await _http.get(Uri.parse(url));
       if (response.statusCode != 200) {
         throw Exception("StatusCode: ${response.statusCode}, Body: ${response.body}");
       }
@@ -1746,7 +1784,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/school/get-gallery?tckn=$tckn&skip=$skip&take=$take";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await _http.get(Uri.parse(url));
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -1782,7 +1820,7 @@ await apiService.putRequest(
     logger.i("Galeri fotoğrafları isteniyor: $url");
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await _http.get(Uri.parse(url));
 
       logger.d("Galeri response status: ${response.statusCode}");
 
@@ -1802,7 +1840,7 @@ await apiService.putRequest(
   }
  /* Future<List<String>> getGalleryImages() async {
     final url = "${ApiService.baseUrl}/gallery";
-    final response = await http.get(Uri.parse(url));
+    final response = await _http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       return (jsonDecode(response.body) as List).cast<String>();
@@ -1812,7 +1850,7 @@ await apiService.putRequest(
   }*/
 
   Future<Uint8List> getProfilePhoto(String tckn) async {
-    final response = await http.get(
+    final response = await _http.get(
       Uri.parse("$baseUrl/profile-photo?tckn=$tckn"),
     );
 
@@ -1839,7 +1877,7 @@ await apiService.putRequest(
         return byteData.buffer.asUint8List();
       } catch (_) {}
 
-      final response = await http.get(Uri.parse(
+      final response = await _http.get(Uri.parse(
         '${ApiService.baseUrl}/api/school/get-person-photo?tckn=$tckn',
       ));
 
@@ -1863,7 +1901,7 @@ await apiService.putRequest(
       request.files.add(await http.MultipartFile.fromPath('photos', image.path));
     }
 
-    final response = await request.send();
+    final response = await ApiService._http.send(request);
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception("Fotoğraf yüklenemedi! StatusCode: ${response.statusCode}");
     }
@@ -1878,7 +1916,7 @@ await apiService.putRequest(
       if (value != null) request.fields[key] = value.toString();
     });
 
-    final response = await request.send();
+    final response = await ApiService._http.send(request);
     if (response.statusCode != 200 && response.statusCode != 201) {
       final respStr = await response.stream.bytesToString();
       logger.e("Etkinlik oluşturma response:$respStr");
@@ -1906,7 +1944,7 @@ await apiService.putRequest(
       request.fields["expireDate"] = expireDate.toIso8601String();
     }
 
-    final response = await request.send();
+    final response = await ApiService._http.send(request);
     final responseBody = await response.stream.bytesToString();
 
     if (response.statusCode == 200) {
@@ -1928,7 +1966,7 @@ await apiService.putRequest(
             '&activityId=$activityId',
       );
 
-      final response = await http.delete(
+      final response = await _http.delete(
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -1954,7 +1992,7 @@ await apiService.putRequest(
   // Etkinlik listesi alma
   Future<List<Map<String, dynamic>>> getEtkinlikList(String kullaniciTCKN) async {
     final url = "${ApiService.baseUrl}/api/activity/list-by-tckn?tckn=$kullaniciTCKN";
-    final response = await http.get(Uri.parse(url));
+    final response = await _http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
@@ -1973,7 +2011,7 @@ await apiService.putRequest(
       if (value != null) request.fields[key] = value.toString();
     });
 
-    final response = await request.send();
+    final response = await ApiService._http.send(request);
     if (response.statusCode != 200 && response.statusCode != 201) {
       final respStr = await response.stream.bytesToString();
       logger.e("İlaç oluşturma response:$respStr");
@@ -2004,7 +2042,7 @@ await apiService.putRequest(
     print("addIlacTakip request: "+request.toString());
 
     try {
-      final response = await request.send();
+      final response = await ApiService._http.send(request);
       final responseData = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
@@ -2032,7 +2070,7 @@ await apiService.putRequest(
     final url = "${ApiService.baseUrl}/api/IlacTakip/get?studentTckn=$ogrenciTCKN";
     print("ilaç takip:");
     print("${ApiService.baseUrl}/api/IlacTakip/get?studentTckn=$ogrenciTCKN");
-    final response = await http.get(Uri.parse(url));
+    final response = await _http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
@@ -2055,7 +2093,7 @@ await apiService.putRequest(
     request.fields['id'] = id.toString();
     request.fields['tckn'] = tckn;
 
-    final streamedResponse = await request.send().timeout(const Duration(seconds: 10));
+    final streamedResponse = await ApiService._http.send(request).timeout(const Duration(seconds: 10));
     final statusCode = streamedResponse.statusCode;
 
     if (statusCode != 200) {
@@ -2071,7 +2109,7 @@ await apiService.putRequest(
         globals.serverAdrr+"/api/school/open-door/"+globals.globalSchoolId;
     logger.i("baseUrl:$baseUrl");
     Uri uri = Uri.parse(baseUrl );
-    //http.Response response = await http.get(uri);
+    //http.Response response = await _http.get(uri);
     http.Response response;
 
     try {
@@ -2103,7 +2141,7 @@ await apiService.putRequest(
         globals.serverAdrr+"/api/school/open-park/"+globals.globalSchoolId;
     logger.i("baseUrl:$baseUrl");
     Uri uri = Uri.parse(baseUrl );
-    //http.Response response = await http.get(uri);
+    //http.Response response = await _http.get(uri);
     http.Response response;
 
     try {
@@ -2131,7 +2169,7 @@ await apiService.putRequest(
 
   // Anket listesini çek
   Future<List<dynamic>> getSurveysByTckn(String tckn) async {
-    final response = await http.get(
+    final response = await _http.get(
       Uri.parse("${ApiService.baseUrl}/api/survey/list-by-tckn?tckn=$tckn"),
     );
 
@@ -2148,7 +2186,7 @@ await apiService.putRequest(
     required int surveyId,
     required String answer,
   }) async {
-    final response = await http.post(
+    final response = await _http.post(
       Uri.parse("${ApiService.baseUrl}/api/survey/submit"),
       headers: {"Content-Type": "application/x-www-form-urlencoded"},
       body: {
@@ -2173,7 +2211,7 @@ await apiService.putRequest(
           "?tckn=$tckn&surveyId=$surveyId",
     );
 
-    final response = await http.delete(
+    final response = await _http.delete(
       uri,
       headers: {
         "Content-Type": "application/json",
@@ -2204,7 +2242,7 @@ await apiService.putRequest(
   }) async {
     final uri = Uri.parse("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
     logger.i("${ApiService.baseUrl}/api/survey/summary?surveyId=$surveyId&tckn=$tckn&classes=$classes");
-    final response = await http.get(uri);
+    final response = await _http.get(uri);
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       return data;
@@ -2214,45 +2252,19 @@ await apiService.putRequest(
   }
 
   static Future<List<dynamic>> getConversationList(String tckn) async {
-    if (tckn.isEmpty) {
-      throw Exception("TCKN boş olamaz");
-    }
+    if (tckn.isEmpty) throw Exception("TCKN boş olamaz");
 
-    final Uri url = Uri.parse(
-      "${ApiService.baseUrl}/api/Mesaj/GetConversationList?tckn=$tckn",
-    );
-
-   print("GetConversationList isteği atılıyor. URL: $url");
+    logger.i("GetConversationList isteği atılıyor. URL: $tckn");
 
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+      final response = await DioClient.instance.dio.get(
+        '/api/Mesaj/GetConversationList',
+        queryParameters: {'tckn': tckn},
       );
-
-      print(
-        "GetConversationList response: "
-            "StatusCode=${response.statusCode}, "
-            "Body=${response.body}",
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonData = json.decode(response.body);
-        return jsonData;
-      } else {
-        throw Exception(
-          "Konuşma listesi alınamadı. "
-              "StatusCode: ${response.statusCode}",
-        );
-      }
-    } catch (e, stackTrace) {
-      throw Exception(
-        "GetConversationList hatası"
-      );
-      rethrow;
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      logger.e("GetConversationList hatası: ${e.response?.statusCode} ${e.message}");
+      throw Exception("GetConversationList hatası: ${e.response?.statusCode}");
     }
   }
 
@@ -2266,49 +2278,23 @@ await apiService.putRequest(
       throw Exception("Gönderen ve alan TCKN boş olamaz");
     }
 
-    final Uri url = Uri.parse(
-      "${ApiService.baseUrl}/api/Mesaj/GetConversationMessages"
-          "?gonderenTckn=$gonderenTckn"
-          "&alanTckn=$alanTckn"
-          "&take=$take"
-          "&skip=$skip",
-    );
-
-    print(
-      "GetConversationMessages isteği atılıyor. "
-          "URL=$url",
-    );
-
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
+      final response = await DioClient.instance.dio.get(
+        '/api/Mesaj/GetConversationMessages',
+        queryParameters: {
+          'gonderenTckn': gonderenTckn,
+          'alanTckn': alanTckn,
+          'take': take,
+          'skip': skip,
         },
       );
-
-      print(
-        "GetConversationMessages response: "
-            "StatusCode=${response.statusCode}, "
-            "Body=${response.body}",
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonData = json.decode(response.body);
-        return jsonData;
-      } else if (response.statusCode == 400) {
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      logger.e("GetConversationMessages hatası: ${e.response?.statusCode} ${e.message}");
+      if (e.response?.statusCode == 400) {
         throw Exception("Geçersiz parametreler gönderildi");
-      } else {
-        throw Exception(
-          "Mesajlar alınamadı. StatusCode=${response.statusCode}",
-        );
       }
-    } catch (e, stackTrace) {
-      throw Exception(
-        "GetConversationMessages hatası"
-      );
-      rethrow;
+      throw Exception("GetConversationMessages hatası: ${e.response?.statusCode}");
     }
   }
 /*
@@ -2329,7 +2315,7 @@ await apiService.putRequest(
         );
       }
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
 
       if (response.statusCode == 200) {
         logger.i("✅ Galeriye ${files.length} fotoğraf yüklendi.");
@@ -2361,7 +2347,7 @@ await apiService.putRequest(
         request.files.add(multipartFile);
       }
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
 
       if (response.statusCode == 200) {
         logger.i("✅ Galeriye ${files.length} medya (video + thumbnail dahil) yüklendi.");
@@ -2409,7 +2395,7 @@ await apiService.putRequest(
         "Authorization": "Bearer ${globals.token}",
       });*/
 
-      final streamed = await request.send();
+      final streamed = await ApiService._http.send(request);
       final response = await http.Response.fromStream(streamed);
 
       logger.i("Response Code: ${response.statusCode}");
@@ -2437,7 +2423,7 @@ await apiService.putRequest(
         ..fields['tckn'] = tckn
         ..fields['name'] = name;
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
 
       if (response.statusCode == 200) {
         var body = await response.stream.bytesToString();
@@ -2470,7 +2456,7 @@ await apiService.putRequest(
         ..fields['tckn'] = tckn
         ..fields['otp'] = otp;
 
-      var response = await request.send();
+      var response = await ApiService._http.send(request);
       var body = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
@@ -2504,7 +2490,7 @@ await apiService.putRequest(
         'fcmToken': fcmToken,
       });
 
-      final response = await http.post(uri);
+      final response = await _http.post(uri);
 
       if (response.statusCode == 200) {
         print("✅ FCM token başarıyla kaydedildi: ${response.body}");
@@ -2570,7 +2556,7 @@ await apiService.putRequest(
         "${ApiService.baseUrl}/api/plan/get?tckn=$tckn&year=$year&month=$month&day=$day",
       );
 
-      final response = await http.get(uri);
+      final response = await _http.get(uri);
 
       logger.d("API yanıt kodu: ${response.statusCode}");
 
@@ -2594,7 +2580,7 @@ await apiService.putRequest(
     try {
       final uri = Uri.parse("${ApiService.baseUrl}/api/MealList/get?tckn=$tckn&date=$date");
 
-      final response = await http.get(uri);
+      final response = await _http.get(uri);
       print("GetMealList Status: ${response.statusCode}");
       print("GetMealList Body: ${response.body}");
       if (response.statusCode == 200) {
@@ -2615,7 +2601,7 @@ await apiService.putRequest(
     final url = Uri.parse("${ApiService.baseUrl}/api/MealList/get?tckn=$tckn&date=$date");
 
     try {
-      final response = await http.get(url);
+      final response = await _http.get(url);
 
       print("GET MealList Status: ${response.statusCode}");
       print("Response Body: ${response.body}");
@@ -2645,7 +2631,7 @@ await apiService.putRequest(
     final url = Uri.parse("${ApiService.baseUrl}/api/degerlendirme-olcegi/okula-tanimli?tckn=$tckn");
 
 
-      final response = await http.get(url);
+      final response = await _http.get(url);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -2664,7 +2650,7 @@ await apiService.putRequest(
       "${ApiService.baseUrl}/api/degerlendirme-olcegi/ayrinti/$olcekId$query",
     );
 
-    final response = await http.get(url);
+    final response = await _http.get(url);
 
     /// ✅ BAŞARILI
     if (response.statusCode == 200) {
@@ -2702,7 +2688,7 @@ await apiService.putRequest(
       "cevaplar": cevaplar,
     };
 
-    final response = await http.post(
+    final response = await _http.post(
       url,
       headers: {
         "Content-Type": "application/json",
@@ -2746,7 +2732,7 @@ await apiService.putRequest(
       "${ApiService.baseUrl}/api/degerlendirme-olcegi/kisi-sonuclari",
     ).replace(queryParameters: queryParams);
 
-    final response = await http.get(uri);
+    final response = await _http.get(uri);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -2763,7 +2749,7 @@ await apiService.putRequest(
       "${ApiService.baseUrl}/api/document/olcek-sonuc-dosyasi?tckn=$tckn&olcekId=$olcekId",
     );
 
-    final response = await http.get(uri);
+    final response = await _http.get(uri);
 
     if (response.statusCode == 200) {
       return response.bodyBytes; // ✅ PDF byte
@@ -2778,7 +2764,7 @@ await apiService.putRequest(
   Future<List<dynamic>?> getGelisimTipleri(int schoolId) async {
     final url = Uri.parse('${ApiService.baseUrl}/api/gelisim/getGelisimTipleri?okulId='+schoolId.toString());
 
-    final response = await http.get(url);
+    final response = await _http.get(url);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -2801,7 +2787,7 @@ await apiService.putRequest(
     request.fields['deger'] = deger;
     request.fields['tipId'] = tipId.toString();
 
-    final streamed = await request.send();
+    final streamed = await ApiService._http.send(request);
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 200) {
@@ -2828,7 +2814,7 @@ await apiService.putRequest(
     final url = Uri.parse('${ApiService.baseUrl}/api/gelisim/getGelisimByTip')
         .replace(queryParameters: queryParams);
 
-    final response = await http.get(url);
+    final response = await _http.get(url);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -2842,7 +2828,7 @@ await apiService.putRequest(
     final url = Uri.parse(
         '$baseUrl/api/gelisim/getGelisimOzet?tckn=$tckn');
 
-    final response = await http.get(url);
+    final response = await _http.get(url);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -2871,7 +2857,7 @@ await apiService.putRequest(
       request.fields['insertDate'] = insertDate;
     }
 
-    final streamed = await request.send();
+    final streamed = await ApiService._http.send(request);
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 200) {
@@ -2886,7 +2872,7 @@ await apiService.putRequest(
     final url = Uri.parse(
         '${ApiService.baseUrl}/api/gelisim/removeGelisim?id=$id');
 
-    final response = await http.delete(url);
+    final response = await _http.delete(url);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -354,7 +354,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yeni Ödev Oluştur', style: AppStyles.titleLarge),
+        title: Text('Yeni Ödev Oluştur', style: AppStyles.titleLarge),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -440,7 +440,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
               /// 👥 Öğrenciler
               CheckboxListTile(
-                title: const Text("Hepsi"),
+                title: Text("Hepsi"),
                 value: hepsiSecili,
                 onChanged: (v) {
                   setState(() {
@@ -469,7 +469,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
               /// 📎 Dosya Ekle
               ElevatedButton.icon(
                 icon: const Icon(Icons.attach_file),
-                label: const Text("Dosya Ekle"),
+                label: Text("Dosya Ekle"),
                 onPressed: () async {
                   final result =
                   await FilePicker.platform.pickFiles(
@@ -504,7 +504,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: AppStyles.buttonStyle,
-                  child: const Text("Kaydet"),
+                  child: Text("Kaydet"),
                   onPressed: () async {
                     final secilenOgrenciler = ogrenciSecim.entries
                         .where((e) => e.value)

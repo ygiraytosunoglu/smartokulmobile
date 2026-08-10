@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
 import '../services/api_service.dart';
@@ -59,8 +59,7 @@ class _KvkkScreenState extends State<KvkkScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const
-        Text(
+        title: Text(
             "KVKK Metni",
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
@@ -93,7 +92,7 @@ class _KvkkScreenState extends State<KvkkScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                     ),
-                    child: const Text(
+                    child: Text(
                       "Okudum, Anladım, Onaylıyorum",
                       style: TextStyle(color: Colors.white),
                     ),
@@ -104,7 +103,7 @@ class _KvkkScreenState extends State<KvkkScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                     ),
-                    child: const Text("Vazgeç"),
+                    child: Text("Vazgeç"),
                   ),
                 ],
               ),

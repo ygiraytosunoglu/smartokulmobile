@@ -1,3 +1,4 @@
+﻿import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
 import 'package:smart_okul_mobile/screens/home_screen.dart';
@@ -28,6 +29,7 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
         ApiService().parsePerson(
           Map<String, dynamic>.from(selectedPerson),
         );
+        unawaited(ApiService.fetchLoginCounts());
 
         Navigator.pushReplacement(
           context,
@@ -50,7 +52,7 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.newAppBar,
         elevation: 0,
-        title: const Text(
+        title: Text(
           "Okul Seçiniz",
           style: TextStyle(
             fontWeight: FontWeight.bold,
@@ -125,6 +127,7 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
                   ApiService().parsePerson(
                     Map<String, dynamic>.from(selectedPerson),
                   );
+                  unawaited(ApiService.fetchLoginCounts());
 
                   if (globals.kvkk == "1") {
                     if (globals.globalKullaniciTipi == 'P' &&
@@ -155,7 +158,7 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   "Devam Et",
                   style: TextStyle(
                     fontSize: 16,

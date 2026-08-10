@@ -5,7 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_ru.dart';
 import 'app_localizations_tr.dart';
 
 // ignore_for_file: type=lint
@@ -94,7 +96,9 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
     Locale('en'),
+    Locale('ru'),
     Locale('tr'),
   ];
 
@@ -761,7 +765,7 @@ abstract class AppLocalizations {
   /// No description provided for @verifyInvalid.
   ///
   /// In tr, this message translates to:
-  /// **'❌ OTP geçersiz veya süresi dolmuş'**
+  /// **'Kod Geçersiz'**
   String get verifyInvalid;
 
   /// No description provided for @verifyPersonLine.
@@ -1753,6 +1757,354 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Veri yok'**
   String get noData;
+
+  /// No description provided for @errKullaniciNoZorunlu.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanıcı No zorunludur.'**
+  String get errKullaniciNoZorunlu;
+
+  /// No description provided for @errKullaniciNo11Hane.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanıcı No 11 hane ve sadece rakamlardan oluşmalıdır.'**
+  String get errKullaniciNo11Hane;
+
+  /// No description provided for @errKullaniciNoAyniRakam.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanıcı No içinde aynı rakam 8 veya daha fazla kez bulunamaz.'**
+  String get errKullaniciNoAyniRakam;
+
+  /// No description provided for @errKayitBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kayıt bulunamadı.'**
+  String get errKayitBulunamadi;
+
+  /// No description provided for @errSifreKilidiListesindeDegil.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu kullanıcı şifre kilidi listesinde değil.'**
+  String get errSifreKilidiListesindeDegil;
+
+  /// No description provided for @errSifreSon4HaneGuncellendi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Şifre telefon numarasının son 4 hanesi olarak güncellendi.'**
+  String get errSifreSon4HaneGuncellendi;
+
+  /// No description provided for @errKayitOkulaAitDegil.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kayıt bulunamadı veya bu okula ait değil.'**
+  String get errKayitOkulaAitDegil;
+
+  /// No description provided for @errTcknSifreHatali.
+  ///
+  /// In tr, this message translates to:
+  /// **'TCKN veya Şifre hatalı. Tekrar deneyiniz.'**
+  String get errTcknSifreHatali;
+
+  /// No description provided for @errTcknSifreTipHatali.
+  ///
+  /// In tr, this message translates to:
+  /// **'TCKN, Şifre veya Kullanıcı Tipi hatalı. Tekrar deneyiniz.'**
+  String get errTcknSifreTipHatali;
+
+  /// No description provided for @errKullaniciKilitlendi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kullanıcı kilitlendi. Çok fazla hatalı şifre denemesi yapıldı. Okul yöneticiniz ile görüşünüz.'**
+  String get errKullaniciKilitlendi;
+
+  /// No description provided for @errLisansDolmus.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lisansınız dolmuş. Okul yöneticiniz ile görüşünüz.'**
+  String get errLisansDolmus;
+
+  /// No description provided for @errDogrulamaBasarili.
+  ///
+  /// In tr, this message translates to:
+  /// **'Doğrulama başarılı.'**
+  String get errDogrulamaBasarili;
+
+  /// No description provided for @errKisiBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kişi bulunamadı.'**
+  String get errKisiBulunamadi;
+
+  /// No description provided for @errKisiGuncellendi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kişi güncellendi.'**
+  String get errKisiGuncellendi;
+
+  /// No description provided for @errOkulBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Okul bulunamadı.'**
+  String get errOkulBulunamadi;
+
+  /// No description provided for @errOkulSilmeHatasi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Okul silinirken hata oluştu. Okula bağlı veriler olabilir.'**
+  String get errOkulSilmeHatasi;
+
+  /// No description provided for @errGonderenKisiBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönderen kişi bulunamadı.'**
+  String get errGonderenKisiBulunamadi;
+
+  /// No description provided for @errSiniflardaOgrenciYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Belirtilen sınıflarda hiç öğrenci bulunamadı.'**
+  String get errSiniflardaOgrenciYok;
+
+  /// No description provided for @errIcSunucuHatasi.
+  ///
+  /// In tr, this message translates to:
+  /// **'İç sunucu hatası.'**
+  String get errIcSunucuHatasi;
+
+  /// No description provided for @errMesajAliciYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiçbir alıcı bulunamadı, mesaj eklenmedi.'**
+  String get errMesajAliciYok;
+
+  /// No description provided for @errMesajGonderildi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Mesaj başarıyla gönderildi.'**
+  String get errMesajGonderildi;
+
+  /// No description provided for @errAlanStudentTeacherYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiçbir alan student veya teacher bulunamadı.'**
+  String get errAlanStudentTeacherYok;
+
+  /// No description provided for @errMesajKisiEklenmedi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiçbir kişiye mesaj eklenmedi.'**
+  String get errMesajKisiEklenmedi;
+
+  /// No description provided for @errDuyuruAliciYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiçbir alıcı bulunamadı, duyuru eklenmedi.'**
+  String get errDuyuruAliciYok;
+
+  /// No description provided for @errDuyuruGonderildi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru başarıyla gönderildi.'**
+  String get errDuyuruGonderildi;
+
+  /// No description provided for @errGelisimTipiEklendi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim tipi başarıyla eklendi.'**
+  String get errGelisimTipiEklendi;
+
+  /// No description provided for @errDuyuruKisiEklenmedi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiçbir kişiye duyuru eklenmedi.'**
+  String get errDuyuruKisiEklenmedi;
+
+  /// No description provided for @errGelisimTipiBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim tipi bulunamadı.'**
+  String get errGelisimTipiBulunamadi;
+
+  /// No description provided for @errGelisimTipiSilindi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim tipi başarıyla silindi.'**
+  String get errGelisimTipiSilindi;
+
+  /// No description provided for @errGelisimTipiOkulaAitDegil.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim tipi bu okula ait değil.'**
+  String get errGelisimTipiOkulaAitDegil;
+
+  /// No description provided for @errGelisimKayitEklendi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim kaydı başarıyla eklendi.'**
+  String get errGelisimKayitEklendi;
+
+  /// No description provided for @errGelisimKayitBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim kaydı bulunamadı.'**
+  String get errGelisimKayitBulunamadi;
+
+  /// No description provided for @errGelisimKayitGuncellendi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim kaydı başarıyla güncellendi.'**
+  String get errGelisimKayitGuncellendi;
+
+  /// No description provided for @errGelisimKayitSilindi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gelişim kaydı başarıyla silindi.'**
+  String get errGelisimKayitSilindi;
+
+  /// No description provided for @errOgrenciBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğrenci bulunamadı.'**
+  String get errOgrenciBulunamadi;
+
+  /// No description provided for @errDesteklenmeyenIliski.
+  ///
+  /// In tr, this message translates to:
+  /// **'Desteklenmeyen ilişki tipi.'**
+  String get errDesteklenmeyenIliski;
+
+  /// No description provided for @errAlanKisiBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Hiçbir alan kişi bulunamadı.'**
+  String get errAlanKisiBulunamadi;
+
+  /// No description provided for @errTcknParentDegil.
+  ///
+  /// In tr, this message translates to:
+  /// **'TCKN bir parent değildir.'**
+  String get errTcknParentDegil;
+
+  /// No description provided for @errParentOkulIdYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Parent\'ın okul ID\'si bulunamadı.'**
+  String get errParentOkulIdYok;
+
+  /// No description provided for @errParentStudentYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Parent\'a ait student bulunamadı.'**
+  String get errParentStudentYok;
+
+  /// No description provided for @errTcknBulunamadi.
+  ///
+  /// In tr, this message translates to:
+  /// **'TCKN bulunamadı.'**
+  String get errTcknBulunamadi;
+
+  /// No description provided for @errPersonOkulIdYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Person\'ın okul ID\'si bulunamadı.'**
+  String get errPersonOkulIdYok;
+
+  /// No description provided for @errOtpGecersiz.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçersiz OTP veya kayıt bulunamadı.'**
+  String get errOtpGecersiz;
+
+  /// No description provided for @errPersonSinifIdYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Person\'ın sınıf ID\'si bulunamadı.'**
+  String get errPersonSinifIdYok;
+
+  /// No description provided for @errTcknListesiBos.
+  ///
+  /// In tr, this message translates to:
+  /// **'TCKN listesi boş.'**
+  String get errTcknListesiBos;
+
+  /// No description provided for @errOlcekZatenTanimli.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu ölçek zaten okula tanımlı.'**
+  String get errOlcekZatenTanimli;
+
+  /// No description provided for @errPersonOkulAtanmamis.
+  ///
+  /// In tr, this message translates to:
+  /// **'Person bulunamadı veya okul atanmamış.'**
+  String get errPersonOkulAtanmamis;
+
+  /// No description provided for @errTumSorularCevaplanmali.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm sorular cevaplanmalıdır.'**
+  String get errTumSorularCevaplanmali;
+
+  /// No description provided for @errEksikSoruCevap.
+  ///
+  /// In tr, this message translates to:
+  /// **'Eksik veya geçersiz soru cevapları.'**
+  String get errEksikSoruCevap;
+
+  /// No description provided for @errGecersizSoruCevap.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçersiz soru/cevap.'**
+  String get errGecersizSoruCevap;
+
+  /// No description provided for @errMinDegerMaxDegerdenBuyuk.
+  ///
+  /// In tr, this message translates to:
+  /// **'min_deger, max_deger\'dan büyük olamaz.'**
+  String get errMinDegerMaxDegerdenBuyuk;
+
+  /// No description provided for @errTcknZorunlu.
+  ///
+  /// In tr, this message translates to:
+  /// **'tckn zorunludur.'**
+  String get errTcknZorunlu;
+
+  /// No description provided for @errOgrenciHostesIliskisiYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğrenci için tanımlı hostes ilişkisi bulunamadı.'**
+  String get errOgrenciHostesIliskisiYok;
+
+  /// No description provided for @errPinEncryptionKeyYok.
+  ///
+  /// In tr, this message translates to:
+  /// **'PinEncryption:Key yapılandırılmamış. appsettings veya PinEncryption__Key ortam değişkenini ayarlayın.'**
+  String get errPinEncryptionKeyYok;
+
+  /// No description provided for @errPinEncryptionKeyUzunluk.
+  ///
+  /// In tr, this message translates to:
+  /// **'PinEncryption:Key tam 32 byte (Base64) olmalıdır.'**
+  String get errPinEncryptionKeyUzunluk;
+
+  /// No description provided for @errPinEncBos.
+  ///
+  /// In tr, this message translates to:
+  /// **'pin_enc boş.'**
+  String get errPinEncBos;
+
+  /// No description provided for @errPinEncFormat.
+  ///
+  /// In tr, this message translates to:
+  /// **'Desteklenmeyen pin_enc formatı.'**
+  String get errPinEncFormat;
+
+  /// No description provided for @errPinEncUzunluk.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geçersiz pin_enc uzunluğu.'**
+  String get errPinEncUzunluk;
 }
 
 class _AppLocalizationsDelegate
@@ -1766,7 +2118,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'tr'].contains(locale.languageCode);
+      <String>['de', 'en', 'ru', 'tr'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1775,8 +2127,12 @@ class _AppLocalizationsDelegate
 AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de':
+      return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'ru':
+      return AppLocalizationsRu();
     case 'tr':
       return AppLocalizationsTr();
   }

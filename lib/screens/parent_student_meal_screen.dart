@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
@@ -295,7 +295,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        //title: const Text("Günlük Bilgilendirme"),
+        //title: Text("Günlük Bilgilendirme"),
         title: Text(t.dailyInfoTitle),
       ),
       body: FutureBuilder<MealModel?>(

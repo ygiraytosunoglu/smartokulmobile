@@ -295,42 +295,34 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
                   .format(DateTime.parse(duyuru['InsertDate']));
 
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                  decoration: AppStyles.listCardDecoration,
+                  child: Material(
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: ListTile(
-                    title: Text(
-                      duyuru['Baslik'],
-                      style: TextStyle(
-                        color: renk,
-                        fontWeight: FontWeight.bold,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _duyuruyaTiklandi(duyuru),
+                      child: ListTile(
+                        title: Text(
+                          duyuru['Baslik'],
+                          style: TextStyle(
+                            color: renk,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Gönderen: ${duyuru['GonderenAdi']}',
+                                style: TextStyle(color: renk)),
+                            Text('Tarih: $tarih',
+                                style: TextStyle(color: renk)),
+                          ],
+                        ),
                       ),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Gönderen: ${duyuru['GonderenAdi']}',
-                            style: TextStyle(color: renk)),
-                        Text('Tarih: $tarih',
-                            style: TextStyle(color: renk)),
-                      ],
-                    ),
-                    onTap: () => _duyuruyaTiklandi(duyuru),
-                    /*onTap: () => _duyuruyaTiklandi(
-                      duyuru['Id'],
-                      duyuru['Data'],
-                      okundu,
-                    ),*/
                   ),
                 ),
               );

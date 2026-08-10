@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({Key? key}) : super(key: key);
@@ -85,7 +86,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       } finally {
         setState(() => _isSending = false); // 👈 Buton tekrar aktif
@@ -104,8 +105,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const
-        Text(
+        title: Text(
             'Duyuru Gönder',
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
@@ -197,7 +197,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                 const SizedBox(height: 20),
 
                                 CheckboxListTile(
-                                  title: const Text('Hepsi'),
+                                  title: Text('Hepsi'),
                                   value: isAllSelected,
                                   onChanged: _isSending ? null : _toggleAll, // 👈 Devre dışı
                                   controlAffinity:
@@ -269,6 +269,7 @@ import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({Key? key}) : super(key: key);
@@ -347,7 +348,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     } else {
@@ -364,7 +365,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
+        title: Text('Mesaj Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -454,7 +455,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
                                 // Öğrenci listesi
                                 CheckboxListTile(
-                                  title: const Text('Hepsi'),
+                                  title: Text('Hepsi'),
                                   value: isAllSelected,
                                   onChanged: _toggleAll,
                                   controlAffinity:
@@ -484,7 +485,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: AppColors.onPrimary,
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'Mesaj Gönder',
                                     style: TextStyle(fontSize: 16),
                                   ),
@@ -523,6 +524,7 @@ import '../constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({Key? key}) : super(key: key);
@@ -595,7 +597,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     } else {
@@ -609,7 +611,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
+        title: Text('Mesaj Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -679,7 +681,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
                       // Checkbox listesi butonun hemen üzerinde
                       CheckboxListTile(
-                        title: const Text('Hepsi'),
+                        title: Text('Hepsi'),
                         value: isAllSelected,
                         onChanged: _toggleAll,
                         controlAffinity: ListTileControlAffinity.leading,
@@ -705,7 +707,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                           backgroundColor: AppColors.primary,
                           foregroundColor: AppColors.onPrimary,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Mesaj Gönder',
                           style: TextStyle(fontSize: 16),
                         ),
@@ -736,6 +738,7 @@ import '../constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({Key? key}) : super(key: key);
@@ -803,7 +806,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         });
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     } else {
@@ -817,7 +820,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Duyuru Gönder'),
+        title: Text('Duyuru Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -887,7 +890,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
 
                       // Checkbox listesi butonun hemen üzerinde
                       CheckboxListTile(
-                        title: const Text('Hepsi'),
+                        title: Text('Hepsi'),
                         value: isAllSelected,
                         onChanged: _toggleAll,
                         controlAffinity: ListTileControlAffinity.leading,
@@ -913,7 +916,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                           backgroundColor: AppColors.primary,
                           foregroundColor: AppColors.onPrimary,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Duyuru Gönder',
                           style: TextStyle(fontSize: 16),
                         ),

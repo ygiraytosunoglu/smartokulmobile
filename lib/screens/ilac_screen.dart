@@ -6,6 +6,7 @@ import '../constants.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 
 class IlacScreen extends StatefulWidget {
@@ -110,7 +111,7 @@ class _IlacScreenState extends State<IlacScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context)!.err}: $e')),
+        SnackBar(content: Text(translateError(e.toString(), context))),
       );
     }
   }
@@ -347,7 +348,7 @@ class _IlacScreenState extends State<IlacScreen> {
                       _loadIlaclar();
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(AppLocalizations.of(context)!.err+': $e')),
+                        SnackBar(content: Text(translateError(e.toString(), context))),
                       );
                       setState(() {
                         isSubmitting = false;

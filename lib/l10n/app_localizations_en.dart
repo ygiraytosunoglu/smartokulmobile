@@ -349,7 +349,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verifySuccessTitle => '✅ Code Verified:';
 
   @override
-  String get verifyInvalid => '❌ OTP is invalid or expired';
+  String get verifyInvalid => 'Wrong Code';
 
   @override
   String verifyPersonLine(Object logName, Object personName) {
@@ -853,4 +853,205 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noData => 'No data';
+
+  @override
+  String get errKullaniciNoZorunlu => 'User Number is required.';
+
+  @override
+  String get errKullaniciNo11Hane =>
+      'User Number must be 11 digits and contain only numbers.';
+
+  @override
+  String get errKullaniciNoAyniRakam =>
+      'The same digit cannot appear 8 or more times in the User Number.';
+
+  @override
+  String get errKayitBulunamadi => 'Record not found.';
+
+  @override
+  String get errSifreKilidiListesindeDegil =>
+      'This user is not in the password lock list.';
+
+  @override
+  String get errSifreSon4HaneGuncellendi =>
+      'The password has been reset to the last 4 digits of the phone number.';
+
+  @override
+  String get errKayitOkulaAitDegil =>
+      'Record not found or does not belong to this school.';
+
+  @override
+  String get errTcknSifreHatali =>
+      'Incorrect TCKN or password. Please try again.';
+
+  @override
+  String get errTcknSifreTipHatali =>
+      'Incorrect TCKN, password, or user type. Please try again.';
+
+  @override
+  String get errKullaniciKilitlendi =>
+      'User account has been locked due to too many failed password attempts. Please contact your school administrator.';
+
+  @override
+  String get errLisansDolmus =>
+      'Your license has expired. Please contact your school administrator.';
+
+  @override
+  String get errDogrulamaBasarili => 'Verification successful.';
+
+  @override
+  String get errKisiBulunamadi => 'Person not found.';
+
+  @override
+  String get errKisiGuncellendi => 'Person updated successfully.';
+
+  @override
+  String get errOkulBulunamadi => 'School not found.';
+
+  @override
+  String get errOkulSilmeHatasi =>
+      'An error occurred while deleting the school. There may be related records associated with it.';
+
+  @override
+  String get errGonderenKisiBulunamadi => 'Sender not found.';
+
+  @override
+  String get errSiniflardaOgrenciYok =>
+      'No students were found in the specified classes.';
+
+  @override
+  String get errIcSunucuHatasi => 'Internal server error.';
+
+  @override
+  String get errMesajAliciYok =>
+      'No recipients found. Message was not created.';
+
+  @override
+  String get errMesajGonderildi => 'Message sent successfully.';
+
+  @override
+  String get errAlanStudentTeacherYok =>
+      'No valid student or teacher recipients found.';
+
+  @override
+  String get errMesajKisiEklenmedi =>
+      'No recipients were added to the message.';
+
+  @override
+  String get errDuyuruAliciYok =>
+      'No recipients found. Announcement was not created.';
+
+  @override
+  String get errDuyuruGonderildi => 'Announcement sent successfully.';
+
+  @override
+  String get errGelisimTipiEklendi => 'Development type added successfully.';
+
+  @override
+  String get errDuyuruKisiEklenmedi =>
+      'No recipients were added to the announcement.';
+
+  @override
+  String get errGelisimTipiBulunamadi => 'Development type not found.';
+
+  @override
+  String get errGelisimTipiSilindi => 'Development type deleted successfully.';
+
+  @override
+  String get errGelisimTipiOkulaAitDegil =>
+      'This development type does not belong to the school.';
+
+  @override
+  String get errGelisimKayitEklendi => 'Development record added successfully.';
+
+  @override
+  String get errGelisimKayitBulunamadi => 'Development record not found.';
+
+  @override
+  String get errGelisimKayitGuncellendi =>
+      'Development record updated successfully.';
+
+  @override
+  String get errGelisimKayitSilindi =>
+      'Development record deleted successfully.';
+
+  @override
+  String get errOgrenciBulunamadi => 'Student not found.';
+
+  @override
+  String get errDesteklenmeyenIliski => 'Unsupported relationship type.';
+
+  @override
+  String get errAlanKisiBulunamadi => 'No valid recipients found.';
+
+  @override
+  String get errTcknParentDegil =>
+      'The provided TCKN does not belong to a parent.';
+
+  @override
+  String get errParentOkulIdYok => 'Parent\'s school ID could not be found.';
+
+  @override
+  String get errParentStudentYok =>
+      'No students associated with the parent were found.';
+
+  @override
+  String get errTcknBulunamadi => 'TCKN not found.';
+
+  @override
+  String get errPersonOkulIdYok => 'Person\'s school ID could not be found.';
+
+  @override
+  String get errOtpGecersiz => 'Invalid OTP or record not found.';
+
+  @override
+  String get errPersonSinifIdYok => 'Person\'s class ID could not be found.';
+
+  @override
+  String get errTcknListesiBos => 'TCKN list is empty.';
+
+  @override
+  String get errOlcekZatenTanimli =>
+      'This scale is already assigned to the school.';
+
+  @override
+  String get errPersonOkulAtanmamis =>
+      'Person not found or not assigned to a school.';
+
+  @override
+  String get errTumSorularCevaplanmali => 'All questions must be answered.';
+
+  @override
+  String get errEksikSoruCevap => 'Missing or invalid question answers.';
+
+  @override
+  String get errGecersizSoruCevap => 'Invalid question or answer.';
+
+  @override
+  String get errMinDegerMaxDegerdenBuyuk =>
+      'min_value cannot be greater than max_value.';
+
+  @override
+  String get errTcknZorunlu => 'TCKN is required.';
+
+  @override
+  String get errOgrenciHostesIliskisiYok =>
+      'No hostess relationship found for the student.';
+
+  @override
+  String get errPinEncryptionKeyYok =>
+      'PinEncryption:Key is not configured. Please set it in appsettings or via the PinEncryption__Key environment variable.';
+
+  @override
+  String get errPinEncryptionKeyUzunluk =>
+      'PinEncryption:Key must be exactly 32 bytes (Base64).';
+
+  @override
+  String get errPinEncBos => 'pin_enc is empty.';
+
+  @override
+  String get errPinEncFormat => 'Unsupported pin_enc format.';
+
+  @override
+  String get errPinEncUzunluk => 'Invalid pin_enc length.';
 }

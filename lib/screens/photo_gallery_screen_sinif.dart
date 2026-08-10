@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -18,6 +18,7 @@ import 'package:wechat_camera_picker/wechat_camera_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 class PhotoGalleryScreenSinif extends StatefulWidget {
   const PhotoGalleryScreenSinif({Key? key}) : super(key: key);
@@ -102,7 +103,7 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.galleryLoadError(e.toString()))),
+          SnackBar(content: Text(AppLocalizations.of(context)!.galleryLoadError(translateError(e.toString(), context)))),
         );
       }
     } finally {
@@ -196,6 +197,36 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
 
     final files = await convertToFiles(assets);
 
+    // 1 GB üzeri dosya kontrolü
+    const int maxBytes = 1 * 1024 * 1024 * 1024;
+    final oversized = files.where((f) => f.lengthSync() > maxBytes).toList();
+    if (oversized.isNotEmpty) {
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Dosya Çok Büyük'),
+              ],
+            ),
+            content: Text(
+              'Seçtiğiniz videonun boyutu çok büyük olduğu için yükleyemezsiniz.\n\nLütfen 1 GB\'dan küçük bir dosya seçin.',
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Tamam'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isUploading = true);
 
     final success = await _apiService.uploadGallery(
@@ -258,7 +289,7 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.errorMessage( e.toString()))),
+          SnackBar(content: Text(AppLocalizations.of(context)!.errorMessage(translateError(e.toString(), context)))),
         );
       }
     }
@@ -394,7 +425,7 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
     } catch (e) {
       logger.e("Medya silme hatası", error: e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(e.toString()))),
+        SnackBar(content: Text(AppLocalizations.of(context)!.deleteFailed(translateError(e.toString(), context)))),
       );
     }
   }
@@ -403,86 +434,78 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
     final thumb = media['thumb'] ?? full;
 
     final uri = Uri.parse(full);
-
     final bool isVideo =
         uri.path.toLowerCase().endsWith('.mp4') ||
-            uri.path.toLowerCase().endsWith('.mov');
+        uri.path.toLowerCase().endsWith('.mov');
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: () {
+        if (isVideo) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => VideoPlayerScreen(videoUrl: full),
+            ),
+          );
+        } else {
+          _showFullImage(full);
+        }
+      },
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          GestureDetector(
-            onTap: () {
-              if (isVideo) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => VideoPlayerScreen(videoUrl: full),
-                  ),
-                );
-              } else {
-                _showFullImage(full);
-              }
-            },
-
-            /// ✅ FOTO
-            child: isVideo
-                ? FutureBuilder<File?>(
-              future: _getVideoThumbnail(full),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return _buildShimmerPlaceholder();
-                }
-
-                return Image.file(
-                  snapshot.data!,
+          /// Thumbnail
+          isVideo
+              ? FutureBuilder<File?>(
+                  future: _getVideoThumbnail(full),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return _buildShimmerPlaceholder();
+                    return Image.file(
+                      snapshot.data!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    );
+                  },
+                )
+              : CachedNetworkImage(
+                  imageUrl: thumb,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
-                );
-              },
-            )
-                : CachedNetworkImage(
-              imageUrl: thumb,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _buildShimmerPlaceholder(),
-              errorWidget: (_, __, ___) =>
-              const Icon(Icons.broken_image,
-                  size: 40, color: Colors.red),
-            ),
-          ),
+                  placeholder: (_, __) => _buildShimmerPlaceholder(),
+                  errorWidget: (_, __, ___) => const ColoredBox(
+                    color: Colors.black12,
+                    child: Icon(Icons.broken_image, size: 36, color: Colors.red),
+                  ),
+                ),
 
-          /// ▶️ PLAY ICON
-          if (isVideo)
-            const Positioned(
-              top: 8,
-              right: 8,
+          /// ▶️ Video overlay + play ikonu
+          if (isVideo) ...[
+            Container(color: Colors.black26),
+            const Center(
               child: Icon(
                 Icons.play_circle_fill,
-                size: 32,
+                size: 44,
                 color: Colors.white,
               ),
             ),
+          ],
 
-          /// DELETE
+          /// 🗑️ Sil butonu — sadece öğretmen
           if (globals.globalKullaniciTipi == 'T')
             Positioned(
-              bottom: 6,
-              right: 6,
-              child: InkWell(
+              bottom: 4,
+              right: 4,
+              child: GestureDetector(
                 onTap: () => _confirmDelete(full),
                 child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
                     color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.delete,
-                    size: 20,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.delete, size: 16, color: Colors.white),
                 ),
               ),
             ),
@@ -572,12 +595,14 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
+                            padding: EdgeInsets.zero,
                             itemCount: items.length,
                             gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 2,
+                              mainAxisSpacing: 2,
+                              childAspectRatio: 1,
                             ),
                             itemBuilder: (_, index) =>
                                 _buildMediaItem(items[index]),

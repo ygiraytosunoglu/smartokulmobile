@@ -12,6 +12,7 @@ import '../globals.dart' as globals;
 import '../constants.dart';
 import 'package:logger/logger.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 class PlanScreen extends StatefulWidget {
   const PlanScreen({Key? key}) : super(key: key);
@@ -35,7 +36,7 @@ class _PlanScreenState extends State<PlanScreen> {
   int _skip = 0;
   final int _take = 36;
 
-  String _secimTipi = 'Günlük';
+  String _secimTipi = 'daily';
   int _selectedGun = DateTime.now().day;
   int _selectedAy = DateTime.now().month;
   int _selectedYil = DateTime.now().year;
@@ -54,7 +55,7 @@ class _PlanScreenState extends State<PlanScreen> {
   void planlariGetir() async {
     int vyear = _selectedYil;
     int vmonth = _selectedAy;
-    int vday = _secimTipi == 'Günlük' ? _selectedGun : 0;
+    int vday = _secimTipi == 'daily' ? _selectedGun : 0;
 
     logger.i("Plan getiriliyor → Yıl: $vyear, Ay: $vmonth, Gün: $vday, Tip: $_secimTipi");
 
@@ -148,7 +149,7 @@ class _PlanScreenState extends State<PlanScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Hata: $e")),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     }
@@ -272,10 +273,7 @@ class _PlanScreenState extends State<PlanScreen> {
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            decoration: AppStyles.fieldDecoration,
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _secimTipi,
@@ -283,11 +281,11 @@ class _PlanScreenState extends State<PlanScreen> {
                                 onChanged: (val) {
                                   if (val != null) setState(() => _secimTipi = val);
                                 },
-                                items:  [
+                                items: [
                                   DropdownMenuItem(
-                                      value: t.daily, child: Text(t.daily)),
+                                      value: 'daily', child: Text(t.daily)),
                                   DropdownMenuItem(
-                                      value: t.monthly, child: Text(t.monthly)),
+                                      value: 'monthly', child: Text(t.monthly)),
                                 ],
                               ),
                             ),
@@ -296,7 +294,7 @@ class _PlanScreenState extends State<PlanScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (_secimTipi == t.daily)
+                    if (_secimTipi == 'daily')
                       Row(
                         children: [
                           _buildDropdown<int>(
@@ -404,7 +402,7 @@ class _PlanScreenState extends State<PlanScreen> {
 
       int vyear = _selectedYil;
       int vmonth = _selectedAy;
-      int vday = _secimTipi == t.daily ? _selectedGun : 0;
+      int vday = _secimTipi == 'daily' ? _selectedGun : 0;
 
       logger.i("Plan yükleniyor → Gün: $vday Ay: $vmonth Yıl: $vyear");
 
@@ -433,7 +431,7 @@ class _PlanScreenState extends State<PlanScreen> {
       logger.e("Plan yükleme hatası: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t.planUploadError+"$e")),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     } finally {
@@ -452,10 +450,7 @@ class _PlanScreenState extends State<PlanScreen> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
+        decoration: AppStyles.fieldDecoration,
         child: DropdownButtonHideUnderline(
           child: DropdownButton<T>(
             value: value,

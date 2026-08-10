@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import '../utils/error_translator.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoUrl;
@@ -234,6 +235,7 @@ import 'package:flutter/services.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import '../utils/error_translator.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoUrl;
@@ -314,7 +316,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("İndirme Hatası: $e")),
+        SnackBar(content: Text(translateError(e.toString(), context))),
       );
     }
   }

@@ -1,7 +1,6 @@
-import 'dart:math';
-
-import 'package:firebase_messaging/firebase_messaging.dart';
+﻿import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:smart_okul_mobile/screens/forgot_password_screen.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +13,8 @@ import '../services/api_service.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -29,16 +30,29 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false; // loading durumu eklendi
   String _selectedRole = "P";
 
-  late Future<SharedPreferences> _prefs;
+  late final SharedPreferences _prefs;
+  bool _prefsReady = false;
 
   @override
   void initState() {
     super.initState();
-    //_initializeFirebaseMessaging();
-    _prefs = SharedPreferences.getInstance();
+    _yukleBilgileri();
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _kullaniciAdiniKontrolEt(context);
+  Future<void> _yukleBilgileri() async {
+    // main()'de await SharedPreferences.getInstance() çağrıldığı için
+    // bu çağrı anında cache'den döner — async bekleme yaşanmaz
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    _prefs = prefs;
+    _prefsReady = true;
+
+    _tcNoController.text     = prefs.getString("kullaniciAdi")  ?? "";
+    _passwordController.text = prefs.getString("sifre")         ?? "";
+
+    setState(() {
+      _selectedRole = prefs.getString("kullaniciTipi") ?? "P";
     });
   }
 
@@ -77,16 +91,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-
-  void _kullaniciAdiniKontrolEt(BuildContext context) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _tcNoController.text = prefs.getString("kullaniciAdi") ?? "";
-    _passwordController.text = prefs.getString("sifre") ?? "";
-    _selectedRole = prefs.getString("kullaniciTipi") ?? "P";
-
-    setState(() {}); // ekrana uygula
-
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     'Smart Okul Sistemi',
                     style: TextStyle(
                       fontSize: 28,
@@ -162,8 +166,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.number,
                             maxLength: 11,
                             decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context)!.userCode ,//'Kullanıcı No',  ,//'Kullanıcı No',
-                              hintText: AppLocalizations.of(context)!.userHint,//'11 haneli Kullanıcı No giriniz',
+                              labelText: AppLocalizations.of(context)!.userCode,
+                              hintText: AppLocalizations.of(context)!.userHint,
                               prefixIcon: const Icon(Icons.person_outline),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -173,10 +177,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return AppLocalizations.of(context)!.userEmpty;//'TC Kimlik No boş bırakılamaz';
+                                return AppLocalizations.of(context)!.userEmpty;
                               }
                               if (value.length != 11) {
-                                return AppLocalizations.of(context)!.userLength;// 'TC Kimlik No 11 haneli olmalıdır';
+                                return AppLocalizations.of(context)!.userLength;
                               }
                               return null;
                             },
@@ -188,8 +192,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _passwordController,
                             obscureText: !_isPasswordVisible,
                             decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context)!.password,//'Şifre',
-                              hintText: AppLocalizations.of(context)!.pswHint,//'Şifrenizi giriniz',
+                              labelText: AppLocalizations.of(context)!.password,
+                              hintText: AppLocalizations.of(context)!.pswHint,
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -211,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return AppLocalizations.of(context)!.pswEmpty;// 'Şifre boş bırakılamaz';
+                                return AppLocalizations.of(context)!.pswEmpty;
                               }
                               return null;
                             },
@@ -223,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              /*const Text(
+                              /*Text(
                                 "Kullanıcı Tipi",
                                 style: TextStyle(
                                   fontSize: 14,
@@ -246,11 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.grey.shade300),
-                                    ),
+                                    decoration: AppStyles.fieldDecoration,
                                     child: DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
                                         value: _selectedRole,
@@ -319,12 +319,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () {                                _sifremiUnuttum();
-    },
-    child: Text(AppLocalizations.of(context)!.pswForget,
-//    "Şifremi Unuttum",
-
-                                style: TextStyle(
+                              onPressed: () { _sifremiUnuttum(); },
+                              child: Text(
+                                AppLocalizations.of(context)!.pswForget,
+                                style: const TextStyle(
                                   color: Colors.blue,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -332,9 +330,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
-                          )
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // 🔒 Gizlilik Politikası linki
+                          Center(
+                            child: GestureDetector(
+                              onTap: () => launchUrl(
+                                Uri.parse('https://www.smartokul.com.tr/privacy.html'),
+                                mode: LaunchMode.externalApplication,
+                              ),
+                              child: const Text(
+                                'Gizlilik Politikası',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
-                      ),
+                      ),   // Column
                     ),
                   ),
                 ],
@@ -363,14 +381,15 @@ class _LoginScreenState extends State<LoginScreen> {
   void _girisYap(BuildContext context) async {
     setState(() => _isLoading = true);
 
-    final prefs = await _prefs;
     final logger = Logger();
 
-    await Future.wait([
-      prefs.setString("kullaniciAdi", _tcNoController.text),
-      prefs.setString("sifre", _passwordController.text),
-      prefs.setString("kullaniciTipi", _selectedRole),
-    ]);
+    if (_prefsReady) {
+      await Future.wait([
+        _prefs.setString("kullaniciAdi", _tcNoController.text),
+        _prefs.setString("sifre",        _passwordController.text),
+        _prefs.setString("kullaniciTipi", _selectedRole),
+      ]);
+    }
 
     try {
       logger.i("Kullanıcı bilgileri çekiliyor...");
@@ -385,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       /// ❌ HATA
       if (sonuc != "OK" && sonuc != "SELECT_SCHOOL") {
-        _pencereAc(context, sonuc);
+        _pencereAc(context, translateError(sonuc, context));
         setState(() => _isLoading = false);
         return;
       }

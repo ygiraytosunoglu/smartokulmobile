@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:smart_okul_mobile/globals.dart' as globals;
@@ -178,8 +178,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const
-        Text(
+        title: Text(
             "Yemek/Uyku Bilgileri",
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
@@ -220,7 +219,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _saveAllMeals,
                   icon: const Icon(Icons.save),
-                  label: const Text("Tümünü Kaydet"),
+                  label: Text("Tümünü Kaydet"),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 40),
                   ),

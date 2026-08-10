@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../constants.dart';
 import '../globals.dart' as globals;
 import 'create_survey_screen.dart';
 import '../services/api_service.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/error_translator.dart';
 
 class SurveyScreen extends StatefulWidget {
   const SurveyScreen({super.key});
@@ -158,7 +159,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                             const SizedBox(height: 6),
 
                             e.value.isEmpty
-                                ? const Text("—")
+                                ? Text("—")
                                 : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: e.value
@@ -292,15 +293,24 @@ class _SurveyScreenState extends State<SurveyScreen> {
                         : AppLocalizations.of(context)!.unanswered;
 
                     return Opacity(
-                      opacity: answered ? 0.5 : 1.0, // ✅ Soluk görünüm
+                      opacity: answered ? 0.5 : 1.0,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Card(
-                          elevation: 8,
-                          shape: RoundedRectangleBorder(
+                        child: Container(
+                          decoration: AppStyles.listCardDecoration,
+                          child: Material(
+                            color: Colors.transparent,
                             borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ListTile(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () async {
+                                final result = await _showSurveyDialog(survey);
+                                if (result != null) {
+                                  setState(() => survey["Answer"] = result);
+                                  _fetchSurveys();
+                                }
+                              },
+                              child: ListTile(
                             contentPadding: const EdgeInsets.all(16),
                             title: Text(
                               subject,
@@ -333,19 +343,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
                               ],
                             ),
 
-                            /*onTap: () => _showSurveyDialog(survey),*/
-                            onTap: () async {
-                              final result = await _showSurveyDialog(survey);
-
-                              if (result != null) {
-                                setState(() {
-                                  survey["Answer"] = result; // ✅ ANINDA UI GÜNCELLENİR
-                                });
-
-                                // Arka planda gerçek refresh
-                                _fetchSurveys();
-                              }
-                            },
+                          ),
+                        ),
                           ),
                         ),
                       ),
@@ -421,7 +420,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.activityDeleteError+' $e'),
+          content: Text(translateError(e.toString(), context)),
           backgroundColor: Colors.red,
         ),
       );

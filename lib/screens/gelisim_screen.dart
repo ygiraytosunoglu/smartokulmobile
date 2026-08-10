@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_okul_mobile/screens/gelisim_duzenle_screen.dart';
 import 'package:smart_okul_mobile/screens/yeni_gelisim_screen.dart';
@@ -262,7 +262,7 @@ class _GelisimScreenState extends State<GelisimScreen> {
         if (dosyalar.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(),
-                  const Text(
+                  Text(
                     "Ekli Dosyalar",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),

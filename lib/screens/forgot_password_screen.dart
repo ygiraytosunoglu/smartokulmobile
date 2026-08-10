@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import 'package:smart_okul_mobile/constants.dart' as constants;
+import '../utils/error_translator.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -51,7 +52,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Şifre değiştirme başarısız: ${e.toString()}'),
+            content: Text(translateError(e.toString(), context)),
           ),
         );
       } finally {
@@ -65,7 +66,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       backgroundColor: AppColors.background, // 👈 ARKA PLAN RENGİ
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Şifremi Unuttum',
           textAlign: TextAlign.center,
           style: AppStyles.titleLarge,
@@ -176,7 +177,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 style: AppStyles.buttonStyle,
                 child: _isLoading
                     ? const CircularProgressIndicator()
-                    : const Text('Şifremi Değiştir'),
+                    : Text('Şifremi Değiştir'),
               ),*/
               SizedBox(
                 width: double.infinity,   // 👈 TAM GENİŞLİK
@@ -188,7 +189,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ? const CircularProgressIndicator(
                     color: Colors.white,
                   )
-                      : const Text('Şifremi Değiştir'),
+                      : Text('Şifremi Değiştir'),
                 ),
               ),
             ],

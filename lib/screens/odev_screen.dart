@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -191,7 +191,7 @@ class _OdevScreenState extends State<OdevScreen> {
         if (dosyalar.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(),
-                  const Text(
+                  Text(
                     "Ekli Dosyalar",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -607,16 +607,17 @@ class _OdevScreenState extends State<OdevScreen> {
                   } catch (_) {
                     aciklama = dataStr;
                   }
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    color: Colors.white.withOpacity(0.9),
-                    child: ListTile(
-                      onTap: () {
-                        _showOdevDetayPopup(odev);
-                      },
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Container(
+                      decoration: AppStyles.listCardDecoration,
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _showOdevDetayPopup(odev),
+                          child: ListTile(
                       title: Text( getDersAdi(odev['DersId']),
                         style: const TextStyle( fontWeight: FontWeight.bold,
                           fontSize: 16, ), ),
@@ -659,8 +660,11 @@ class _OdevScreenState extends State<OdevScreen> {
                         ],
                       )
                           : null,
-                    ),
-                  );
+                        ),       // ListTile
+                      ),         // InkWell
+                    ),           // Material
+                  ),             // Container
+                );               // Padding
 
                  },
               ),

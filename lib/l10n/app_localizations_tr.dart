@@ -349,7 +349,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get verifySuccessTitle => '✅ Kod Doğrulandı:';
 
   @override
-  String get verifyInvalid => '❌ OTP geçersiz veya süresi dolmuş';
+  String get verifyInvalid => 'Kod Geçersiz';
 
   @override
   String verifyPersonLine(Object logName, Object personName) {
@@ -851,4 +851,194 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get noData => 'Veri yok';
+
+  @override
+  String get errKullaniciNoZorunlu => 'Kullanıcı No zorunludur.';
+
+  @override
+  String get errKullaniciNo11Hane =>
+      'Kullanıcı No 11 hane ve sadece rakamlardan oluşmalıdır.';
+
+  @override
+  String get errKullaniciNoAyniRakam =>
+      'Kullanıcı No içinde aynı rakam 8 veya daha fazla kez bulunamaz.';
+
+  @override
+  String get errKayitBulunamadi => 'Kayıt bulunamadı.';
+
+  @override
+  String get errSifreKilidiListesindeDegil =>
+      'Bu kullanıcı şifre kilidi listesinde değil.';
+
+  @override
+  String get errSifreSon4HaneGuncellendi =>
+      'Şifre telefon numarasının son 4 hanesi olarak güncellendi.';
+
+  @override
+  String get errKayitOkulaAitDegil =>
+      'Kayıt bulunamadı veya bu okula ait değil.';
+
+  @override
+  String get errTcknSifreHatali => 'TCKN veya Şifre hatalı. Tekrar deneyiniz.';
+
+  @override
+  String get errTcknSifreTipHatali =>
+      'TCKN, Şifre veya Kullanıcı Tipi hatalı. Tekrar deneyiniz.';
+
+  @override
+  String get errKullaniciKilitlendi =>
+      'Kullanıcı kilitlendi. Çok fazla hatalı şifre denemesi yapıldı. Okul yöneticiniz ile görüşünüz.';
+
+  @override
+  String get errLisansDolmus =>
+      'Lisansınız dolmuş. Okul yöneticiniz ile görüşünüz.';
+
+  @override
+  String get errDogrulamaBasarili => 'Doğrulama başarılı.';
+
+  @override
+  String get errKisiBulunamadi => 'Kişi bulunamadı.';
+
+  @override
+  String get errKisiGuncellendi => 'Kişi güncellendi.';
+
+  @override
+  String get errOkulBulunamadi => 'Okul bulunamadı.';
+
+  @override
+  String get errOkulSilmeHatasi =>
+      'Okul silinirken hata oluştu. Okula bağlı veriler olabilir.';
+
+  @override
+  String get errGonderenKisiBulunamadi => 'Gönderen kişi bulunamadı.';
+
+  @override
+  String get errSiniflardaOgrenciYok =>
+      'Belirtilen sınıflarda hiç öğrenci bulunamadı.';
+
+  @override
+  String get errIcSunucuHatasi => 'İç sunucu hatası.';
+
+  @override
+  String get errMesajAliciYok => 'Hiçbir alıcı bulunamadı, mesaj eklenmedi.';
+
+  @override
+  String get errMesajGonderildi => 'Mesaj başarıyla gönderildi.';
+
+  @override
+  String get errAlanStudentTeacherYok =>
+      'Hiçbir alan student veya teacher bulunamadı.';
+
+  @override
+  String get errMesajKisiEklenmedi => 'Hiçbir kişiye mesaj eklenmedi.';
+
+  @override
+  String get errDuyuruAliciYok => 'Hiçbir alıcı bulunamadı, duyuru eklenmedi.';
+
+  @override
+  String get errDuyuruGonderildi => 'Duyuru başarıyla gönderildi.';
+
+  @override
+  String get errGelisimTipiEklendi => 'Gelişim tipi başarıyla eklendi.';
+
+  @override
+  String get errDuyuruKisiEklenmedi => 'Hiçbir kişiye duyuru eklenmedi.';
+
+  @override
+  String get errGelisimTipiBulunamadi => 'Gelişim tipi bulunamadı.';
+
+  @override
+  String get errGelisimTipiSilindi => 'Gelişim tipi başarıyla silindi.';
+
+  @override
+  String get errGelisimTipiOkulaAitDegil => 'Gelişim tipi bu okula ait değil.';
+
+  @override
+  String get errGelisimKayitEklendi => 'Gelişim kaydı başarıyla eklendi.';
+
+  @override
+  String get errGelisimKayitBulunamadi => 'Gelişim kaydı bulunamadı.';
+
+  @override
+  String get errGelisimKayitGuncellendi =>
+      'Gelişim kaydı başarıyla güncellendi.';
+
+  @override
+  String get errGelisimKayitSilindi => 'Gelişim kaydı başarıyla silindi.';
+
+  @override
+  String get errOgrenciBulunamadi => 'Öğrenci bulunamadı.';
+
+  @override
+  String get errDesteklenmeyenIliski => 'Desteklenmeyen ilişki tipi.';
+
+  @override
+  String get errAlanKisiBulunamadi => 'Hiçbir alan kişi bulunamadı.';
+
+  @override
+  String get errTcknParentDegil => 'TCKN bir parent değildir.';
+
+  @override
+  String get errParentOkulIdYok => 'Parent\'ın okul ID\'si bulunamadı.';
+
+  @override
+  String get errParentStudentYok => 'Parent\'a ait student bulunamadı.';
+
+  @override
+  String get errTcknBulunamadi => 'TCKN bulunamadı.';
+
+  @override
+  String get errPersonOkulIdYok => 'Person\'ın okul ID\'si bulunamadı.';
+
+  @override
+  String get errOtpGecersiz => 'Geçersiz OTP veya kayıt bulunamadı.';
+
+  @override
+  String get errPersonSinifIdYok => 'Person\'ın sınıf ID\'si bulunamadı.';
+
+  @override
+  String get errTcknListesiBos => 'TCKN listesi boş.';
+
+  @override
+  String get errOlcekZatenTanimli => 'Bu ölçek zaten okula tanımlı.';
+
+  @override
+  String get errPersonOkulAtanmamis => 'Person bulunamadı veya okul atanmamış.';
+
+  @override
+  String get errTumSorularCevaplanmali => 'Tüm sorular cevaplanmalıdır.';
+
+  @override
+  String get errEksikSoruCevap => 'Eksik veya geçersiz soru cevapları.';
+
+  @override
+  String get errGecersizSoruCevap => 'Geçersiz soru/cevap.';
+
+  @override
+  String get errMinDegerMaxDegerdenBuyuk =>
+      'min_deger, max_deger\'dan büyük olamaz.';
+
+  @override
+  String get errTcknZorunlu => 'tckn zorunludur.';
+
+  @override
+  String get errOgrenciHostesIliskisiYok =>
+      'Öğrenci için tanımlı hostes ilişkisi bulunamadı.';
+
+  @override
+  String get errPinEncryptionKeyYok =>
+      'PinEncryption:Key yapılandırılmamış. appsettings veya PinEncryption__Key ortam değişkenini ayarlayın.';
+
+  @override
+  String get errPinEncryptionKeyUzunluk =>
+      'PinEncryption:Key tam 32 byte (Base64) olmalıdır.';
+
+  @override
+  String get errPinEncBos => 'pin_enc boş.';
+
+  @override
+  String get errPinEncFormat => 'Desteklenmeyen pin_enc formatı.';
+
+  @override
+  String get errPinEncUzunluk => 'Geçersiz pin_enc uzunluğu.';
 }

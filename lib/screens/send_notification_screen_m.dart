@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart'; // LoginScreen import edildi
 
 class SendNotificationScreenM extends StatefulWidget {
@@ -96,7 +97,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       } finally {
         setState(() {
@@ -132,7 +133,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
         _messageController.clear();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       } finally {
         setState(() {
@@ -150,7 +151,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const         Text(
+        title: Text(
             'Duyuru Gönder',
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
@@ -226,7 +227,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
 
                       // Checkbox listesi
                       CheckboxListTile(
-                        title: const Text('Hepsi'),
+                        title: Text('Hepsi'),
                         value: isAllSelected,
                         onChanged: _isSending ? null : _toggleAll,
                         controlAffinity: ListTileControlAffinity.leading,

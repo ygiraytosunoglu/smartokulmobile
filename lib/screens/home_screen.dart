@@ -1,6 +1,6 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:logger/logger.dart';
 import 'package:smart_okul_mobile/screens/gelisim_screen.dart';
 import 'package:smart_okul_mobile/screens/guidance_screen.dart';
@@ -60,6 +60,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _panelLabel() {
+    switch (globals.globalKullaniciTipi) {
+      case 'P': return 'Veli Paneli';
+      case 'T': return 'Öğretmen Paneli';
+      case 'M': return 'Yönetici Paneli';
+      case 'S': return 'Öğrenci Paneli';
+      default:  return '';
+    }
+  }
+
   void _loadStudentPhoto() {
     if (selectedStudent == null) return;
 
@@ -83,33 +93,43 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,
-        toolbarHeight: 70,
+        toolbarHeight: 76,
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            const SizedBox(width: 12),
+            const SizedBox(width: 4),
 
             /// LOGO
             FutureBuilder<Uint8List>(
               future: ApiService().getLogo(globals.kullaniciTCKN),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return const SizedBox(
-                    width: 45,
-                    height: 45,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+                  return Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      ),
                     ),
                   );
                 }
 
                 return ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Image.memory(
                     snapshot.data!,
-                    width: 45,
-                    height: 45,
+                    width: 52,
+                    height: 52,
                     fit: BoxFit.cover,
                   ),
                 );
@@ -119,14 +139,31 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 12),
 
             Expanded(
-              child: Text(
-                globals.globalOkulAdi,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    globals.globalOkulAdi,
+                    style: GoogleFonts.inter(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.1,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _panelLabel(),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -134,12 +171,16 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (_) => false,
-              );
+            tooltip: 'Çıkış',
+            onPressed: () async {
+              await ApiService.clearToken();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (_) => false,
+                );
+              }
             },
           )
         ],
@@ -157,9 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: GridView.count(
                 crossAxisCount: 3,
-                padding: const EdgeInsets.all(8),
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
                 childAspectRatio: 1,
                 children: [
                   if (globals.menuListesi.contains("GelenMesajlar"))
@@ -335,16 +376,17 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================== ÖĞRENCİ SEÇİCİ ==================
   Widget _buildStudentSelector() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.divider, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -355,16 +397,21 @@ class _HomeScreenState extends State<HomeScreen> {
             future: _studentPhotoFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircleAvatar(
+                return CircleAvatar(
                   radius: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  backgroundColor: AppColors.divider,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
                 );
               }
 
               if (!snapshot.hasData || snapshot.data == null) {
-                return const CircleAvatar(
+                return CircleAvatar(
                   radius: 22,
-                  child: Icon(Icons.person),
+                  backgroundColor: AppColors.divider,
+                  child: const Icon(Icons.person, color: AppColors.textSecondary),
                 );
               }
 
@@ -375,30 +422,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
 
-          /*    FutureBuilder<Uint8List?>(
-            future: _studentPhotoFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircleAvatar(
-                  radius: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                );
-              }
-
-              if (!snapshot.hasData || snapshot.data == null) {
-                return const CircleAvatar(
-                  radius: 22,
-                  child: Icon(Icons.person),
-                );
-              }
-
-              return CircleAvatar(
-                radius: 22,
-                backgroundImage: MemoryImage(snapshot.data!),
-              );
-            },
-          ),
-*/
           const SizedBox(width: 12),
 
           /// DROPDOWN
@@ -407,14 +430,16 @@ class _HomeScreenState extends State<HomeScreen> {
               child: DropdownButton<Map<String, dynamic>>(
                 isExpanded: true,
                 value: selectedStudent,
+                icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
                 items: globals.globalOgrenciListesi.map((ogrenci) {
                   return DropdownMenuItem(
                     value: ogrenci,
                     child: Text(
                       ogrenci['Name'],
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   );
@@ -484,62 +509,115 @@ class _HomeScreenState extends State<HomeScreen> {
       String iconName,
       String labelText,
       VoidCallback onTap, {
-        bool showRedBorder = false, // 👈 YENİ
+        bool showRedBorder = false,
       }) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth - 32) / 3;
+    // 3 sütun + 2 boşluk (16px) + kenar (16+16)
+    final cardWidth = (screenWidth - 32 - 32) / 3;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Ink(
-          width: cardWidth,
-          height: cardWidth,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-
-            // 🔴 OKUNMAMIŞ MESAJ VARSA KIRMIZI ÇERÇEVE
-            border: showRedBorder
-                ? Border.all(color: Colors.red, width: 3)
-                : null,
-
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.12),
-                blurRadius: 8,
-                offset: const Offset(3, 3),
-              ),
-              BoxShadow(
-                color: Colors.white.withOpacity(0.8),
-                blurRadius: 8,
-                offset: const Offset(-3, -3),
-              ),
-            ],
+    return Container(
+      width: cardWidth,
+      height: cardWidth,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          // Uzak, yumuşak gölge — derinlik hissi
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.13),
+            blurRadius: 20,
+            spreadRadius: -2,
+            offset: const Offset(0, 10),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                "assets/icons/$iconName",
-                width: cardWidth * 0.55,
-                height: cardWidth * 0.55,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                labelText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+          // Yakın, keskin gölge — zemin ayrımı
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 5,
+            spreadRadius: 0,
+            offset: const Offset(0, 3),
+          ),
+          // Üst vurgu — ışık yansıması (kaldırılmış gibi görünür)
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.95),
+            blurRadius: 0,
+            spreadRadius: 0,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white,
+                const Color(0xFFECF1F7),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: showRedBorder
+                ? Border.all(color: AppColors.primary, width: 2)
+                : Border.all(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    width: 1.5,
+                  ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(22),
+            onTap: onTap,
+            splashColor: AppColors.secondary.withValues(alpha: 0.18),
+            highlightColor: AppColors.primary.withValues(alpha: 0.07),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (showRedBorder)
+                  Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Image.asset(
+                        "assets/icons/$iconName",
+                        width: cardWidth * 0.52,
+                        height: cardWidth * 0.52,
+                        fit: BoxFit.contain,
+                      ),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Image.asset(
+                    "assets/icons/$iconName",
+                    width: cardWidth * 0.52,
+                    height: cardWidth * 0.52,
+                    fit: BoxFit.contain,
+                  ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    labelText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -778,12 +856,12 @@ class _HomeScreenState extends State<HomeScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text("Uyarı"),
-          content: const Text("Tanımlı sınıf bulunamadı. Lütfen yönetici ile iletişime geçiniz."),
+          title: Text("Uyarı"),
+          content: Text("Tanımlı sınıf bulunamadı. Lütfen yönetici ile iletişime geçiniz."),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Tamam"),
+              child: Text("Tamam"),
             ),
           ],
         ),
@@ -805,7 +883,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final secilenSinif = await showDialog<Map<String, dynamic>>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text("Sınıf Seçiniz"),
+          title: Text("Sınıf Seçiniz"),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1160,7 +1238,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: DropdownButton<Map<String, dynamic>>(
                 isExpanded: true,
                 value: selectedStudent,
-                hint: const Text("Öğrenci Seç"),
+                hint: Text("Öğrenci Seç"),
                 items: globals.globalOgrenciListesi.map((ogrenci) {
                   return DropdownMenuItem<Map<String, dynamic>>(
                     value: ogrenci,

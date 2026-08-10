@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreenP extends StatefulWidget {
   const SendNotificationScreenP({Key? key}) : super(key: key);
@@ -111,7 +112,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     } catch (e) {
       setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: ${e.toString()}')),
+        SnackBar(content: Text(translateError(e.toString(), context))),
       );
     }
   }
@@ -120,7 +121,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const         Text(
+        title: Text(
             'Duyuru Gönder',
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
@@ -267,6 +268,7 @@ import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreenP extends StatefulWidget {
   const SendNotificationScreenP({Key? key}) : super(key: key);
@@ -365,7 +367,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: ${e.toString()}')),
+        SnackBar(content: Text(translateError(e.toString(), context))),
       );
     }
   }
@@ -374,7 +376,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
+        title: Text('Mesaj Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -487,7 +489,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                             backgroundColor: AppColors.primary,
                             foregroundColor: AppColors.onPrimary,
                           ),
-                          child: const Text(
+                          child: Text(
                             'Mesaj Gönder',
                             style: TextStyle(fontSize: 16),
                           ),
@@ -517,6 +519,7 @@ import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreenP extends StatefulWidget {
   const SendNotificationScreenP({Key? key}) : super(key: key);
@@ -632,7 +635,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     } catch (e) {
       debugPrint('API error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: ${e.toString()}')),
+        SnackBar(content: Text(translateError(e.toString(), context))),
       );
     }
   }
@@ -641,7 +644,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesaj Gönder'),
+        title: Text('Mesaj Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -755,7 +758,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           backgroundColor: AppColors.primary,
                           foregroundColor: AppColors.onPrimary,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Mesaj Gönder',
                           style: TextStyle(fontSize: 16),
                         ),
@@ -783,6 +786,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../utils/error_translator.dart';
 
 class SendNotificationScreenP extends StatefulWidget {
   const SendNotificationScreenP({Key? key}) : super(key: key);
@@ -851,7 +855,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
         });
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(content: Text(translateError(e.toString(), context))),
         );
       }
     } else {
@@ -873,7 +877,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Duyuru Gönder'),
+        title: Text('Duyuru Gönder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -979,7 +983,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           backgroundColor: AppColors.primary,
                           foregroundColor: AppColors.onPrimary,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Duyuru Gönder',
                           style: TextStyle(fontSize: 16),
                         ),

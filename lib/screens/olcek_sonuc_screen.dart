@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../constants.dart';
 import '../l10n/app_localizations.dart';
@@ -76,7 +76,7 @@ class OlcekSonucScreen extends StatelessWidget {
                             int index = value.toInt();
 
                             if (index >= sonuclar.length) {
-                              return const Text("");
+                              return Text("");
                             }
 
                             return Padding(

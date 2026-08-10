@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -67,11 +67,16 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
       final sameText = x['Data'] == m['Data'];
 
+      // Yerel (henüz sunucu onayı olmayan) mesajla eşleşme: zaman farkına bakma
+      if (x['_isLocal'] == true) {
+        return sameSender && sameText;
+      }
+
       final t1 = DateTime.parse(x['InsertDate']);
       final t2 = DateTime.parse(m['InsertDate']);
 
       final closeTime =
-          t1.difference(t2).inSeconds.abs() <= 2;
+          t1.difference(t2).inSeconds.abs() <= 5;
 
       return sameSender && sameText && closeTime;
     });
@@ -166,7 +171,7 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
     try {
       final data = await ApiService.getConversationMessages(
-        gonderenTckn: widget.tckn,// globals.kullaniciTCKN,
+        gonderenTckn: widget.tckn,
         alanTckn: widget.alanTckn,
         take: _take,
         skip: 0,
@@ -176,31 +181,30 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
           DateTime.parse(a['InsertDate'])
               .compareTo(DateTime.parse(b['InsertDate'])));
 
-      setState(() {
-        for (var m in data) {
-          if (!_mesajZatenVar(m)) {
-            mesajlar.add(m);
-            _sonMesajTarihi =
-                DateTime.parse(m['InsertDate']);
-          }
-        }
-      });
-
-      final altaYakin = _kullaniciAltaYakinMi();
+      bool yeniMesajVar = false;
 
       setState(() {
         for (var m in data) {
-          if (!_mesajZatenVar(m)) {
+          // Yerel placeholder varsa sunucu yanıtıyla değiştir
+          final localIdx = mesajlar.indexWhere((x) =>
+              x['_isLocal'] == true &&
+              normalizeTckn(x['GonderenTCKN']) == normalizeTckn(m['GonderenTCKN']) &&
+              x['Data'] == m['Data']);
+
+          if (localIdx >= 0) {
+            mesajlar[localIdx] = m;
+            yeniMesajVar = true;
+          } else if (!_mesajZatenVar(m)) {
             mesajlar.add(m);
             _sonMesajTarihi = DateTime.parse(m['InsertDate']);
+            yeniMesajVar = true;
           }
         }
       });
 
-      if (altaYakin) {
+      if (yeniMesajVar && _kullaniciAltaYakinMi()) {
         _scrollAlta();
       }
-
     } finally {
       _isRefreshing = false;
     }
@@ -258,13 +262,14 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
     final now = DateTime.now().toIso8601String();
 
     final localMesaj = {
-      "GonderenTCKN": widget.tckn,//globals.kullaniciTCKN,
+      "GonderenTCKN": widget.tckn,
       "Data": text,
       "InsertDate": now,
+      "_isLocal": true,
     };
 
     setState(() {
-     // mesajlar.add(localMesaj);
+      mesajlar.add(localMesaj);
       _sonMesajTarihi = DateTime.parse(now);
     });
 
@@ -398,7 +403,7 @@ Widget _konusmaUyariBanner() {
     padding: const EdgeInsets.symmetric(
         vertical: 8, horizontal: 12),
     color: Colors.red.withOpacity(0.08),
-    child: const Text(
+    child: Text(
       "* Konuşma metni okul yönetimi gözetimindedir",
       textAlign: TextAlign.center,
       style: TextStyle(

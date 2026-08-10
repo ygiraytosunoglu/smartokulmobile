@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
 import '../constants.dart';
@@ -219,7 +219,7 @@ class CourseScheduleScreen extends StatefulWidget {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text("Yemek Listesi"),
+        title: Text("Yemek Listesi"),
       ),
       body: Container(
         decoration: BoxDecoration(
