@@ -1,11 +1,11 @@
-ï»¿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
 import '../models/meal_model.dart';
 import '../globals.dart' as globals;
-import 'package:http/http.dart' as http;
+
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class ParentStudentsMealScreen extends StatefulWidget {
@@ -40,10 +40,10 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
     t.sleepLittle,
     t.sleepSlept
   ];
-  final List<String> moodEmojis = ["ğŸ˜Š", "ğŸ˜¢", "ğŸ˜´", "ğŸ˜Œ", "ğŸ˜¡"];
-  //final List<String> moodChoices = ["Mutlu", "ÃœzgÃ¼n", "Yorgun", "Huzurlu", "Sinirli"];
-  //final List<String> sleepChoices = ["UyumadÄ±", "Az Uyudu", "Uyudu"];
-//  final List<String> mealKeys = [t.breakfast, t.lunch, t.snack];//["KahvaltÄ±", "Ã–ÄŸle", "Ä°kindi"];
+  final List<String> moodEmojis = ["??", "??", "??", "??", "??"];
+  //final List<String> moodChoices = ["Mutlu", "Üzgün", "Yorgun", "Huzurlu", "Sinirli"];
+  //final List<String> sleepChoices = ["Uyumadı", "Az Uyudu", "Uyudu"];
+//  final List<String> mealKeys = [t.breakfast, t.lunch, t.snack];//["Kahvaltı", "Öğle", "İkindi"];
 
   /*List<String> moodChoices = [
     t.moodHappy,
@@ -77,7 +77,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
     );
 
     try {
-      final response = await http.get(url);
+      final response = await ApiService.authClient.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> savedData =
         response.body.isNotEmpty && response.body.startsWith('[')
@@ -124,14 +124,14 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
         setState(() {});
       }
     } catch (e) {
-      debugPrint("âŒ Veri yÃ¼kleme hatasÄ±: $e");
+      debugPrint("? Veri yükleme hatası: $e");
     }
   }
 
-  // âœ” Ã–ÄŸÃ¼n elemanÄ± sadece okunabilir gÃ¶sterilir
+  // ? Öğün elemanı sadece okunabilir gösterilir
   Widget buildMealItemReadOnly(int studentIndex, String mealName, String itemName) {
     int selected = studentMealSelections[studentIndex]?[mealName]?[itemName] ?? 0;
-   // List<String> mealChoices = ["Yemedi", "Az Yedi", "TamamÄ±nÄ± Yedi"];
+   // List<String> mealChoices = ["Yemedi", "Az Yedi", "Tamamını Yedi"];
     List<String> mealChoices = [
       t.didNotEat,
       t.ateLittle,
@@ -150,7 +150,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
     );
   }
 
-  // âœ” Yemek kartlarÄ± aÃ§Ä±k ÅŸekilde
+  // ? Yemek kartları açık şekilde
   Widget buildMealList(int studentIndex, String title, List<String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +217,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
         ),
         const SizedBox(height: 6),
         /*Text(
-          "AÃ§Ä±klama: ${note.trim().isEmpty ? "-" : note}",
+          "Açıklama: ${note.trim().isEmpty ? "-" : note}",
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)
 
         ),*/
@@ -225,9 +225,9 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
           TextSpan(
             children: [
                TextSpan(
-                text: "${t.description}: ",//"AÃ§Ä±klama: ",
+                text: "${t.description}: ",//"Açıklama: ",
                 style: TextStyle(
-                  fontWeight: FontWeight.bold, // ğŸ‘ˆ sadece bu kÄ±sÄ±m bold
+                  fontWeight: FontWeight.bold, // ?? sadece bu kısım bold
                   color: AppColors.primary,
                   fontSize: 16,
                 ),
@@ -235,7 +235,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
               TextSpan(
                 text: note.trim().isEmpty ? "-" : note,
                 style: const TextStyle(
-                  fontWeight: FontWeight.normal, // ğŸ‘ˆ aÃ§Ä±klama iÃ§eriÄŸi normal
+                  fontWeight: FontWeight.normal, // ?? açıklama içeriği normal
                   color: AppColors.primary,
                   fontSize: 16,
                 ),
@@ -249,7 +249,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
   }
 
   Widget buildStudentCard(int studentIndex, Map<String, dynamic> student, MealModel? meal) {
-    //String studentName = student['Name'] ?? 'Ã–ÄŸrenci';
+    //String studentName = student['Name'] ?? 'Öğrenci';
 
     String studentName = student['Name'] ?? t.studentDefaultName;
 
@@ -268,9 +268,9 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
             const SizedBox(height: 12),
 
             if (meal != null) ...[
-             /* buildMealList(studentIndex, "KahvaltÄ±", meal.meal1),
-              buildMealList(studentIndex, "Ã–ÄŸle", meal.meal2),
-              buildMealList(studentIndex, "Ä°kindi", meal.meal3),*/
+             /* buildMealList(studentIndex, "Kahvaltı", meal.meal1),
+              buildMealList(studentIndex, "Öğle", meal.meal2),
+              buildMealList(studentIndex, "İkindi", meal.meal3),*/
               buildMealList(studentIndex, t.breakfast, meal.meal1),
               buildMealList(studentIndex, t.lunch, meal.meal2),
               buildMealList(studentIndex, t.snack, meal.meal3)
@@ -295,14 +295,14 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        //title: Text("GÃ¼nlÃ¼k Bilgilendirme"),
+        //title: Text("Günlük Bilgilendirme"),
         title: Text(t.dailyInfoTitle),
       ),
       body: FutureBuilder<MealModel?>(
         future: futureMeal,
         builder: (context, snapshot) {
 
-          // Sadece ilk yÃ¼klemede spinner gÃ¶ster
+          // Sadece ilk yüklemede spinner göster
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }

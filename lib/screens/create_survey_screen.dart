@@ -1,8 +1,8 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../constants.dart';
 import '../globals.dart' as globals;
+import '../services/api_service.dart';
 
 class CreateSurveyScreen extends StatefulWidget {
   const CreateSurveyScreen({super.key});
@@ -166,14 +166,14 @@ class _CreateSurveyScreenState extends State<CreateSurveyScreen> {
         "secenek": options,
       };
 
-      final response = await http.post(
+      final response = await ApiService.authClient.post(
         Uri.parse("${globals.serverAdrr}/api/survey/create"),
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
         body: {
-          "data": json.encode(dataMap), // JSON string
-          "classes": selectedClassIds.join(","), // comma-separated
+          "data": json.encode(dataMap),
+          "classes": selectedClassIds.join(","),
           "dayCount": "7",
-          "ownerTckn": globals.kullaniciTCKN, // opsiyonel, gönderilebilir
+          "ownerTckn": globals.kullaniciTCKN,
         },
       );
 

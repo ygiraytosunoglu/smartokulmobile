@@ -5,8 +5,8 @@ import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import '../utils/error_translator.dart';
+import '../services/api_service.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoUrl;
@@ -90,7 +90,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final filePath ="${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.mp4";
       print("filePath url:"+filePath);
       print("videoUrl:"+widget.videoUrl);
-      var response = await http.get(Uri.parse(widget.videoUrl));
+      var response = await ApiService.authClient.get(Uri.parse(widget.videoUrl));
       print("resp:"+response.toString());
       File file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
@@ -234,8 +234,8 @@ import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import '../utils/error_translator.dart';
+import '../services/api_service.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoUrl;
@@ -303,7 +303,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final tempDir = await getTemporaryDirectory();
       final filePath = "${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.mp4";
 
-      var response = await http.get(Uri.parse(widget.videoUrl));
+      var response = await ApiService.authClient.get(Uri.parse(widget.videoUrl));
       File file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
 

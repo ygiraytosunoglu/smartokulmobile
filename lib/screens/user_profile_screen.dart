@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http; // MultipartRequest için tutuluyor
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
@@ -85,7 +85,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         return byteData.buffer.asUint8List();
       } catch (_) {}
 
-      final response = await http.get(Uri.parse(
+      final response = await ApiService.authClient.get(Uri.parse(
         '${globals.serverAdrr}/api/school/get-person-photo?tckn=$tckn',
       ));
 
@@ -117,7 +117,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         http.MultipartFile.fromBytes('file', bytes, filename: "$tckn.jpg"),
       );
 
-      final response = await request.send();
+      final response = await ApiService.authClient.send(request);
       if (response.statusCode == 200) {
         setState(() {
           if (isKullanici) {
@@ -155,7 +155,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
 
     try {
-      final response = await http.get(url);
+      final response = await ApiService.authClient.get(url);
       if (response.statusCode == 200) {
         _showParentsListPopup(json.decode(response.body));
       }

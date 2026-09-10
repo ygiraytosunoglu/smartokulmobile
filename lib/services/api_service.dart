@@ -41,7 +41,9 @@ class ApiService {
   static final Logger logger = Logger();
 
   /// Tüm http çağrıları bu client üzerinden geçer → otomatik token eklenir.
+  /// Diğer dosyalar da bu client'ı kullanmalı: ApiService.authClient
   static final _http = _AuthHttpClient();
+  static _AuthHttpClient get authClient => _http;
 
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -512,7 +514,7 @@ await apiService.putRequest(
     http.Response response;
 
     try {
-      response = await http
+      response = await _http
           .get(uri, headers: {"Connection": "keep-alive"})
           .timeout(const Duration(seconds: 6));
     } catch (e) {
@@ -529,28 +531,29 @@ await apiService.putRequest(
     required List<String> studentTcknList,
     required int durum,
   }) async {
+    final uri = Uri.parse("${ApiService.baseUrl}/api/school/send-student-notification");
+    final tcknString = studentTcknList.join(',');
+
+    logger.i("sendStudentNotification → $uri");
+    logger.i("schoolId=$schoolId senderTckn=$senderTckn studentTcknList=$tcknString durum=$durum");
+
     try {
-      final uri = Uri.parse("${ApiService.baseUrl}/api/school/send-student-notification");
-
-      // Öğrenci TCKN listesini virgül ile birleştir
-      final tcknString = studentTcknList.join(',');
-
       final request = http.MultipartRequest('POST', uri);
-      request.fields['schoolId'] = schoolId.toString();
-      request.fields['senderTckn'] = senderTckn;
+      request.fields['schoolId']        = schoolId.toString();
+      request.fields['senderTckn']      = senderTckn;
       request.fields['studentTcknList'] = tcknString;
-      request.fields['durum'] = durum.toString();
+      request.fields['durum']           = durum.toString();
 
-      final response = await ApiService._http.send(request);
-      final responseBody = await response.stream.bytesToString();
+      final streamed     = await ApiService._http.send(request);
+      final responseBody = await streamed.stream.bytesToString();
 
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(responseBody);
-        logger.i("✅ Bildirim gönderildi: ${decoded['message']}");
-        return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
+      logger.i("sendStudentNotification ← ${streamed.statusCode}: $responseBody");
+
+      if (streamed.statusCode == 200) {
+        return '200';
       } else {
-        logger.e("⚠️ Bildirim gönderme başarısız: ${response.statusCode}, $responseBody");
-        return Future.delayed(const Duration(seconds: 2), () => response.statusCode.toString());
+        logger.e("⚠️ Bildirim gönderme başarısız: ${streamed.statusCode}, $responseBody");
+        return streamed.statusCode.toString();
       }
     } catch (e) {
       logger.e("❌ sendStudentNotification hatası: $e");

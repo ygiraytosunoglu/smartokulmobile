@@ -185,7 +185,7 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
       setState(() {
         for (var m in data) {
-          // Yerel placeholder varsa sunucu yanıtıyla değiştir
+          // Sunucu yanıtıyla eşleşen local placeholder varsa yerine koy
           final localIdx = mesajlar.indexWhere((x) =>
               x['_isLocal'] == true &&
               normalizeTckn(x['GonderenTCKN']) == normalizeTckn(m['GonderenTCKN']) &&
@@ -200,6 +200,13 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
             yeniMesajVar = true;
           }
         }
+
+        // Eşleşemeyen stale local mesajları kaldır:
+        // Sunucu bu mesajları döndürdü ama local placeholder hâlâ varsa
+        // (TCKN format farkı, saat kayması vb.) listeye girmeli, duplicat kalmamalı.
+        final sunucuMetinleri = data.map((m) => m['Data'] as String?).toSet();
+        mesajlar.removeWhere((x) =>
+            x['_isLocal'] == true && sunucuMetinleri.contains(x['Data']));
       });
 
       if (yeniMesajVar && _kullaniciAltaYakinMi()) {
@@ -275,14 +282,28 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
     _scrollAlta();
 
-    await ApiService().sendMesaj(
-      widget.tckn,
-      [widget.alanTckn],
-      "SmartOkul",
-      text,
-    );
+    try {
+      await ApiService().sendMesaj(
+        widget.tckn,
+        [widget.alanTckn],
+        "SmartOkul",
+        text,
+      );
 
-    await ApiService().bildirimGonder();
+      // Mesaj sunucuya kaydedildi. Timer'ı beklemeden hemen sunucu
+      // yanıtıyla local placeholder'ı değiştir.
+      _isRefreshing = false;
+      await _yeniMesajlariKontrolEt();
+    } catch (_) {
+      // Gönderim başarısız: local placeholder'ı temizle
+      setState(() {
+        mesajlar.removeWhere(
+          (m) => m['_isLocal'] == true && m['Data'] == text,
+        );
+      });
+    }
+
+    unawaited(ApiService().bildirimGonder());
   }
 
   bool get _mesajYazabilirMi {

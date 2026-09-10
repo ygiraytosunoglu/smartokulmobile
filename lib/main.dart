@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,40 +5,34 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
-import 'firebase_options.dart';
 import 'package:smart_okul_mobile/screens/login_screen.dart';
+import 'package:smart_okul_mobile/services/api_service.dart';
 import 'package:smart_okul_mobile/services/dio_client.dart';
 import '../globals.dart' as globals;
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
-
+//import 'package:flutterservices.dart';
+//import 'package:smart_okul_mobile/generated/l10n.dart';
 // Bildirim nesnesi global tanımlanmalı
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin();
 
 // 401 durumunda interceptor'dan login'e yönlendirmek için global key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// Firebase arka plan bildirim handler'ı.
-/// Background isolate'te globals ValueNotifier güncellenmemelidir;
-/// sadece Firebase initialize edilip loglama yapılır.
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  debugPrint('📩 Arka planda bildirim alındı: ${message.messageId}');
-  debugPrint('📩 data: ${message.data}');
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  // Arka plan isolate'te globals widget tree'ye bağlı değil;
+  // ValueNotifier güncellenemez, sadece loglama yapılır.
+  print('📩 Arka planda bildirim alındı: ${message.messageId}');
+  print('📩 data: ${message.data}');
 }
+Future<void> _initializeFirebaseMessaging() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-/// Firebase Messaging ve iOS/Android bildirim izinlerini başlatır.
-Future<void> initializeFirebaseMessaging() async {
-  final messaging = FirebaseMessaging.instance;
+  var _token = await messaging.getToken();
+  print("FirebaseMessaging Token: $_token");
 
-  final NotificationSettings settings = await messaging.requestPermission(
+  NotificationSettings settings = await messaging.requestPermission(
     alert: true,
     announcement: false,
     badge: true,
@@ -50,84 +42,68 @@ Future<void> initializeFirebaseMessaging() async {
     sound: true,
   );
 
-  debugPrint(
-    '🔔 Bildirim izin durumu: ${settings.authorizationStatus}',
-  );
-
-  // FCM token Android ve iOS'ta alınabilir.
-  // iOS'ta APNS yapılandırması Firebase tarafında tamamlanmış olmalıdır.
-  try {
-    final token = await messaging.getToken();
-    debugPrint('🔥 ${Platform.isIOS ? 'iOS' : 'Android'} FCM Token: $token');
-  } catch (e) {
-    debugPrint('⚠️ FCM token alınamadı: $e');
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print('User granted permission');
+  } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+    print('User granted provisional permission');
+  } else {
+    print('User declined or has not accepted permission');
   }
 
-  // Token değişirse tekrar logla.
-  FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-    debugPrint('🔄 FCM Token yenilendi: $token');
-    // Gerekirse yeni token backend'e burada gönderilebilir.
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Got a message whilst in the foreground!');
+    print('Message data: ${message.data}');
   });
 
-  // iOS'ta uygulama açıkken sistem bildirimini göstermek için.
-  if (Platform.isIOS) {
-    await messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-  }
-
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    debugPrint('📲 Bildirim açıldı: ${message.messageId}');
-    debugPrint('📲 data: ${message.data}');
+    print('A new onMessageOpenedApp event was published!');
+    print('Message data: ${message.data}');
+  });
+
+  // Token yenilendiğinde server'ı güncelle
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    print('🔄 FCM token yenilendi: $newToken');
+    if (globals.kullaniciTCKN.isNotEmpty) {
+      await ApiService().registerFcmToken(globals.kullaniciTCKN, newToken);
+    }
   });
 }
 
-Future<void> main() async {
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // LoginScreen içerisinde senkron okunabilmesi için SharedPreferences
-  // önceden cache'lenir.
+  // SharedPreferences instance'ını baştan cache'le — LoginScreen'de senkron okunabilsin
   await SharedPreferences.getInstance();
 
-  // Firebase'i platforma uygun firebase_options.dart ile başlat.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp();
 
-  // Dio istemcisini başlat.
+  // Dio istemcisini başlat — baseUrl, api_service'deki endpoint'lerle örtüşmeli
   DioClient.instance.init(globals.serverAdrr);
 
-  // Background Firebase Messaging handler.
-  FirebaseMessaging.onBackgroundMessage(
-    firebaseMessagingBackgroundHandler,
-  );
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Local notifications: Android + iOS.
-  const AndroidInitializationSettings androidSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  const DarwinInitializationSettings iosSettings =
-      DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-  );
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
 
   const InitializationSettings initializationSettings =
-      InitializationSettings(
-    android: androidSettings,
-    iOS: iosSettings,
+  InitializationSettings(android: initializationSettingsAndroid);
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // Server'ın kullandığı kanal ID'siyle birebir eşleşen kanalı oluştur
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'smart_okul_channel',
+    'Smart Okul Bildirimleri',
+    description: 'Smart Okul uygulama bildirimleri',
+    importance: Importance.high,
   );
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
 
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-  );
-
-  await initializeFirebaseMessaging();
-
-  // Sadece dikey yönlendirmeye izin ver.
+  // Sadece dikey yönlendirmeye izin ver
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -135,6 +111,7 @@ Future<void> main() async {
 
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -148,67 +125,55 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    // Uygulama açıkken gelen Firebase bildirimlerini yakala.
+    // Uygulama ön plandayken gelen bildirimleri yakala
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint(
-        '🔔 Uygulama açıkken bildirim alındı: '
-        '${message.notification?.title}',
-      );
-      debugPrint('🔔 data: ${message.data}');
+      print('🔔 Uygulama açıkken bildirim alındı: ${message.notification?.title}');
+      print('🔔 data: ${message.data}');
 
-      _updateNotificationFlags(message);
-
-      // iOS'ta Firebase'in kendi foreground presentation'ı kullanılacağı
-      // için local notification tekrar gösterilmez.
-      // Android'de local notification gösterilir.
-      if (Platform.isAndroid) {
-        _showLocalNotification(message);
+      // Bildirim tipine göre ilgili ValueNotifier'ı güncelle.
+      // Sunucu 'tipi' veya 'type' alanıyla tip bilgisi gönderiyorsa kullan;
+      // aksi halde her iki notifier da true yapılır — kullanıcı
+      // hangisinin geldiğini açarak görecek, okuma sonrası sıfırlanacak.
+      final tipi = (message.data['tipi'] ?? message.data['type'] ?? '').toString().toLowerCase();
+      if (tipi == 'mesaj' || tipi == 'message') {
+        globals.mesajVar.value = true;
+      } else if (tipi == 'duyuru' || tipi == 'announcement') {
+        globals.duyuruVar.value = true;
+      } else {
+        // Tip bilinmiyorsa her ikisini de işaretle
+        globals.duyuruVar.value = true;
+        globals.mesajVar.value = true;
       }
+
+      _showLocalNotification(message);
     });
   }
 
-  void _updateNotificationFlags(RemoteMessage message) {
-    final tipi = (message.data['tipi'] ?? message.data['type'] ?? '')
-        .toString()
-        .toLowerCase();
-
-    if (tipi == 'mesaj' || tipi == 'message') {
-      globals.mesajVar.value = true;
-    } else if (tipi == 'duyuru' || tipi == 'announcement') {
-      globals.duyuruVar.value = true;
-    } else {
-      // Bildirim tipi bilinmiyorsa her ikisini de işaretle.
-      globals.duyuruVar.value = true;
-      globals.mesajVar.value = true;
-    }
-  }
-
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'channel_id',
-      'channel_name',
-      channelDescription: 'channel_description',
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    AndroidNotificationDetails(
+      'smart_okul_channel',
+      'Smart Okul Bildirimleri',
+      channelDescription: 'Smart Okul uygulama bildirimleri',
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'ticker',
+      ticker: 'smart_okul',
     );
 
-    const NotificationDetails notificationDetails =
-        NotificationDetails(android: androidDetails);
+    const NotificationDetails platformChannelSpecifics =
+    NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await flutterLocalNotificationsPlugin.show(
-      message.hashCode,
-      message.notification?.title ?? 'Bildirim',
-      message.notification?.body ?? '',
-      notificationDetails,
+      0,
+      message.notification?.title ?? 'Başlık yok',
+      message.notification?.body ?? 'Mesaj yok',
+      platformChannelSpecifics,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       home: const LoginScreen(),
       localizationsDelegates: const [
@@ -217,7 +182,16 @@ class _MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: AppLocalizations.supportedLocales,
+
+      supportedLocales: AppLocalizations.supportedLocales
     );
+
+    /*return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text('📲 Bildirim Testi'),
+        ),
+      ),
+    );*/
   }
 }

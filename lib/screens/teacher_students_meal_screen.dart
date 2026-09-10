@@ -6,7 +6,6 @@ import '../constants.dart';
 import '../services/api_service.dart';
 import '../models/meal_model.dart';
 import '../globals.dart' as globals;
-import 'package:http/http.dart' as http;
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 bool isLoading = false;
@@ -123,7 +122,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
     );
 
     try {
-      final response = await http.get(url);
+      final response = await ApiService.authClient.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> savedData = response.body.isNotEmpty
             ? (response.body.startsWith('[') ? jsonDecode(response.body) : [])
@@ -416,7 +415,7 @@ class _TeacherStudentsMealScreenState extends State<TeacherStudentsMealScreen> {
                 "&data=$finalDataStr"
         );
 
-        final response = await http.get(url);
+        final response = await ApiService.authClient.get(url);
 
         if (response.statusCode != 200) {
           hataVar = true;

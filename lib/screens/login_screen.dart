@@ -412,6 +412,8 @@ class _LoginScreenState extends State<LoginScreen> {
       /// 🔐 FCM TOKEN
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
+        // orjKullaniciTCKN: ham TCKN (server bu formatta bekliyor)
+        // kullaniciTCKN: "TCKN_schoolId_tip" formatında — registerFcmToken'a gönderilmemeli
         await ApiService().registerFcmToken(globals.kullaniciTCKN, token);
       }
 
