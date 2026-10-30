@@ -3,20 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import '../constants.dart';
 import 'package:logger/logger.dart';
 import 'package:smart_okul_mobile/screens/video_player_screen.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:wechat_camera_picker/wechat_camera_picker.dart';
-import 'package:photo_manager/photo_manager.dart';
-import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import '../utils/error_translator.dart';
 import '../utils/media_upload_limit.dart';
@@ -286,92 +281,41 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
   }
 
-  Future<List<AssetEntity>?> pickMedia(BuildContext context) async {
-
-    final PermissionState ps =
-    await PhotoManager.requestPermissionExtend();
-
-    if (!ps.isAuth) {
-      PhotoManager.openSetting();
-      return null;
-    }
-
-    final List<AssetEntity>? result =
-    await AssetPicker.pickAssets(
-      context,
-      pickerConfig: const AssetPickerConfig(
-        maxAssets: 20,
-        requestType: RequestType.common,
-      ),
-    );
-
-    return result;
+  /// Sistem fotoğraf seçici (READ_MEDIA_* izni gerekmez).
+  Future<List<File>> pickMediaWithSystemPicker() async {
+    final List<XFile> picked = await _picker.pickMultipleMedia(limit: 20);
+    return picked
+        .map((x) => x.path)
+        .where((p) => p.isNotEmpty)
+        .map(File.new)
+        .toList();
   }
 
-  Future<AssetEntity?> openCamera(BuildContext context) async {
-    final entity = await CameraPicker.pickFromCamera(
-      context,
-      pickerConfig: const CameraPickerConfig(
-        enableRecording: true,
-      ),
-    );
-
-    return entity;
-  }
-
-  Future<List<File>> convertToFiles(List<AssetEntity> assets) async {
-    List<File> files = [];
-
-    for (final asset in assets) {
-      final file = await asset.file;
-      if (file != null) {
-        files.add(file);
-      }
-    }
-
-    return files;
-  }
   Future<void> pickWhatsappStyleMedia() async {
+    final files = await pickMediaWithSystemPicker();
+    if (files.isEmpty) return;
 
-    /// MEDYA SEÇ
-    final assets = await pickMedia(context);
-
-    if (assets == null || assets.isEmpty) return;
-
-    /// ⭐ UI stabilize
     await Future.delayed(const Duration(milliseconds: 200));
 
-    /// ÖĞRENCİ SEÇ
-    final selectedStudents =
-    await showStudentSelectionDialog();
+    final selectedStudents = await showStudentSelectionDialog();
 
-    if (selectedStudents == null ||
-        selectedStudents.isEmpty) {
+    if (selectedStudents == null || selectedStudents.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text(AppLocalizations.of(context)!.noStudentSelected)),
+        SnackBar(content: Text(AppLocalizations.of(context)!.noStudentSelected)),
       );
       return;
     }
-
-    final files = await convertToFiles(assets);
 
     if (!await ensureFilesWithinMediaLimit(context, files)) return;
 
     setState(() => _isUploading = true);
 
-
     final result = await ApiService.uploadPersonGallery(
-      tcknOrigList: selectedStudents.toList(),//selectedPersonIds,
+      tcknOrigList: selectedStudents.toList(),
       files: files,
     );
 
     final bool success = result["success"] ?? false;
-
-/*
-    final success = await _apiService.uploadGallery(
-      globals.kullaniciTCKN,
-      files,
-    );*/
 
     setState(() => _isUploading = false);
 
@@ -401,14 +345,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   Future<void> _downloadMedia(String url) async {
     try {
-      final status = await Permission.photos.request();
-      if (status.isDenied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text(AppLocalizations.of(context)!.photoPermissionRequired)),
-        );
-        return;
-      }
-
+      // MediaStore kaydı için READ_MEDIA_* istemiyoruz (Play politikası).
       final result = await GallerySaver.saveImage(
         url,
         albumName: globals.globalOkulAdi?.isNotEmpty == true

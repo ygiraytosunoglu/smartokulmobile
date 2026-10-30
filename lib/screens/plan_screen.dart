@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:video_player/video_player.dart';
 import '../services/api_service.dart';
@@ -119,17 +118,9 @@ class _PlanScreenState extends State<PlanScreen> {
     }
   }
 
-  // 🔹 Fotoğraf indirme
+  // 🔹 Fotoğraf indirme (MediaStore — READ_MEDIA_* yok)
   Future<void> _downloadMedia(String url) async {
     try {
-      final status = await Permission.photos.request();
-      if (status.isDenied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text(t.permissionPhotosRequired)),
-        );
-        return;
-      }
-
       final result = await GallerySaver.saveImage(
         url,
         albumName: globals.globalOkulAdi?.isNotEmpty == true
