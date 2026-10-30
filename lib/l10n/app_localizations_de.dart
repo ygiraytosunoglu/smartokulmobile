@@ -115,6 +115,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homework => 'HAUSAUFGABEN';
 
   @override
+  String get privateLesson => 'PRIVATUNTERRICHT';
+
+  @override
+  String get tutoring => 'NACHHILFE';
+
+  @override
+  String get schoolLessons => 'SCHULFÄCHER';
+
+  @override
   String get studentNotification => 'Schülerbenachrichtigung';
 
   @override

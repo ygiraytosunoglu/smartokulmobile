@@ -1,14 +1,16 @@
 ﻿import 'dart:convert';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 import '../constants.dart';
+import '../models/ders_catalog.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
-import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/chat_attachment.dart';
 
 class YeniOdevScreen extends StatefulWidget {
   const YeniOdevScreen({Key? key}) : super(key: key);
@@ -22,26 +24,151 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
   List<dynamic> dersListesi = [];
   bool dersLoading = true;
 
+  List<DersTema> _temalar = [];
+  List<DersKonu> _konular = [];
+  int? _temaId;
+  int? _konuId;
+  bool _cascadeLoading = false;
+
   /// 🧾 Form alanları
   dynamic seciliDers;
   final TextEditingController aciklamaCtrl = TextEditingController();
   final TextEditingController expireCtrl = TextEditingController();
 
   /// 👨‍🎓 Öğrenciler
+  List<Map<String, dynamic>> ogrenciler = [];
   late Map<String, bool> ogrenciSecim;
   bool hepsiSecili = true;
+  bool ogrenciLoading = true;
 
   /// 📎 Dosyalar
   List<File> selectedFiles = [];
+  bool _kaydediliyor = false;
 
   @override
   void initState() {
     super.initState();
-    ogrenciSecim = {
-      for (var o in globals.globalOgrenciListesi)
-        o['TCKN'].toString(): true
-    };
+    ogrenciSecim = {};
     _loadDersler();
+    _loadOgrenciler();
+  }
+
+  Future<void> _kaydet() async {
+    if (_kaydediliyor) return;
+    final List<String> secilenOgrenciler = ogrenciSecim.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    if (seciliDers == null ||
+        aciklamaCtrl.text.trim().isEmpty ||
+        expireCtrl.text.isEmpty ||
+        secilenOgrenciler.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.fillRequiredFields),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _kaydediliyor = true);
+    try {
+      final expireDate = DateFormat('dd-MM-yyyy').parse(expireCtrl.text);
+      await ApiService().addOdev(
+        gonderenTckn: globals.kullaniciTCKN,
+        alanTcknList: secilenOgrenciler,
+        dersId: seciliDers['Id'],
+        schoolId: int.parse(globals.globalSchoolId.toString()),
+        data: jsonEncode({
+          "aciklama": aciklamaCtrl.text,
+        }),
+        expireDate: expireDate,
+        files: selectedFiles,
+        temaId: _temaId,
+        konuId: _konuId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _kaydediliyor = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  int? _dersIdOf(dynamic d) {
+    if (d is! Map) return null;
+    final id = d['Id'] ?? d['id'];
+    if (id is int) return id;
+    return int.tryParse(id?.toString() ?? '');
+  }
+
+  Future<void> _dersSecildi(dynamic v) async {
+    setState(() {
+      seciliDers = v;
+      _temaId = null;
+      _konuId = null;
+      _temalar = [];
+      _konular = [];
+    });
+    final dersId = _dersIdOf(v);
+    if (dersId == null) return;
+    setState(() => _cascadeLoading = true);
+    final temalar = await ApiService.getDersTemalar(dersId: dersId);
+    if (!mounted) return;
+    setState(() {
+      _temalar = temalar;
+      _cascadeLoading = false;
+    });
+  }
+
+  Future<void> _temaSecildi(int? id) async {
+    setState(() {
+      _temaId = id;
+      _konuId = null;
+      _konular = [];
+    });
+    if (id == null) return;
+    setState(() => _cascadeLoading = true);
+    final konular = await ApiService.getDersKonular(id);
+    if (!mounted) return;
+    setState(() {
+      _konular = konular;
+      _cascadeLoading = false;
+    });
+  }
+
+  Future<void> _loadOgrenciler() async {
+    try {
+      final data = await ApiService.loadHomeworkStudents();
+      if (!mounted) return;
+      setState(() {
+        ogrenciler = data;
+        ogrenciSecim = {
+          for (var o in ogrenciler) o['TCKN'].toString(): true,
+        };
+        hepsiSecili = ogrenciler.isNotEmpty;
+        ogrenciLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        ogrenciler = List<Map<String, dynamic>>.from(
+          globals.globalOgrenciListesi,
+        );
+        ogrenciSecim = {
+          for (var o in ogrenciler) o['TCKN'].toString(): true,
+        };
+        hepsiSecili = ogrenciler.isNotEmpty;
+        ogrenciLoading = false;
+      });
+    }
   }
 
   /// 📘 Dersleri API'den çek
@@ -64,6 +191,56 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
   void _hepsiDurumunuGuncelle() {
     hepsiSecili = ogrenciSecim.values.every((v) => v);
+  }
+
+  List<Widget> _ogrenciCheckboxlari() {
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final ogr in ogrenciler) {
+      final sinif = (ogr['ClassName'] ?? '').toString().trim();
+      final key = sinif.isEmpty ? 'Diğer' : sinif;
+      grouped.putIfAbsent(key, () => []).add(ogr);
+    }
+
+    final widgets = <Widget>[];
+    for (final entry in grouped.entries) {
+      if (grouped.length > 1) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                entry.key,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      for (final ogr in entry.value) {
+        final tckn = ogr['TCKN'].toString();
+        widgets.add(
+          CheckboxListTile(
+            title: Text(ogr['Name'] ?? ''),
+            subtitle: grouped.length == 1 &&
+                    (ogr['ClassName'] ?? '').toString().isNotEmpty
+                ? Text(ogr['ClassName'].toString())
+                : null,
+            value: ogrenciSecim[tckn] ?? false,
+            onChanged: (v) {
+              setState(() {
+                ogrenciSecim[tckn] = v!;
+                _hepsiDurumunuGuncelle();
+              });
+            },
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 
   @override
@@ -112,12 +289,58 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                     child: Text(d['Ad'] ?? ''),
                   );
                 }).toList(),
-                onChanged: (v) {
-                  setState(() {
-                    seciliDers = v;
-                  });
-                },
+                onChanged: _dersSecildi,
               ),
+
+              const SizedBox(height: 12),
+
+              DropdownButtonFormField<int>(
+                value: _temalar.any((t) => t.id == _temaId) ? _temaId : null,
+                decoration: const InputDecoration(
+                  labelText: 'Öğrenme Alanı (opsiyonel)',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                items: _temalar
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t.id,
+                        child: Text(t.ad, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: seciliDers == null ? null : _temaSecildi,
+              ),
+
+              const SizedBox(height: 12),
+
+              DropdownButtonFormField<int>(
+                value: _konular.any((k) => k.id == _konuId) ? _konuId : null,
+                decoration: const InputDecoration(
+                  labelText: 'Konu (opsiyonel)',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                items: _konular
+                    .map(
+                      (k) => DropdownMenuItem(
+                        value: k.id,
+                        child: Text(k.ad, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _temaId == null
+                    ? null
+                    : (v) => setState(() => _konuId = v),
+              ),
+
+              if (_cascadeLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
 
               const SizedBox(height: 12),
 
@@ -159,66 +382,64 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                 },
               ),
 
-              const SizedBox(height: 16),
-
-              /// 👥 Öğrenciler
-              CheckboxListTile(
-                title:  Text(AppLocalizations.of(context)!.allOfThem),
-                value: hepsiSecili,
-                onChanged: (v) {
-                  setState(() {
-                    hepsiSecili = v!;
-                    ogrenciSecim
-                        .updateAll((key, value) => hepsiSecili);
-                  });
-                },
-              ),
-
-              ...globals.globalOgrenciListesi.map((ogr) {
-                final tckn = ogr['TCKN'].toString();
-                return CheckboxListTile(
-                  title: Text(ogr['Name'] ?? ''),
-                  value: ogrenciSecim[tckn],
-                  onChanged: (v) {
-                    setState(() {
-                      ogrenciSecim[tckn] = v!;
-                      _hepsiDurumunuGuncelle();
-                    });
-                  },
-                );
-              }),
-
               const SizedBox(height: 12),
 
-              /// 📎 Dosya Ekle
+              /// 📎 Dosya Ekle (tarihin altı, öğrenci listesinin üstü)
               ElevatedButton.icon(
                 icon: const Icon(Icons.attach_file),
-                label:  Text(AppLocalizations.of(context)!.addFile),
+                label: Text(
+                  selectedFiles.isEmpty
+                      ? AppLocalizations.of(context)!.addFile
+                      : '${AppLocalizations.of(context)!.addFile} (${selectedFiles.length})',
+                ),
                 onPressed: () async {
-                  final result =
-                  await FilePicker.platform.pickFiles(
-                    allowMultiple: true,
-                  );
-                  if (result != null) {
-                    setState(() {
-                      selectedFiles = result.paths
-                          .whereType<String>()
-                          .map((e) => File(e))
-                          .toList();
-                    });
-                  }
+                  final files = await pickMultipleAttachments(context);
+                  if (files.isEmpty || !mounted) return;
+                  setState(() => selectedFiles.addAll(files));
                 },
               ),
 
               if (selectedFiles.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: selectedFiles
-                      .map((f) =>
-                      Text("📎 ${f.path.split('/').last}"))
-                      .toList(),
+                ...List.generate(selectedFiles.length, (i) {
+                  final f = selectedFiles[i];
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.insert_drive_file, size: 20),
+                    title: Text(
+                      p.basename(f.path),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () =>
+                          setState(() => selectedFiles.removeAt(i)),
+                    ),
+                  );
+                }),
+              ],
+
+              const SizedBox(height: 16),
+
+              /// 👥 Öğrenciler
+              if (ogrenciLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else ...[
+                CheckboxListTile(
+                  title: Text(AppLocalizations.of(context)!.allOfThem),
+                  value: hepsiSecili,
+                  onChanged: (v) {
+                    setState(() {
+                      hepsiSecili = v!;
+                      ogrenciSecim.updateAll((key, value) => hepsiSecili);
+                    });
+                  },
                 ),
+                ..._ogrenciCheckboxlari(),
               ],
 
               const SizedBox(height: 24),
@@ -228,46 +449,12 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: AppStyles.buttonStyle,
-                  child:  Text(AppLocalizations.of(context)!.save),
-                  onPressed: () async {
-                    final List<String> secilenOgrenciler =
-                    ogrenciSecim.entries
-                        .where((e) => e.value)
-                        .map((e) => e.key)
-                        .toList();
-
-                    if (seciliDers == null ||
-                        aciklamaCtrl.text.trim().isEmpty ||
-                        expireCtrl.text.isEmpty ||
-                        secilenOgrenciler.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                         SnackBar(
-                          content:
-                          Text(AppLocalizations.of(context)!.fillRequiredFields),
-                        ),
-                      );
-                      return;
-                    }
-
-                    /// dd-MM-yyyy → DateTime
-                    final expireDate = DateFormat('dd-MM-yyyy')
-                        .parse(expireCtrl.text);
-                    print("secilenOgrenciler kaç tane:"+secilenOgrenciler.length.toString());
-                    await ApiService().addOdev(
-                      gonderenTckn: globals.kullaniciTCKN,
-                      alanTcknList: secilenOgrenciler,
-                      dersId: seciliDers['Id'],
-                      schoolId: int.parse(
-                          globals.globalSchoolId.toString()),
-                      data: jsonEncode({
-                        "aciklama": aciklamaCtrl.text,
-                      }),
-                      expireDate: expireDate,
-                      files: selectedFiles,
-                    );
-
-                    Navigator.pop(context, true);
-                  },
+                  onPressed: _kaydediliyor ? null : _kaydet,
+                  child: Text(
+                    _kaydediliyor
+                        ? 'Kaydediliyor...'
+                        : AppLocalizations.of(context)!.save,
+                  ),
                 ),
               ),
             ],

@@ -21,6 +21,9 @@ class AuthInterceptor extends Interceptor {
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    if (options.data is FormData) {
+      options.headers.remove(Headers.contentTypeHeader);
+    }
     _logger.i('[Dio] ${options.method} ${options.path}');
     handler.next(options);
   }

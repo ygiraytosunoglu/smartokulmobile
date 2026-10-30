@@ -19,6 +19,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import '../utils/error_translator.dart';
+import '../utils/media_upload_limit.dart';
 
 class PhotoGalleryScreenSinif extends StatefulWidget {
   const PhotoGalleryScreenSinif({Key? key}) : super(key: key);
@@ -197,35 +198,7 @@ class _PhotoGalleryScreenSinifState extends State<PhotoGalleryScreenSinif> {
 
     final files = await convertToFiles(assets);
 
-    // 1 GB üzeri dosya kontrolü
-    const int maxBytes = 1 * 1024 * 1024 * 1024;
-    final oversized = files.where((f) => f.lengthSync() > maxBytes).toList();
-    if (oversized.isNotEmpty) {
-      if (mounted) {
-        await showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.red),
-                SizedBox(width: 8),
-                Text('Dosya Çok Büyük'),
-              ],
-            ),
-            content: Text(
-              'Seçtiğiniz videonun boyutu çok büyük olduğu için yükleyemezsiniz.\n\nLütfen 1 GB\'dan küçük bir dosya seçin.',
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Tamam'),
-              ),
-            ],
-          ),
-        );
-      }
-      return;
-    }
+    if (!await ensureFilesWithinMediaLimit(context, files)) return;
 
     setState(() => _isUploading = true);
 

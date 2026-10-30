@@ -3,6 +3,7 @@ import '../constants.dart';
 import '../services/api_service.dart';
 import 'package:smart_okul_mobile/constants.dart' as constants;
 import '../utils/error_translator.dart';
+import '../utils/pin_policy.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -129,6 +130,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
               const SizedBox(height: 16),
 
+              const Text(
+                pinPolicyMessage,
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
               // Yeni Şifre 1
               TextFormField(
                 controller: _newPassword1Controller,
@@ -139,12 +145,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   filled: true,                 // 👈 ZORUNLU
                   fillColor: AppColors.surface,      // 👈 ARKA PLAN
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Yeni şifre gerekli';
-                  }
-                  return null;
-                },
+                validator: validateNewPin,
               ),
 
               const SizedBox(height: 16),

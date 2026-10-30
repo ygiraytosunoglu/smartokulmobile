@@ -13,6 +13,7 @@ import 'package:smart_okul_mobile/globals.dart' as globals;
 import 'package:smart_okul_mobile/services/api_service.dart';
 import '../constants.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
+import '../utils/media_upload_limit.dart';
 
 class UserProfileScreen extends StatefulWidget {
   @override
@@ -23,6 +24,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final Map<String, Uint8List?> studentPhotos = {};
   Uint8List? kullaniciPhoto;
   List<dynamic> yoklamaBilgileri = [];
+  List<Map<String, dynamic>> ogrenciler = [];
+  bool ogrenciLoading = true;
 
   @override
   void initState() {
@@ -31,16 +34,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _fetchAllData() async {
+    await _loadOgrenciler();
     await _fetchYoklamaList();
     await _fetchAllPhotos();
-    setState(() {});
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadOgrenciler() async {
+    try {
+      final data = await ApiService.loadHomeworkStudents();
+      if (!mounted) return;
+      setState(() {
+        ogrenciler = data;
+        ogrenciLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        ogrenciler = List<Map<String, dynamic>>.from(
+          globals.globalOgrenciListesi,
+        );
+        ogrenciLoading = false;
+      });
+    }
   }
 
   Future<void> _fetchYoklamaList() async {
     try {
-      final tcknList = globals.globalOgrenciListesi
-          .map<String>((e) => e['TCKN'] as String)
+      final tcknList = ogrenciler
+          .map((e) => e['TCKN']?.toString() ?? '')
+          .where((t) => t.isNotEmpty)
           .toList();
+      if (tcknList.isEmpty) return;
 
       final today = DateTime.now();
       final formattedDate =
@@ -59,10 +84,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       "${globals.kullaniciTCKN}_${globals.fotoVersion}",
     );
 
-    for (var ogrenci in globals.globalOgrenciListesi) {
-        final tckn = ogrenci['TCKN'];
+    for (var ogrenci in ogrenciler) {
+      final tckn = ogrenci['TCKN']?.toString() ?? '';
+      if (tckn.isEmpty) continue;
 
-      final fotoVersion = ogrenci['FotoVersion'].toString();
+      final fotoVersion = ogrenci['FotoVersion']?.toString() ?? '0';
 
       print("tckn:"+tckn+" fotoversion:"+fotoVersion);
       studentPhotos[tckn] =
@@ -104,6 +130,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
+    final size = await picked.length();
+    if (size > maxMediaUploadBytes) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Dosya Çok Büyük'),
+          content: const Text(mediaUploadLimitMessage),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Tamam'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final bytes = await picked.readAsBytes();
 
     try {
@@ -125,8 +170,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             globals.fotoVersion++;
           } else {
             studentPhotos[tckn] = bytes;
-            for (var ogrenci in globals.globalOgrenciListesi) {
-              if (ogrenci['TCKN'] == tckn) {
+            for (var ogrenci in ogrenciler) {
+              if (ogrenci['TCKN']?.toString() == tckn) {
                 ogrenci['FotoVersion'] =
                     (ogrenci['FotoVersion'] ?? 0) + 1;
               }
@@ -179,7 +224,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Text(AppLocalizations.of(context)!.labelFullName+" ${p['Name']}"),
                   Text(AppLocalizations.of(context)!.labelProfession+" ${p['Meslek']}"),
                   Text(AppLocalizations.of(context)!.labelHobby+" ${p['Hobi']}"),
-                  if ((p['TelNo'] ?? '').isNotEmpty &&
+                  if ((p['TelNo']?.toString() ?? '').isNotEmpty &&
                       globals.menuListesi.contains("VeliTel") &&
                       globals.globalKullaniciTipi != 'T')
                     GestureDetector(
@@ -321,19 +366,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               isKullanici: true,
             ),
             const SizedBox(height: 20),
-            if (globals.globalOgrenciListesi.isNotEmpty)
-               Text(AppLocalizations.of(context)!.studentsTitle,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            ...globals.globalOgrenciListesi.map((o) => _buildPhotoCard(
-              name: o['Name'],
-              tckn: o['TCKN'],
-              photo: studentPhotos[o['TCKN']],
-              isKullanici: false,
-              alerji: o['Alerji'],
-              ilac: o['Ilac'],
-                sinifAdi: o['ClassName'],
-                ogrOkulNo:  o['SchoolNumber']
-            )),
+            if (ogrenciLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else ...[
+              if (ogrenciler.isNotEmpty)
+                Text(AppLocalizations.of(context)!.studentsTitle,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ...ogrenciler.map((o) => _buildPhotoCard(
+                name: o['Name']?.toString() ?? '',
+                tckn: o['TCKN']?.toString() ?? '',
+                photo: studentPhotos[o['TCKN']?.toString()],
+                isKullanici: false,
+                alerji: o['Alerji']?.toString(),
+                ilac: o['Ilac']?.toString(),
+                sinifAdi: o['ClassName']?.toString(),
+                ogrOkulNo: int.tryParse('${o['SchoolNumber'] ?? ''}'),
+              )),
+            ],
           ],
         ),
       ),

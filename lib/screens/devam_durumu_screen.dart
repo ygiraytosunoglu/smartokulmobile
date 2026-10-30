@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Tarih formatlamak için
 import 'package:smart_okul_mobile/constants.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
+import 'package:smart_okul_mobile/models/conversation_item.dart';
 import 'package:smart_okul_mobile/services/api_service.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
@@ -16,7 +16,7 @@ class DevamDurumuScreen extends StatefulWidget {
 }
 
 class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
-  List<dynamic> _devamListesi = [];
+  List<Map<String, dynamic>> _devamListesi = [];
   bool _loading = true;
   String _ogrenciAdi = "";
   int _selectedIndex = -1; // Seçilen satırın indexi
@@ -28,27 +28,55 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
     _getDevamDurumu();
   }
 
+  String _plainTckn(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return t;
+    return t.contains('_') ? t.split('_').first : t;
+  }
+
   void _getOgrenciAdi() {
-    final ogrenci = globals.globalOgrenciListesi.firstWhere(
-          (e) => e['TCKN'] == widget.tckn,
-      orElse: () => {"Name": AppLocalizations.of(context)!.unknownStudent},
-    );
-    _ogrenciAdi = ogrenci['Name'] ?? AppLocalizations.of(context)!.unknownStudent;
+    final hedef = _plainTckn(widget.tckn);
+    if (globals.globalKullaniciTipi == 'S' &&
+        globals.globalKullaniciAdi.trim().isNotEmpty) {
+      _ogrenciAdi = globals.globalKullaniciAdi;
+      return;
+    }
+    for (final e in globals.globalOgrenciListesi) {
+      final t = _plainTckn((e['TCKN'] ?? e['tckn'] ?? '').toString());
+      if (t == hedef) {
+        _ogrenciAdi = (e['Name'] ?? e['name'] ?? '').toString();
+        if (_ogrenciAdi.isNotEmpty) return;
+      }
+    }
+    _ogrenciAdi = globals.globalKullaniciAdi.trim().isNotEmpty
+        ? globals.globalKullaniciAdi
+        : 'Öğrenci';
   }
 
   Future<void> _getDevamDurumu() async {
     setState(() => _loading = true);
 
-    _devamListesi = await ApiService().getDevamDurumu(widget.tckn);
+    final raw = await ApiService().getDevamDurumu(_plainTckn(widget.tckn));
+    final list = <Map<String, dynamic>>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final m = Map<String, dynamic>.from(e);
+      final date = jsonDate(m, 'date') ?? jsonDate(m, 'tarih');
+      if (date == null) continue;
+      final has = jsonInt(m, 'has') ??
+          (jsonBool(m, 'has') ? 1 : 0);
+      list.add({'Date': date, 'Has': has});
+    }
 
-    // Tarihe göre güncelden geçmişe sıralama
-    _devamListesi.sort((a, b) {
-      final dateA = DateTime.parse(a['Date']);
-      final dateB = DateTime.parse(b['Date']);
-      return dateB.compareTo(dateA); // Büyükten küçüğe
+    list.sort((a, b) {
+      final dateA = a['Date'] as DateTime;
+      final dateB = b['Date'] as DateTime;
+      return dateB.compareTo(dateA);
     });
 
+    if (!mounted) return;
     setState(() {
+      _devamListesi = list;
       _loading = false;
     });
   }
@@ -102,7 +130,7 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
               itemBuilder: (context, index) {
                 final item = _devamListesi[index];
                 final bool devam = item['Has'] == 1;
-                final DateTime date = DateTime.parse(item['Date']);
+                final DateTime date = item['Date'] as DateTime;
                 final String formattedDate =
                 dateFormat.format(date);
 

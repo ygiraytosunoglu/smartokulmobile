@@ -9,6 +9,9 @@ import 'package:smart_okul_mobile/screens/mesaj_ana_screen_m.dart';
 import 'package:smart_okul_mobile/screens/odev_screen.dart';
 import 'package:smart_okul_mobile/screens/duyuru_listesi_screen.dart';
 import 'package:smart_okul_mobile/screens/photo_gallery_screen_sinif.dart';
+import 'package:smart_okul_mobile/screens/academic_record_list_screen.dart';
+import 'package:smart_okul_mobile/screens/ders_yonetim_screen.dart';
+import 'package:smart_okul_mobile/models/academic_record.dart';
 
 import '../constants.dart';
 import '../globals.dart' as globals;
@@ -43,10 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? selectedStudent;
 
   Future<Uint8List?>? _studentPhotoFuture;
+  late final Future<Uint8List?> _logoFuture;
 
   @override
   void initState() {
     super.initState();
+    _logoFuture = ApiService().getLogo(globals.kullaniciTCKN);
 
     // 👶 Veli ise ilk öğrenciyi otomatik seç
     if (globals.globalKullaniciTipi == 'P' &&
@@ -57,6 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
       globals.studentClassId = selectedStudent!['ClassId'];
 
       _loadStudentPhoto();
+    } else if (globals.globalKullaniciTipi == 'S') {
+      // Öğrenci kendi kaydı — devam/ödev vb. studentTckn bekler
+      globals.studentTckn = globals.orjKullaniciTCKN.isNotEmpty
+          ? globals.orjKullaniciTCKN
+          : globals.kullaniciTCKN.split('_').first;
     }
   }
 
@@ -100,13 +110,16 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 4),
 
             /// LOGO
-            FutureBuilder<Uint8List>(
-              future: ApiService().getLogo(globals.kullaniciTCKN),
+            FutureBuilder<Uint8List?>(
+              future: _logoFuture,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                const size = 52.0;
+                Widget empty() => const SizedBox(width: size, height: size);
+
+                if (snapshot.connectionState != ConnectionState.done) {
                   return Container(
-                    width: 52,
-                    height: 52,
+                    width: size,
+                    height: size,
                     decoration: BoxDecoration(
                       color: Colors.white12,
                       borderRadius: BorderRadius.circular(10),
@@ -124,13 +137,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
+                final bytes = snapshot.data;
+                if (bytes == null || bytes.isEmpty) return empty();
+
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.memory(
-                    snapshot.data!,
-                    width: 52,
-                    height: 52,
+                    bytes,
+                    width: size,
+                    height: size,
                     fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => empty(),
                   ),
                 );
               },
@@ -326,6 +343,28 @@ class _HomeScreenState extends State<HomeScreen> {
                           showRedBorder: anketVar, );
 
                       },
+                    ),
+                  if (globals.menuListesi.contains('OzelDers'))
+                    buildSquareIconButton(
+                      context,
+                      'ders_programi.png',
+                      AppLocalizations.of(context)!.privateLesson,
+                      () => _ozelDersSayfasiniAc(context),
+                    ),
+                  if (globals.menuListesi.contains('Etut'))
+                    buildSquareIconButton(
+                      context,
+                      'etut.png',
+                      AppLocalizations.of(context)!.tutoring,
+                      () => _etutSayfasiniAc(context),
+                    ),
+                  if (globals.menuListesi.contains('Dersler') ||
+                      globals.menuListesi.contains('OkulDersleri'))
+                    buildSquareIconButton(
+                      context,
+                      'bultenler.png',
+                      AppLocalizations.of(context)!.schoolLessons,
+                      () => _dersYonetimSayfasiniAc(context),
                     ),
                   if(globals.menuListesi.contains("Rehberlik"))
                     ValueListenableBuilder<bool>(
@@ -775,10 +814,27 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => QRScanOrManualScreen()));
   }
 
+  String? _aktifOgrenciTckn() {
+    if (globals.globalKullaniciTipi == 'S') {
+      if (globals.orjKullaniciTCKN.isNotEmpty) return globals.orjKullaniciTCKN;
+      final parts = globals.kullaniciTCKN.split('_');
+      return parts.isNotEmpty ? parts.first : null;
+    }
+    final t = (globals.studentTckn ?? '').trim();
+    return t.isEmpty ? null : t;
+  }
+
   void _devamDurumuSayfasiniAc(BuildContext context) {
+    final tckn = _aktifOgrenciTckn();
+    if (tckn == null || tckn.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.selectStudentError)),
+      );
+      return;
+    }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => DevamDurumuScreen(tckn: globals.studentTckn!)),
+      MaterialPageRoute(builder: (_) => DevamDurumuScreen(tckn: tckn)),
     );
   }
   void _ilacSayfasiniAc(BuildContext context) {
@@ -809,6 +865,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _anketSayfasiniAc(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => SurveyScreen()));
+  }
+
+  void _ozelDersSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AcademicRecordListScreen(
+          type: AcademicRecordType.ozelDers,
+        ),
+      ),
+    );
+  }
+
+  void _etutSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AcademicRecordListScreen(
+          type: AcademicRecordType.etut,
+        ),
+      ),
+    );
+  }
+
+  void _dersYonetimSayfasiniAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DersYonetimScreen()),
+    );
   }
 
   void _rehberlikSayfasiniAc(BuildContext context) {

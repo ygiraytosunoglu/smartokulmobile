@@ -312,6 +312,24 @@ abstract class AppLocalizations {
   /// **'ÖDEV'**
   String get homework;
 
+  /// No description provided for @privateLesson.
+  ///
+  /// In tr, this message translates to:
+  /// **'ÖZEL DERS'**
+  String get privateLesson;
+
+  /// No description provided for @tutoring.
+  ///
+  /// In tr, this message translates to:
+  /// **'ETÜT'**
+  String get tutoring;
+
+  /// No description provided for @schoolLessons.
+  ///
+  /// In tr, this message translates to:
+  /// **'OKUL DERSLERİ'**
+  String get schoolLessons;
+
   /// No description provided for @studentNotification.
   ///
   /// In tr, this message translates to:

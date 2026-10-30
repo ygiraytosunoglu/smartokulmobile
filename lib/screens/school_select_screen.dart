@@ -1,10 +1,8 @@
 ﻿import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
-import 'package:smart_okul_mobile/screens/home_screen.dart';
-import 'package:smart_okul_mobile/screens/kvkk_screen.dart';
-import 'package:smart_okul_mobile/screens/student_notification_screen.dart';
 import 'package:smart_okul_mobile/services/api_service.dart';
+import 'package:smart_okul_mobile/utils/post_login_navigation.dart';
 import '../constants.dart'; // AppColors
 
 class SchoolSelectScreen extends StatefulWidget {
@@ -30,13 +28,7 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
           Map<String, dynamic>.from(selectedPerson),
         );
         unawaited(ApiService.fetchLoginCounts());
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const HomeScreen(),
-          ),
-        );
+        unawaited(navigateAfterSuccessfulLogin(context));
       });
     } else if (globals.secilebilirOkullar.isNotEmpty) {
       /// 🟢 ÇOK OKUL VARSA İLKİ SEÇİLİ GELSİN
@@ -128,27 +120,7 @@ class _SchoolSelectScreenState extends State<SchoolSelectScreen> {
                     Map<String, dynamic>.from(selectedPerson),
                   );
                   unawaited(ApiService.fetchLoginCounts());
-
-                  if (globals.kvkk == "1") {
-                    if (globals.globalKullaniciTipi == 'P' &&
-                        globals.menuListesi.contains("Anons")) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const StudentNotificationScreen()),
-                      );
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      );
-                    }
-                  } else {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const KvkkScreen()),
-                    );
-                  }
+                  unawaited(navigateAfterSuccessfulLogin(context));
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.newAppBar,

@@ -1,13 +1,16 @@
 ﻿import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:smart_okul_mobile/constants.dart';
+import '../models/conversation_item.dart';
+import '../models/ders_catalog.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
+import '../utils/chat_attachment.dart';
 
 class UpdateOdevScreen extends StatefulWidget {
   final Map<String, dynamic> odev;
@@ -26,15 +29,102 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
   List<dynamic> dersListesi = [];
   bool dersLoading = true;
 
+  List<DersTema> _temalar = [];
+  List<DersKonu> _konular = [];
+  int? _temaId;
+  int? _konuId;
+  bool _cascadeLoading = false;
+
   List<File> selectedFiles = [];
   List<dynamic> mevcutDosyalar = [];
+  bool _kaydediliyor = false;
 
   @override
   void initState() {
     super.initState();
     _fillData();
+    _temaId = jsonInt(widget.odev, 'temaId');
+    _konuId = jsonInt(widget.odev, 'konuId');
     _loadDersler();
-    mevcutDosyalar = widget.odev['Files'] ?? [];
+    mevcutDosyalar = widget.odev['Files'] ?? widget.odev['files'] ?? [];
+  }
+
+  Future<void> _kaydet() async {
+    if (_kaydediliyor) return;
+    setState(() => _kaydediliyor = true);
+    try {
+      await ApiService().updateOdev(
+        odevId: jsonInt(widget.odev, 'id') ?? widget.odev['Id'],
+        dersId: seciliDers?['Id'],
+        schoolId: int.parse(globals.globalSchoolId.toString()),
+        data: jsonEncode({
+          "aciklama": aciklamaCtrl.text,
+        }),
+        expireDate: expireCtrl.text.isNotEmpty
+            ? DateFormat('dd-MM-yyyy').parse(expireCtrl.text)
+            : null,
+        files: selectedFiles,
+        temaId: _temaId,
+        konuId: _konuId,
+        actorTckn: globals.kullaniciTCKN,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _kaydediliyor = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  int? _dersIdOf(dynamic d) {
+    if (d is! Map) return null;
+    final id = d['Id'] ?? d['id'];
+    if (id is int) return id;
+    return int.tryParse(id?.toString() ?? '');
+  }
+
+  Future<void> _loadTemalar(int dersId, {bool preserve = false}) async {
+    setState(() => _cascadeLoading = true);
+    final temalar = await ApiService.getDersTemalar(dersId: dersId);
+    if (!mounted) return;
+    setState(() {
+      _temalar = temalar;
+      if (!preserve || !_temalar.any((t) => t.id == _temaId)) {
+        _temaId = null;
+        _konuId = null;
+        _konular = [];
+      }
+      _cascadeLoading = false;
+    });
+    if (_temaId != null) await _loadKonular(_temaId!, preserve: preserve);
+  }
+
+  Future<void> _loadKonular(int temaId, {bool preserve = false}) async {
+    setState(() => _cascadeLoading = true);
+    final konular = await ApiService.getDersKonular(temaId);
+    if (!mounted) return;
+    setState(() {
+      _konular = konular;
+      if (!preserve || !_konular.any((k) => k.id == _konuId)) {
+        _konuId = null;
+      }
+      _cascadeLoading = false;
+    });
+  }
+
+  Future<void> _dersSecildi(dynamic v) async {
+    setState(() {
+      seciliDers = v;
+      _temaId = null;
+      _konuId = null;
+      _temalar = [];
+      _konular = [];
+    });
+    final dersId = _dersIdOf(v);
+    if (dersId != null) await _loadTemalar(dersId);
   }
 
   void _fillData() {
@@ -56,17 +146,22 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
     try {
       final schoolId = int.parse(globals.globalSchoolId.toString());
       final data = await ApiService().getAllDersler(schoolId);
+      final hedefDersId =
+          jsonInt(widget.odev, 'dersId') ?? widget.odev['DersId'];
 
       setState(() {
         dersListesi = data ?? [];
-
-        seciliDers = dersListesi.firstWhere(
-              (d) => d['Id'] == widget.odev['DersId'],
-          orElse: () => null,
-        );
-
+        seciliDers = null;
+        for (final d in dersListesi) {
+          if (d is Map && (d['Id'] == hedefDersId || d['id'] == hedefDersId)) {
+            seciliDers = d;
+            break;
+          }
+        }
         dersLoading = false;
       });
+      final dersId = _dersIdOf(seciliDers);
+      if (dersId != null) await _loadTemalar(dersId, preserve: true);
     } catch (_) {
       setState(() => dersLoading = false);
     }
@@ -136,9 +231,57 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
                       ),
                     )
                         .toList(),
-                    onChanged: (v) =>
-                        setState(() => seciliDers = v),
+                    onChanged: _dersSecildi,
                   ),
+
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<int>(
+                    value: _temalar.any((t) => t.id == _temaId) ? _temaId : null,
+                    decoration: _decoration('Öğrenme Alanı (opsiyonel)'),
+                    items: _temalar
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t.id,
+                            child: Text(t.ad, overflow: TextOverflow.ellipsis),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: seciliDers == null
+                        ? null
+                        : (v) async {
+                            setState(() {
+                              _temaId = v;
+                              _konuId = null;
+                              _konular = [];
+                            });
+                            if (v != null) await _loadKonular(v);
+                          },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<int>(
+                    value: _konular.any((k) => k.id == _konuId) ? _konuId : null,
+                    decoration: _decoration('Konu (opsiyonel)'),
+                    items: _konular
+                        .map(
+                          (k) => DropdownMenuItem(
+                            value: k.id,
+                            child: Text(k.ad, overflow: TextOverflow.ellipsis),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: _temaId == null
+                        ? null
+                        : (v) => setState(() => _konuId = v),
+                  ),
+
+                  if (_cascadeLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: LinearProgressIndicator(minHeight: 2),
+                    ),
 
                   const SizedBox(height: 12),
 
@@ -215,44 +358,48 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
                   ElevatedButton.icon(
                     icon: const Icon(Icons.attach_file),
                     style: AppStyles.buttonStyle,
-                    label: Text("Dosya Ekle"),
+                    label: Text(
+                      selectedFiles.isEmpty
+                          ? 'Dosya Ekle'
+                          : 'Dosya Ekle (${selectedFiles.length})',
+                    ),
                     onPressed: () async {
-                      final result = await FilePicker.platform
-                          .pickFiles(allowMultiple: true);
-                      if (result != null) {
-                        setState(() {
-                          selectedFiles = result.paths
-                              .whereType<String>()
-                              .map((e) => File(e))
-                              .toList();
-                        });
-                      }
+                      final files = await pickMultipleAttachments(context);
+                      if (files.isEmpty || !mounted) return;
+                      setState(() => selectedFiles.addAll(files));
                     },
                   ),
+
+                  if (selectedFiles.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ...List.generate(selectedFiles.length, (i) {
+                      final f = selectedFiles[i];
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading:
+                            const Icon(Icons.insert_drive_file, size: 20),
+                        title: Text(
+                          p.basename(f.path),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () =>
+                              setState(() => selectedFiles.removeAt(i)),
+                        ),
+                      );
+                    }),
+                  ],
 
                   const SizedBox(height: 24),
 
                   // GÜNCELLE
                   ElevatedButton(
-                    child: Text("Güncelle"),
                     style: AppStyles.buttonStyle,
-                    onPressed: () async {
-                      await ApiService().updateOdev(
-                        odevId: widget.odev['Id'],
-                        dersId: seciliDers?['Id'],
-                        schoolId: int.parse(
-                            globals.globalSchoolId.toString()),
-                        data: jsonEncode({
-                          "aciklama": aciklamaCtrl.text,
-                        }),
-                        expireDate: expireCtrl.text.isNotEmpty
-                            ? DateFormat('dd-MM-yyyy').parse(expireCtrl.text)
-                            : null,
-                        files: selectedFiles,
-                      );
-
-                      Navigator.pop(context, true);
-                    },
+                    onPressed: _kaydediliyor ? null : _kaydet,
+                    child: Text(_kaydediliyor ? 'Güncelleniyor...' : 'Güncelle'),
                   ),
                 ],
               ),

@@ -114,6 +114,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homework => 'HOMEWORK';
 
   @override
+  String get privateLesson => 'PRIVATE LESSON';
+
+  @override
+  String get tutoring => 'TUTORING';
+
+  @override
+  String get schoolLessons => 'SCHOOL SUBJECTS';
+
+  @override
   String get studentNotification => 'Student Noitification';
 
   @override

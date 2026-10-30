@@ -1,11 +1,14 @@
-﻿import 'dart:async';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_linkify/flutter_linkify.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:path/path.dart' as p;
 
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import '../constants.dart';
+import '../utils/chat_attachment.dart';
+import '../utils/error_translator.dart';
+import '../widgets/chat_message_bubble.dart';
 
 class MesajDetayScreen extends StatefulWidget {
   final String alanTckn;
@@ -40,6 +43,7 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
   bool _isRefreshing = false;
   bool _isLoadingOld = false;
   bool _hasMore = true;
+  bool _gonderiliyor = false;
 
   bool _kullaniciAltaYakinMi() {
     if (!_scrollController.hasClients) return true;
@@ -60,6 +64,11 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
   }
 
   bool _mesajZatenVar(Map<String, dynamic> m) {
+    final incomingId = m['Id'];
+    if (incomingId != null &&
+        mesajlar.any((x) => x['Id'] != null && x['Id'] == incomingId)) {
+      return true;
+    }
     return mesajlar.any((x) {
       final sameSender =
           normalizeTckn(x['GonderenTCKN']) ==
@@ -69,7 +78,9 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
       // Yerel (henüz sunucu onayı olmayan) mesajla eşleşme: zaman farkına bakma
       if (x['_isLocal'] == true) {
-        return sameSender && sameText;
+        return sameSender &&
+            sameText &&
+            (x['DosyaAdi'] ?? '') == (m['DosyaAdi'] ?? '');
       }
 
       final t1 = DateTime.parse(x['InsertDate']);
@@ -189,7 +200,8 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
           final localIdx = mesajlar.indexWhere((x) =>
               x['_isLocal'] == true &&
               normalizeTckn(x['GonderenTCKN']) == normalizeTckn(m['GonderenTCKN']) &&
-              x['Data'] == m['Data']);
+              x['Data'] == m['Data'] &&
+              (x['DosyaAdi'] ?? '') == (m['DosyaAdi'] ?? ''));
 
           if (localIdx >= 0) {
             mesajlar[localIdx] = m;
@@ -204,9 +216,12 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
         // Eşleşemeyen stale local mesajları kaldır:
         // Sunucu bu mesajları döndürdü ama local placeholder hâlâ varsa
         // (TCKN format farkı, saat kayması vb.) listeye girmeli, duplicat kalmamalı.
-        final sunucuMetinleri = data.map((m) => m['Data'] as String?).toSet();
-        mesajlar.removeWhere((x) =>
-            x['_isLocal'] == true && sunucuMetinleri.contains(x['Data']));
+        mesajlar.removeWhere((x) {
+          if (x['_isLocal'] != true) return false;
+          return data.any((m) =>
+              m['Data'] == x['Data'] &&
+              (m['DosyaAdi'] ?? '') == (x['DosyaAdi'] ?? ''));
+        });
       });
 
       if (yeniMesajVar && _kullaniciAltaYakinMi()) {
@@ -261,49 +276,92 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
   // ------------------ MESAJ GÖNDER ------------------
 
-  void mesajGonder() async {
+  void _hataGoster(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(translateError(e.toString(), context))),
+    );
+  }
+
+  Future<void> _ekSec() async {
+    if (_gonderiliyor) return;
+    final file = await pickChatAttachment(context);
+    if (file == null || !mounted) return;
+    final err = validateChatAttachment(file);
+    if (err != null) {
+      _hataGoster(err);
+      return;
+    }
+    final payload = await confirmChatAttachment(
+      context: context,
+      file: file,
+      initialCaption: _mesajController.text.trim(),
+    );
+    if (payload == null || !mounted) return;
+    _mesajController.clear();
+    await _mesajGonder(text: payload.caption, file: payload.file);
+  }
+
+  Future<void> mesajGonder() async {
     final text = _mesajController.text.trim();
     if (text.isEmpty) return;
-
     _mesajController.clear();
-    final now = DateTime.now().toIso8601String();
+    await _mesajGonder(text: text);
+  }
 
+  Future<void> _mesajGonder({String text = '', File? file}) async {
+    if (_gonderiliyor) return;
+    if (text.isEmpty && file == null) {
+      _hataGoster('ERR_MESAJ_BOS');
+      return;
+    }
+    _gonderiliyor = true;
+    final now = DateTime.now();
+    final dosyaAdi = file == null ? '' : p.basename(file.path);
     final localMesaj = {
-      "GonderenTCKN": widget.tckn,
-      "Data": text,
-      "InsertDate": now,
-      "_isLocal": true,
+      'GonderenTCKN': widget.tckn,
+      'Data': text,
+      'InsertDate': now.toIso8601String(),
+      'Saat':
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+      '_isLocal': true,
+      '_uploading': file != null,
+      'HasAttachment': file != null,
+      'DosyaAdi': dosyaAdi,
+      'EkTuru': file == null ? '' : ekTuruFromPath(file.path),
+      '_localPath': file?.path ?? '',
     };
 
     setState(() {
       mesajlar.add(localMesaj);
-      _sonMesajTarihi = DateTime.parse(now);
+      _sonMesajTarihi = now;
     });
-
     _scrollAlta();
 
     try {
-      await ApiService().sendMesaj(
-        widget.tckn,
-        [widget.alanTckn],
-        "SmartOkul",
-        text,
+      await ApiService.sendMesajWithFile(
+        gonderenTckn: widget.tckn,
+        alanTckn: widget.alanTckn,
+        data: text.isEmpty ? null : text,
+        file: file,
       );
-
-      // Mesaj sunucuya kaydedildi. Timer'ı beklemeden hemen sunucu
-      // yanıtıyla local placeholder'ı değiştir.
       _isRefreshing = false;
       await _yeniMesajlariKontrolEt();
-    } catch (_) {
-      // Gönderim başarısız: local placeholder'ı temizle
-      setState(() {
-        mesajlar.removeWhere(
-          (m) => m['_isLocal'] == true && m['Data'] == text,
-        );
-      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          mesajlar.removeWhere(
+            (m) =>
+                m['_isLocal'] == true &&
+                m['Data'] == text &&
+                (m['DosyaAdi'] ?? '') == dosyaAdi,
+          );
+        });
+        _hataGoster(e);
+      }
+    } finally {
+      _gonderiliyor = false;
     }
-
-    unawaited(ApiService().bildirimGonder());
   }
 
   bool get _mesajYazabilirMi {
@@ -313,46 +371,16 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
   // ------------------ UI ------------------
 
-  Widget _mesajBalonu(Map<String, dynamic> mesaj) {
-    final benim =
-        normalizeTckn(mesaj['GonderenTCKN']) ==
-            normalizeTckn(widget.tckn,//globals.kullaniciTCKN
-            );
-
-    return Align(
-      alignment:
-      benim ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-            vertical: 4, horizontal: 10),
-        padding: const EdgeInsets.all(12),
-        constraints: const BoxConstraints(maxWidth: 300),
-        decoration: BoxDecoration(
-          color: benim
-              ? AppColors.primary
-              : Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Linkify(
-          text: mesaj['Data'] ?? "",
-          style: TextStyle(
-            color: benim ? Colors.white : Colors.black87,
-          ),
-          onOpen: (link) async {
-            final uri = Uri.parse(
-              link.url.startsWith('http')
-                  ? link.url
-                  : 'https://${link.url}',
-            );
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(
-                uri,
-                mode: LaunchMode.externalApplication,
-              );
-            }
-          },
-        ),
-      ),
+  Widget _mesajBalonu(Map<String, dynamic> mesaj, int index) {
+    final benim = normalizeTckn(mesaj['GonderenTCKN']) ==
+        normalizeTckn(widget.tckn);
+    final showDate = index == 0 ||
+        !chatAyniGun(mesaj, mesajlar[index - 1]);
+    return ChatMessageBubble(
+      mesaj: mesaj,
+      benim: benim,
+      tckn: widget.tckn,
+      showDateHeader: showDate,
     );
   }
 
@@ -382,7 +410,7 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
                     controller: _scrollController,
                     itemCount: mesajlar.length,
                     itemBuilder: (context, index) =>
-                        _mesajBalonu(mesajlar[index]),
+                        _mesajBalonu(mesajlar[index], index),
                   ),
                 ),
               ],
@@ -392,9 +420,15 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
           SafeArea(
             child: Row(
               children: [
+                IconButton(
+                  icon: const Icon(Icons.attach_file),
+                  onPressed: _gonderiliyor ? null : _ekSec,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _mesajController,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => mesajGonder(),
                     decoration: const InputDecoration(
                       hintText: "Mesaj yaz...",
                       filled: true,
@@ -408,7 +442,7 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: mesajGonder,
+                  onPressed: _gonderiliyor ? null : mesajGonder,
                 ),
               ],
             ),

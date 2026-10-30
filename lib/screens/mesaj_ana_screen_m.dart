@@ -14,11 +14,29 @@ class MesajAnaScreenM extends StatefulWidget {
 
 class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
   bool isLoading = true;
+  final TextEditingController _aramaCtrl = TextEditingController();
+  String _arama = '';
 
   @override
   void initState() {
     super.initState();
     _loadTeachers();
+  }
+
+  @override
+  void dispose() {
+    _aramaCtrl.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _gorunenOgretmenler {
+    final q = _arama.trim().toLowerCase();
+    final list = globals.globalOgretmenListesi;
+    if (q.isEmpty) return list;
+    return list.where((o) {
+      final name = (o['Name'] ?? '').toString().toLowerCase();
+      return name.contains(q);
+    }).toList();
   }
 
   Future<void> _loadTeachers() async {
@@ -101,7 +119,40 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
             ],
           ),
         ),
-        child: isLoading
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: TextField(
+                controller: _aramaCtrl,
+                onChanged: (v) => setState(() => _arama = v),
+                decoration: InputDecoration(
+                  hintText: 'Ara',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _arama.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _aramaCtrl.clear();
+                            setState(() => _arama = '');
+                          },
+                        ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : globals.globalOgretmenListesi.isEmpty
             ?  Center(
@@ -110,12 +161,19 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
             style: TextStyle(fontSize: 16),
           ),
         )
+            : _gorunenOgretmenler.isEmpty
+            ? const Center(
+                child: Text(
+                  'Sonuç bulunamadı',
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
             : ListView.builder(
           padding: const EdgeInsets.all(12),
-          itemCount: globals.globalOgretmenListesi.length,
+          itemCount: _gorunenOgretmenler.length,
           itemBuilder: (context, index) {
             final ogretmen =
-            globals.globalOgretmenListesi[index];
+            _gorunenOgretmenler[index];
 
             return Padding(
               padding:
@@ -212,6 +270,9 @@ class _MesajAnaScreenMState extends State<MesajAnaScreenM> {
               ),
             );
           },
+        ),
+            ),
+          ],
         ),
       ),
     );

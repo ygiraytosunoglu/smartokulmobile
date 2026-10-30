@@ -14,7 +14,14 @@ String translateError(String message, BuildContext context) {
     cleaned = cleaned.substring('Exception: '.length).trim();
   }
 
-  if (!cleaned.startsWith('ERR_')) return message;
+  if (!cleaned.startsWith('ERR_')) {
+    final match = RegExp(r'ERR_[A-Z0-9_]+').firstMatch(cleaned);
+    if (match != null) {
+      cleaned = match.group(0)!;
+    } else {
+      return cleaned;
+    }
+  }
 
   final l = AppLocalizations.of(context);
   if (l == null) return message;
@@ -80,6 +87,42 @@ String translateError(String message, BuildContext context) {
     case 'ERR_PIN_ENC_BOS':                  return l.errPinEncBos;
     case 'ERR_PIN_ENC_FORMAT':               return l.errPinEncFormat;
     case 'ERR_PIN_ENC_UZUNLUK':              return l.errPinEncUzunluk;
+    case 'ERR_PIN_POLICY':
+      return 'Yeni şifre en az 8 karakter olmalı; en az bir harf ve bir rakam içermelidir.';
+    case 'ERR_PIN_ESKI_HATALI':
+      return 'Mevcut şifre hatalı';
+    case 'ERR_PIN_GUNCELLENDI':
+      return 'Şifre güncellendi';
+    case 'ERR_MESAJ_BOS':
+      return 'Metin veya dosya gerekli';
+    case 'ERR_MESAJ_EK_BOYUT_ASIMI':
+      return 'Dosya en fazla 50 MB olabilir';
+    case 'ERR_MESAJ_EK_TIP_DESTEKLENMIYOR':
+      return 'Desteklenmeyen dosya türü';
+    case 'ERR_MESAJ_EK_YUKLENEMEDI':
+      return 'Yükleme başarısız';
+    case 'ERR_MESAJ_EK_YETKI_YOK':
+      return 'Bu eke erişim yok';
+    case 'ERR_OZELDERS_ETUT_YETKI_YOK':
+      return 'Yetkiniz yok';
+    case 'ERR_OZELDERS_ETUT_DERS_ZORUNLU':
+      return 'Ders zorunlu';
+    case 'ERR_OZELDERS_ETUT_SAAT_GECERSIZ':
+      return 'Saat geçersiz';
+    case 'ERR_ETUT_SAYI_GECERSIZ':
+      return 'Soru/doğru/yanlış sayıları geçersiz';
+    case 'ERR_OZELDERS_EKLENDI':
+      return 'Özel ders kaydı eklendi';
+    case 'ERR_OZELDERS_GUNCELLENDI':
+      return 'Özel ders kaydı güncellendi';
+    case 'ERR_OZELDERS_SILINDI':
+      return 'Özel ders kaydı silindi';
+    case 'ERR_ETUT_EKLENDI':
+      return 'Etüt kaydı eklendi';
+    case 'ERR_ETUT_GUNCELLENDI':
+      return 'Etüt kaydı güncellendi';
+    case 'ERR_ETUT_SILINDI':
+      return 'Etüt kaydı silindi';
     default:                                 return message;
   }
 }

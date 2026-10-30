@@ -114,6 +114,15 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homework => 'ÖDEV';
 
   @override
+  String get privateLesson => 'ÖZEL DERS';
+
+  @override
+  String get tutoring => 'ETÜT';
+
+  @override
+  String get schoolLessons => 'OKUL DERSLERİ';
+
+  @override
   String get studentNotification => 'Öğrenci Anons';
 
   @override

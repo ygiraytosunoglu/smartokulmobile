@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_okul_mobile/screens/odev_detay_screen.dart';
 import 'package:smart_okul_mobile/screens/update_odev_screen.dart';
 import 'package:smart_okul_mobile/screens/yeni_odev_screen.dart';
 import '../constants.dart';
+import '../models/conversation_item.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import 'package:url_launcher/url_launcher.dart';
@@ -326,15 +328,41 @@ class _OdevScreenState extends State<OdevScreen> {
   }
 
 
-  String getDersAdi(int? dersId) {
-    if (dersId == null) return "-";
+  String getDersAdi(Map odev) {
+    final fromApi = jsonString(odev, 'ders') ?? jsonString(odev, 'dersAdi');
+    if (fromApi != null && fromApi.isNotEmpty) return fromApi;
+    final dersId = jsonInt(odev, 'dersId') ?? odev['DersId'];
+    if (dersId == null) return '-';
+    for (final d in dersListesi) {
+      if (d is Map && (d['Id'] == dersId || d['id'] == dersId)) {
+        return (d['Ad'] ?? d['ad'] ?? '-').toString();
+      }
+    }
+    return '-';
+  }
 
-    final ders = dersListesi.firstWhere(
-          (d) => d['Id'] == dersId,
-      orElse: () => null,
+  String getOdevAciklama(Map odev) {
+    final raw = jsonString(odev, 'data') ?? '';
+    if (raw.isEmpty) return '';
+    try {
+      if (raw.trimLeft().startsWith('{')) {
+        final parsed = jsonDecode(raw);
+        if (parsed is Map) {
+          return (parsed['aciklama'] ?? '').toString().trim();
+        }
+      }
+    } catch (_) {}
+    return raw.trim();
+  }
+
+  Future<void> _odevDetayAc(Map odev) async {
+    final id = jsonInt(odev, 'id');
+    if (id == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => OdevDetayScreen(odevId: id)),
     );
-
-    return ders != null ? ders['Ad'] ?? "-" : "-";
+    _loadOdevler();
   }
 
   bool isGecmisTarih(String? expireDate) {
@@ -596,17 +624,6 @@ class _OdevScreenState extends State<OdevScreen> {
                 itemCount: odevler.length,
                 itemBuilder: (context, index) {
                   final odev = odevler[index];
-
-                  final ogrenciAd = odev['OgrenciAd'] ?? '';
-                  final dataStr = odev['Data'] ?? '';
-                  String aciklama = '';
-
-                  try {
-                    final parsed = jsonDecode(dataStr);
-                    aciklama = parsed['aciklama'] ?? '';
-                  } catch (_) {
-                    aciklama = dataStr;
-                  }
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Container(
@@ -616,25 +633,66 @@ class _OdevScreenState extends State<OdevScreen> {
                         borderRadius: BorderRadius.circular(16),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () => _showOdevDetayPopup(odev),
+                          onTap: () => _odevDetayAc(odev),
                           child: ListTile(
-                      title: Text( getDersAdi(odev['DersId']),
-                        style: const TextStyle( fontWeight: FontWeight.bold,
-                          fontSize: 16, ), ),
+                      title: Text(
+                        getDersAdi(odev),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          odev['ExpireDate'] != null
-                              ? AppLocalizations.of(context)!.dueDate+": ${DateFormat('dd.MM.yyyy').format(DateTime.parse(odev['ExpireDate']))}"
-                              : AppLocalizations.of(context)!.dueDate+": -",
-                          style: TextStyle(
-                            color: isGecmisTarih(odev['ExpireDate'])
-                                ? Colors.red
-                                : Colors.black87,
-                            fontWeight: isGecmisTarih(odev['ExpireDate'])
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              odev['ExpireDate'] != null
+                                  ? '${AppLocalizations.of(context)!.dueDate}: ${DateFormat('dd.MM.yyyy').format(DateTime.parse(odev['ExpireDate']))}'
+                                  : '${AppLocalizations.of(context)!.dueDate}: -',
+                              style: TextStyle(
+                                color: isGecmisTarih(odev['ExpireDate'])
+                                    ? Colors.red
+                                    : Colors.black87,
+                                fontWeight: isGecmisTarih(odev['ExpireDate'])
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            if (getOdevAciklama(odev).isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  getOdevAciklama(odev),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            if ((jsonString(odev, 'tema') ?? '').isNotEmpty)
+                              Text(
+                                jsonString(odev, 'tema')!,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            if ((jsonString(odev, 'konu') ?? '').isNotEmpty)
+                              Text(
+                                jsonString(odev, 'konu')!,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            if ((jsonString(odev, 'onayDurumText') ?? '')
+                                .isNotEmpty)
+                              Text(
+                                jsonString(odev, 'onayDurumText')!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
 

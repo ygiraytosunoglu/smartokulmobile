@@ -2,14 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:smart_okul_mobile/screens/forgot_password_screen.dart';
-import 'package:smart_okul_mobile/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_okul_mobile/globals.dart' as globals;
-import 'package:smart_okul_mobile/screens/kvkk_screen.dart';
 import 'package:smart_okul_mobile/screens/school_select_screen.dart';
-import 'package:smart_okul_mobile/screens/student_notification_screen.dart';
 import '../constants.dart';
 import '../services/api_service.dart';
+import '../utils/post_login_navigation.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
@@ -264,6 +262,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                             child: Text(AppLocalizations.of(context)!.parent),
                                           ),
                                           DropdownMenuItem(
+                                            value: "S",
+                                            child: Text(AppLocalizations.of(context)!.student),
+                                          ),
+                                          DropdownMenuItem(
                                             value: "M",
                                             child: Text(AppLocalizations.of(context)!.manager),
                                           ),
@@ -403,17 +405,27 @@ class _LoginScreenState extends State<LoginScreen> {
       logger.i("Login sonucu: $sonuc");
 
       /// ❌ HATA
-      if (sonuc != "OK" && sonuc != "SELECT_SCHOOL") {
+      if (sonuc != "OK" &&
+          sonuc != "SELECT_SCHOOL" &&
+          sonuc != "MUST_CHANGE_PIN") {
         _pencereAc(context, translateError(sonuc, context));
         setState(() => _isLoading = false);
+        return;
+      }
+
+      /// 🔒 Zorunlu şifre — ana ekrana gitme
+      if (sonuc == "MUST_CHANGE_PIN") {
+        setState(() => _isLoading = false);
+        await navigateAfterSuccessfulLogin(
+          context,
+          currentPin: _passwordController.text,
+        );
         return;
       }
 
       /// 🔐 FCM TOKEN
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
-        // orjKullaniciTCKN: ham TCKN (server bu formatta bekliyor)
-        // kullaniciTCKN: "TCKN_schoolId_tip" formatında — registerFcmToken'a gönderilmemeli
         await ApiService().registerFcmToken(globals.kullaniciTCKN, token);
       }
 
@@ -430,27 +442,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       /// 🟢 TEK OKUL → NORMAL DEVAM
       setState(() => _isLoading = false);
-
-      if (globals.kvkk == "1") {
-        if (globals.globalKullaniciTipi == 'P' &&
-            globals.menuListesi.contains("Anons")) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const StudentNotificationScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
-        }
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const KvkkScreen()),
-        );
-      }
+      await navigateAfterSuccessfulLogin(
+        context,
+        currentPin: _passwordController.text,
+      );
 
     } catch (e) {
       logger.e("Login hatası", error: e);

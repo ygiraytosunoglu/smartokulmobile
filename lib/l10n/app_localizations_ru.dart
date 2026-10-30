@@ -114,6 +114,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homework => 'ДОМАШНЕЕ ЗАДАНИЕ';
 
   @override
+  String get privateLesson => 'ЧАСТНЫЙ УРОК';
+
+  @override
+  String get tutoring => 'РЕПЕТИТОРСТВО';
+
+  @override
+  String get schoolLessons => 'ШКОЛЬНЫЕ ПРЕДМЕТЫ';
+
+  @override
   String get studentNotification => 'Уведомление ученика';
 
   @override

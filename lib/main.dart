@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:smart_okul_mobile/screens/login_screen.dart';
 import 'package:smart_okul_mobile/services/api_service.dart';
 import 'package:smart_okul_mobile/services/dio_client.dart';
+import 'package:smart_okul_mobile/services/notification_navigation.dart';
 import '../globals.dart' as globals;
 import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 //import 'package:flutterservices.dart';
@@ -89,7 +91,19 @@ void main() async {
   const InitializationSettings initializationSettings =
   InitializationSettings(android: initializationSettingsAndroid);
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      Map<String, dynamic> data = {};
+      final payload = response.payload;
+      if (payload != null && payload.isNotEmpty) {
+        try {
+          data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
+        } catch (_) {}
+      }
+      NotificationNavigation.openFromPush(data);
+    },
+  );
 
   // Server'ın kullandığı kanal ID'siyle birebir eşleşen kanalı oluştur
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -135,21 +149,73 @@ class _MyAppState extends State<MyApp> {
       // aksi halde her iki notifier da true yapılır — kullanıcı
       // hangisinin geldiğini açarak görecek, okuma sonrası sıfırlanacak.
       final tipi = (message.data['tipi'] ?? message.data['type'] ?? '').toString().toLowerCase();
-      if (tipi == 'mesaj' || tipi == 'message') {
+      final hasGroupId = message.data.keys.any((k) {
+        final lower = k.toLowerCase();
+        return lower == 'groupid' || lower == 'grupid';
+      });
+      if (tipi == 'mesaj' || tipi == 'message' || hasGroupId) {
         globals.mesajVar.value = true;
       } else if (tipi == 'duyuru' || tipi == 'announcement') {
         globals.duyuruVar.value = true;
       } else {
-        // Tip bilinmiyorsa her ikisini de işaretle
         globals.duyuruVar.value = true;
         globals.mesajVar.value = true;
       }
 
       _showLocalNotification(message);
     });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      NotificationNavigation.openFromPush(message.data);
+    });
+
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) {
+        NotificationNavigation.openFromPush(message.data);
+      }
+    });
+  }
+
+  String _pushField(Map<String, dynamic> data, List<String> keys) {
+    for (final key in data.keys) {
+      final lower = key.toString().toLowerCase();
+      for (final want in keys) {
+        if (lower == want) {
+          final v = data[key]?.toString().trim() ?? '';
+          if (v.isNotEmpty) return v;
+        }
+      }
+    }
+    return '';
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
+    // Sunucu bazen sadece data gönderir; notification.title/body null olur.
+    // Eski fallback ("Başlık yok" / "Mesaj yok") bu yüzden görünüyordu.
+    final title = (message.notification?.title ?? '').trim().isNotEmpty
+        ? message.notification!.title!.trim()
+        : _pushField(message.data, const [
+            'title',
+            'baslik',
+            'başlık',
+            'subject',
+          ]);
+    final body = (message.notification?.body ?? '').trim().isNotEmpty
+        ? message.notification!.body!.trim()
+        : _pushField(message.data, const [
+            'body',
+            'message',
+            'mesaj',
+            'data',
+            'content',
+            'aciklama',
+          ]);
+
+    if (title.isEmpty && body.isEmpty) {
+      print('🔔 Boş bildirim içeriği; yerel bildirim gösterilmedi. data=${message.data}');
+      return;
+    }
+
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
     AndroidNotificationDetails(
       'smart_okul_channel',
@@ -165,9 +231,10 @@ class _MyAppState extends State<MyApp> {
 
     await flutterLocalNotificationsPlugin.show(
       0,
-      message.notification?.title ?? 'Başlık yok',
-      message.notification?.body ?? 'Mesaj yok',
+      message.notification?.title ?? 'Smart Okul',
+      message.notification?.body ?? 'Smart Okul',
       platformChannelSpecifics,
+      payload: jsonEncode(message.data),
     );
   }
 

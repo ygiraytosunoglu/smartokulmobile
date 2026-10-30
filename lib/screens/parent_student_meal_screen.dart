@@ -41,9 +41,9 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
     t.sleepSlept
   ];
   final List<String> moodEmojis = ["??", "??", "??", "??", "??"];
-  //final List<String> moodChoices = ["Mutlu", "Üzgün", "Yorgun", "Huzurlu", "Sinirli"];
-  //final List<String> sleepChoices = ["Uyumadý", "Az Uyudu", "Uyudu"];
-//  final List<String> mealKeys = [t.breakfast, t.lunch, t.snack];//["Kahvaltý", "Öðle", "Ýkindi"];
+  //final List<String> moodChoices = ["Mutlu", "ï¿½zgï¿½n", "Yorgun", "Huzurlu", "Sinirli"];
+  //final List<String> sleepChoices = ["Uyumadï¿½", "Az Uyudu", "Uyudu"];
+//  final List<String> mealKeys = [t.breakfast, t.lunch, t.snack];//["Kahvaltï¿½", "ï¿½ï¿½le", "ï¿½kindi"];
 
   /*List<String> moodChoices = [
     t.moodHappy,
@@ -124,14 +124,14 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
         setState(() {});
       }
     } catch (e) {
-      debugPrint("? Veri yükleme hatasý: $e");
+      debugPrint("? Veri yï¿½kleme hatasï¿½: $e");
     }
   }
 
-  // ? Öðün elemaný sadece okunabilir gösterilir
+  // ? ï¿½ï¿½ï¿½n elemanï¿½ sadece okunabilir gï¿½sterilir
   Widget buildMealItemReadOnly(int studentIndex, String mealName, String itemName) {
     int selected = studentMealSelections[studentIndex]?[mealName]?[itemName] ?? 0;
-   // List<String> mealChoices = ["Yemedi", "Az Yedi", "Tamamýný Yedi"];
+   // List<String> mealChoices = ["Yemedi", "Az Yedi", "Tamamï¿½nï¿½ Yedi"];
     List<String> mealChoices = [
       t.didNotEat,
       t.ateLittle,
@@ -150,7 +150,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
     );
   }
 
-  // ? Yemek kartlarý açýk þekilde
+  // ? Yemek kartlarï¿½ aï¿½ï¿½k ï¿½ekilde
   Widget buildMealList(int studentIndex, String title, List<String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +217,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
         ),
         const SizedBox(height: 6),
         /*Text(
-          "Açýklama: ${note.trim().isEmpty ? "-" : note}",
+          "Aï¿½ï¿½klama: ${note.trim().isEmpty ? "-" : note}",
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)
 
         ),*/
@@ -225,9 +225,9 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
           TextSpan(
             children: [
                TextSpan(
-                text: "${t.description}: ",//"Açýklama: ",
+                text: "${t.description}: ",//"Aï¿½ï¿½klama: ",
                 style: TextStyle(
-                  fontWeight: FontWeight.bold, // ?? sadece bu kýsým bold
+                  fontWeight: FontWeight.bold, // ?? sadece bu kï¿½sï¿½m bold
                   color: AppColors.primary,
                   fontSize: 16,
                 ),
@@ -235,7 +235,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
               TextSpan(
                 text: note.trim().isEmpty ? "-" : note,
                 style: const TextStyle(
-                  fontWeight: FontWeight.normal, // ?? açýklama içeriði normal
+                  fontWeight: FontWeight.normal, // ?? aï¿½ï¿½klama iï¿½eriï¿½i normal
                   color: AppColors.primary,
                   fontSize: 16,
                 ),
@@ -249,7 +249,7 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
   }
 
   Widget buildStudentCard(int studentIndex, Map<String, dynamic> student, MealModel? meal) {
-    //String studentName = student['Name'] ?? 'Öðrenci';
+    //String studentName = student['Name'] ?? 'ï¿½ï¿½renci';
 
     String studentName = student['Name'] ?? t.studentDefaultName;
 
@@ -268,9 +268,9 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
             const SizedBox(height: 12),
 
             if (meal != null) ...[
-             /* buildMealList(studentIndex, "Kahvaltý", meal.meal1),
-              buildMealList(studentIndex, "Öðle", meal.meal2),
-              buildMealList(studentIndex, "Ýkindi", meal.meal3),*/
+             /* buildMealList(studentIndex, "Kahvaltï¿½", meal.meal1),
+              buildMealList(studentIndex, "ï¿½ï¿½le", meal.meal2),
+              buildMealList(studentIndex, "ï¿½kindi", meal.meal3),*/
               buildMealList(studentIndex, t.breakfast, meal.meal1),
               buildMealList(studentIndex, t.lunch, meal.meal2),
               buildMealList(studentIndex, t.snack, meal.meal3)
@@ -295,14 +295,14 @@ class _ParentStudentsMealScreenState extends State<ParentStudentsMealScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        //title: Text("Günlük Bilgilendirme"),
+        //title: Text("Gï¿½nlï¿½k Bilgilendirme"),
         title: Text(t.dailyInfoTitle),
       ),
       body: FutureBuilder<MealModel?>(
         future: futureMeal,
         builder: (context, snapshot) {
 
-          // Sadece ilk yüklemede spinner göster
+          // Sadece ilk yï¿½klemede spinner gï¿½ster
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }

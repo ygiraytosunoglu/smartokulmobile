@@ -61,8 +61,6 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           _messageController.text,
         );
 
-        await _apiService.bildirimGonder();
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(

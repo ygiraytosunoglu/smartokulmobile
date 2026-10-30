@@ -8,6 +8,9 @@ import 'package:logger/logger.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import '../models/meal_model.dart';
+import '../models/conversation_item.dart';
+import '../models/academic_record.dart';
+import '../models/ders_catalog.dart';
 import '../models/user.dart';
 import '../globals.dart' as globals;
 import 'package:flutter/material.dart';
@@ -17,6 +20,8 @@ import 'package:mime/mime.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dio_client.dart';
+import '../utils/pin_policy.dart';
+import '../utils/media_upload_limit.dart';
 
 /// http.BaseClient wrapper — tüm http.get/post/put/delete çağrılarına
 /// otomatik olarak Bearer token ekler (401 yönetimi Dio interceptor'da).
@@ -635,7 +640,7 @@ await apiService.putRequest(
   Future<List<dynamic>> getAllDersler(int schoolId) async {
     try {
       final uri = Uri.parse(
-        "${ApiService.baseUrl}/api/ders/GetAll?schoolId=$schoolId",
+        "${ApiService.baseUrl}/api/ders/getAll?schoolId=$schoolId",
       );
 
       final response = await _http.get(
@@ -647,13 +652,157 @@ await apiService.putRequest(
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data;
+        // Ödev ekranları Id/Ad bekliyor; yeni API id/ad dönebilir.
+        return data.map((e) {
+          if (e is! Map) return e;
+          final m = Map<String, dynamic>.from(e);
+          final id = jsonInt(m, 'id');
+          final ad = jsonString(m, 'ad') ?? '';
+          return {
+            ...m,
+            'Id': id ?? m['Id'],
+            'Ad': ad.isNotEmpty ? ad : (m['Ad'] ?? ''),
+          };
+        }).toList();
       } else {
         throw Exception(
             "Dersler alınamadı. StatusCode: ${response.statusCode}");
       }
     } catch (e) {
       throw Exception("getAllDersler hatası: $e");
+    }
+  }
+
+  static Future<List<DersItem>> getSchoolDersler(int schoolId) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/ders/getAll',
+        queryParameters: {'schoolId': schoolId},
+      );
+      final data = response.data;
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((m) => DersItem.fromJson(Map<String, dynamic>.from(m)))
+          .where((d) => d.id > 0 && d.ad.isNotEmpty)
+          .toList();
+    } on DioException catch (e) {
+      logger.w('getSchoolDersler: ${e.response?.statusCode}');
+      return [];
+    }
+  }
+
+  static Future<List<DersItem>> getCatalogAvailable(int schoolId) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/ders/catalog-available',
+        queryParameters: {'schoolId': schoolId},
+      );
+      final data = response.data;
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((m) => DersItem.fromJson(Map<String, dynamic>.from(m)))
+          .where((d) => d.id > 0)
+          .toList();
+    } on DioException catch (e) {
+      logger.w('catalog-available: ${e.response?.statusCode}');
+      return [];
+    }
+  }
+
+  static Future<void> assignDersToSchool({
+    required int schoolId,
+    required int dersId,
+  }) async {
+    try {
+      await DioClient.instance.dio.post(
+        '/api/ders/assign',
+        data: {'schoolId': schoolId, 'dersId': dersId},
+      );
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'Ders atanamadı');
+    }
+  }
+
+  static Future<void> removeDersFromSchool({
+    required int schoolId,
+    required int dersId,
+  }) async {
+    try {
+      await DioClient.instance.dio.delete(
+        '/api/ders/remove',
+        queryParameters: {'schoolId': schoolId, 'dersId': dersId},
+      );
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'Ders kaldırılamadı');
+    }
+  }
+
+  static Future<List<DersTema>> getDersTemalar({
+    required int dersId,
+    int? sinifSeviye,
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/ders/temalar',
+        queryParameters: {
+          'dersId': dersId,
+          if (sinifSeviye != null) 'sinifSeviye': sinifSeviye,
+        },
+      );
+      final data = response.data;
+      if (data is! List) return [];
+      final list = data
+          .whereType<Map>()
+          .map((m) => DersTema.fromJson(Map<String, dynamic>.from(m)))
+          .where((t) => t.id > 0)
+          .toList();
+      // Aynı tema (id veya ad) birden fazla sınıf seviyesinde gelebilir.
+      final byId = <int, DersTema>{};
+      for (final t in list) {
+        byId.putIfAbsent(t.id, () => t);
+      }
+      final byAd = <String, DersTema>{};
+      for (final t in byId.values) {
+        final key = t.ad.trim().toLowerCase();
+        byAd.putIfAbsent(key.isEmpty ? 'id_${t.id}' : key, () => t);
+      }
+      return byAd.values.toList();
+    } on DioException catch (e) {
+      logger.w('temalar: ${e.response?.statusCode}');
+      return [];
+    }
+  }
+
+  static Future<List<DersKonu>> getDersKonular(int temaId) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/ders/konular',
+        queryParameters: {'temaId': temaId},
+      );
+      final data = response.data;
+      if (data is! List) return [];
+      final list = data
+          .whereType<Map>()
+          .map((m) => DersKonu.fromJson(Map<String, dynamic>.from(m)))
+          .where((k) => k.id > 0)
+          .toList();
+      final byId = <int, DersKonu>{};
+      for (final k in list) {
+        byId.putIfAbsent(k.id, () => k);
+      }
+      final byAd = <String, DersKonu>{};
+      for (final k in byId.values) {
+        final key = k.ad.trim().toLowerCase();
+        byAd.putIfAbsent(key.isEmpty ? 'id_${k.id}' : key, () => k);
+      }
+      return byAd.values.toList();
+    } on DioException catch (e) {
+      logger.w('konular: ${e.response?.statusCode}');
+      return [];
     }
   }
 
@@ -694,6 +843,291 @@ await apiService.putRequest(
     }
   }
 
+  static String? _plainStudentTckn(String? tckn) {
+    if (tckn == null || tckn.isEmpty) return tckn;
+    final parts = tckn.split('_');
+    if (parts.length >= 3) return parts.first;
+    return tckn;
+  }
+
+  static Map<String, dynamic>? _nestedClass(Map map) {
+    for (final key in ['class', 'sinif', 'classroom', 'classInfo']) {
+      final nested = jsonField(map, key);
+      if (nested is Map) return Map<String, dynamic>.from(nested);
+    }
+    return null;
+  }
+
+  static Map<String, dynamic> _normalizeStudent(
+    Map json, {
+    int? classId,
+    String? className,
+  }) {
+    final map = Map<String, dynamic>.from(json);
+    final nested = _nestedClass(map);
+    return {
+      'Name': jsonString(map, 'name') ??
+          jsonString(map, 'ad') ??
+          jsonString(map, 'adi') ??
+          '',
+      'TCKN': jsonString(map, 'tcknOrig') ??
+          _plainStudentTckn(jsonString(map, 'tckn')) ??
+          '',
+      'FotoVersion': jsonInt(map, 'fotoVersion') ?? 0,
+      'Alerji': jsonString(map, 'alerji') ?? '',
+      'Ilac': jsonString(map, 'ilac') ?? '',
+      'ClassId': jsonInt(map, 'classId') ??
+          jsonInt(map, 'sinifId') ??
+          jsonInt(map, 'classID') ??
+          jsonInt(map, 'class_id') ??
+          jsonInt(map, 'sinif_id') ??
+          (nested == null
+              ? null
+              : jsonInt(nested, 'id') ?? jsonInt(nested, 'classId')) ??
+          classId,
+      'ClassName': jsonString(map, 'className') ??
+          jsonString(map, 'sinifAdi') ??
+          jsonString(map, 'sinifAd') ??
+          jsonString(map, 'classAd') ??
+          (nested == null
+              ? null
+              : jsonString(nested, 'ad') ??
+                  jsonString(nested, 'name') ??
+                  jsonString(nested, 'className')) ??
+          className ??
+          '',
+      'SchoolNumber': jsonString(map, 'schoolNumber') ??
+          jsonString(map, 'okulNo') ??
+          '',
+    };
+  }
+
+  static List<Map<String, dynamic>> _asStudentMaps(dynamic data) {
+    List list;
+    if (data is List) {
+      list = data;
+    } else if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      dynamic inner;
+      for (final key in ['data', 'items', 'students', 'result', 'ogrenciler']) {
+        inner = jsonField(map, key);
+        if (inner is List) break;
+      }
+      list = inner is List ? inner : [];
+    } else {
+      list = [];
+    }
+
+    final maps = list.whereType<Map>().toList();
+    if (maps.isNotEmpty) {
+      final first = Map<String, dynamic>.from(maps.first);
+      final hasTckn = (jsonString(first, 'tckn') ?? '').isNotEmpty;
+      dynamic nestedKids;
+      for (final key in ['students', 'ogrenciler', 'uyeler', 'members']) {
+        nestedKids = jsonField(first, key);
+        if (nestedKids is List) break;
+      }
+      if (!hasTckn && nestedKids is List) {
+        final flattened = <Map<String, dynamic>>[];
+        for (final item in maps) {
+          final m = Map<String, dynamic>.from(item);
+          dynamic kids;
+          for (final key in ['students', 'ogrenciler', 'uyeler', 'members']) {
+            kids = jsonField(m, key);
+            if (kids is List) break;
+          }
+          if (kids is! List) continue;
+          final classId = jsonInt(m, 'id') ?? jsonInt(m, 'classId');
+          final className = jsonString(m, 'ad') ??
+              jsonString(m, 'className') ??
+              jsonString(m, 'name');
+          for (final k in kids.whereType<Map>()) {
+            flattened.add(_normalizeStudent(
+              Map<String, dynamic>.from(k),
+              classId: classId,
+              className: className,
+            ));
+          }
+        }
+        return flattened
+            .where((e) => (e['TCKN'] ?? '').toString().isNotEmpty)
+            .toList();
+      }
+    }
+
+    return maps
+        .map((e) => _normalizeStudent(Map<String, dynamic>.from(e)))
+        .where((e) => (e['TCKN'] ?? '').toString().isNotEmpty)
+        .toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> getTeacherStudents({
+    String? tckn,
+    int? schoolId,
+  }) async {
+    final response = await DioClient.instance.dio.get(
+      '/api/Teacher/getStudents',
+      queryParameters: {
+        if (tckn != null && tckn.isNotEmpty) 'tckn': tckn,
+        if (schoolId != null) 'schoolId': schoolId,
+      },
+    );
+    return _asStudentMaps(response.data);
+  }
+
+  static int? _parseClassId(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString().split('.').first);
+  }
+
+  static String _classNameForId(dynamic id) {
+    final cid = _parseClassId(id);
+    if (cid == null) return '';
+    for (final s in globals.globalSinifListesi) {
+      if (_parseClassId(s['Id']) == cid) {
+        return (s['Ad'] ?? '').toString().trim();
+      }
+    }
+    return '';
+  }
+
+  static Future<List<Map<String, dynamic>>> getStudentsByClass({
+    required int schoolId,
+    required int classId,
+    String? className,
+  }) async {
+    final response = await DioClient.instance.dio.get(
+      '/api/Student/getAll',
+      queryParameters: {
+        'schoolId': schoolId,
+        'classId': classId,
+        'ClassId': classId,
+        'sinifId': classId,
+      },
+    );
+    return _asStudentMaps(response.data);
+  }
+
+  /// Öğretmenin tüm sınıflarındaki öğrenciler (ödev / gelişim seçimi).
+  static Future<List<Map<String, dynamic>>> loadHomeworkStudents() async {
+    final schoolId = int.tryParse(globals.globalSchoolId.toString());
+    final merged = <String, Map<String, dynamic>>{};
+
+    void upsert(
+      Map<String, dynamic> s, {
+      int? forceClassId,
+      String? forceClassName,
+    }) {
+      final tckn = s['TCKN']?.toString() ?? '';
+      if (tckn.isEmpty) return;
+      final prev = merged[tckn];
+      var classId = forceClassId ?? s['ClassId'] ?? prev?['ClassId'];
+      var className = (forceClassName ?? '').trim();
+      if (className.isEmpty) {
+        className = _classNameForId(classId);
+      }
+      if (className.isEmpty) {
+        className = (s['ClassName'] ?? prev?['ClassName'] ?? '').toString().trim();
+      }
+      merged[tckn] = {
+        ...?prev,
+        ...s,
+        'ClassId': classId,
+        'ClassName': className,
+      };
+    }
+
+    for (final s in globals.globalOgrenciListesi) {
+      upsert(s);
+    }
+
+    try {
+      final fromTeacher = await getTeacherStudents(
+        tckn: globals.kullaniciTCKN,
+        schoolId: schoolId,
+      );
+      for (final s in fromTeacher) {
+        upsert(s);
+      }
+    } catch (e) {
+      logger.w('getTeacherStudents: $e');
+    }
+
+    if (schoolId != null && globals.globalSinifListesi.isNotEmpty) {
+      final perClass = <int, List<Map<String, dynamic>>>{};
+      for (final sinif in globals.globalSinifListesi) {
+        final classId = _parseClassId(sinif['Id']);
+        if (classId == null) continue;
+        try {
+          perClass[classId] = await getStudentsByClass(
+            schoolId: schoolId,
+            classId: classId,
+            className: (sinif['Ad'] ?? '').toString(),
+          );
+        } catch (e) {
+          logger.w('getStudentsByClass($classId): $e');
+        }
+      }
+
+      var leaky = false;
+      if (perClass.length >= 2) {
+        final sets = perClass.values
+            .map((l) => l
+                .map((s) => s['TCKN']?.toString() ?? '')
+                .where((t) => t.isNotEmpty)
+                .toSet())
+            .toList();
+        final union = <String>{};
+        for (final s in sets) {
+          union.addAll(s);
+        }
+        leaky = sets.every(
+              (s) => s.length == sets.first.length && s.containsAll(sets.first),
+            ) ||
+            (union.isNotEmpty &&
+                sets.any((s) => s.length >= union.length));
+      }
+
+      if (leaky) {
+        for (final list in perClass.values) {
+          for (final s in list) {
+            upsert(s);
+          }
+        }
+      } else {
+        for (final sinif in globals.globalSinifListesi) {
+          final classId = _parseClassId(sinif['Id']);
+          if (classId == null) continue;
+          final className = (sinif['Ad'] ?? '').toString().trim();
+          for (final s in perClass[classId] ?? const []) {
+            upsert(s, forceClassId: classId, forceClassName: className);
+          }
+        }
+      }
+    }
+
+    for (final s in merged.values) {
+      final fromId = _classNameForId(s['ClassId']);
+      if (fromId.isNotEmpty) {
+        s['ClassName'] = fromId;
+      }
+    }
+
+    final list = merged.values.toList();
+    list.sort((a, b) {
+      final c = (a['ClassName'] ?? '')
+          .toString()
+          .compareTo((b['ClassName'] ?? '').toString());
+      if (c != 0) return c;
+      return (a['Name'] ?? '')
+          .toString()
+          .compareTo((b['Name'] ?? '').toString());
+    });
+    return list;
+  }
+
   Future<int?> addOdev({
     required String gonderenTckn,
     required List<String> alanTcknList,
@@ -702,6 +1136,8 @@ await apiService.putRequest(
     String? data,
     DateTime? expireDate,
     List<File>? files,
+    int? temaId,
+    int? konuId,
   }) async {
     try {
       final uri = Uri.parse("${ApiService.baseUrl}/api/odev/add");
@@ -726,10 +1162,12 @@ await apiService.putRequest(
       if (expireDate != null) {
         request.fields['expireDate'] = expireDate.toIso8601String();
       }
-      print("gonderenTckn:"+gonderenTckn);
-      print("dersId:"+dersId.toString());
-      print("schoolId:"+schoolId.toString());
-      print("expireDate:"+expireDate.toString());
+      if (temaId != null) {
+        request.fields['temaId'] = temaId.toString();
+      }
+      if (konuId != null) {
+        request.fields['konuId'] = konuId.toString();
+      }
 
       // 🔹 Dosyalar
       if (files != null && files.isNotEmpty) {
@@ -747,10 +1185,9 @@ await apiService.putRequest(
       final streamedResponse = await ApiService._http.send(request);
       final response =
       await http.Response.fromStream(streamedResponse);
-      print( "resp:"+response.body);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        return body['id']; // backend’den dönen id
+        return body['id'] ?? jsonInt(body is Map ? body : {}, 'id');
       } else {
         throw Exception(
             "addOdev başarısız. StatusCode: ${response.statusCode} Body: ${response.body}");
@@ -826,6 +1263,9 @@ await apiService.putRequest(
     DateTime? expireDate,
     required int schoolId,
     List<File>? files,
+    int? temaId,
+    int? konuId,
+    String? actorTckn,
   }) async {
     try {
       final uri = Uri.parse("${ApiService.baseUrl}/api/odev/update");
@@ -849,6 +1289,15 @@ await apiService.putRequest(
         request.fields['expireDate'] =
             expireDate.toIso8601String(); // DateTime uyumlu
       }
+      if (temaId != null) {
+        request.fields['temaId'] = temaId.toString();
+      }
+      if (konuId != null) {
+        request.fields['konuId'] = konuId.toString();
+      }
+      if (actorTckn != null && actorTckn.isNotEmpty) {
+        request.fields['actorTckn'] = actorTckn;
+      }
 
       // 🔹 Dosyalar
       if (files != null && files.isNotEmpty) {
@@ -862,12 +1311,6 @@ await apiService.putRequest(
           );
         }
       }
-
-      // 🔹 Header (token varsa aç)
-      request.headers.addAll({
-        "Content-Type": "multipart/form-data",
-        // "Authorization": "Bearer ${globals.token}",
-      });
 
       final response = await ApiService._http.send(request);
       final responseBody = await response.stream.bytesToString();
@@ -883,6 +1326,85 @@ await apiService.putRequest(
       }
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getOdevById({
+    required int odevId,
+    required String tckn,
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/odev/getById',
+        queryParameters: {'odevId': odevId, 'tckn': tckn},
+      );
+      final data = response.data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      throw Exception('Ödev detayı alınamadı');
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'Ödev detayı alınamadı');
+    }
+  }
+
+  Future<void> cevapOdev({
+    required int odevId,
+    required String studentTckn,
+    required int schoolId,
+    String? aciklama,
+    List<File>? files,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiService.baseUrl}/api/odev/cevap');
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['odevId'] = odevId.toString();
+      request.fields['studentTckn'] = fullStudentTckn(studentTckn);
+      request.fields['schoolId'] = schoolId.toString();
+      if (aciklama != null && aciklama.isNotEmpty) {
+        request.fields['aciklama'] = aciklama;
+      }
+      if (files != null) {
+        for (final file in files) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'files',
+              file.path,
+              filename: path.basename(file.path),
+            ),
+          );
+        }
+      }
+      final streamed = await ApiService._http.send(request);
+      final response = await http.Response.fromStream(streamed);
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Cevap gönderilemedi. StatusCode: ${response.statusCode} Body: ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('cevapOdev hatası: $e');
+    }
+  }
+
+  Future<void> onayOdev({
+    required int odevId,
+    required String actorTckn,
+    required String studentTckn,
+    required bool onaylandi,
+  }) async {
+    try {
+      await DioClient.instance.dio.post(
+        '/api/odev/onay',
+        data: {
+          'odevId': odevId,
+          'actorTckn': actorTckn,
+          'studentTckn': fullStudentTckn(studentTckn),
+          'onaylandi': onaylandi,
+        },
+      );
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'Onay işlemi başarısız');
     }
   }
 
@@ -923,6 +1445,41 @@ await apiService.putRequest(
     }
   }
 
+  Future<Map<String, dynamic>> changePin({
+    required String tckn,
+    required String currentPin,
+    required String yeniPin,
+  }) async {
+    final response = await _http.post(
+      Uri.parse('${ApiService.baseUrl}/api/school/change-pin'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'tckn': tckn,
+        'currentPin': currentPin,
+        'yeniPin': yeniPin,
+      }),
+    );
+
+    Map<String, dynamic> decoded = {};
+    try {
+      final raw = jsonDecode(response.body);
+      if (raw is Map) decoded = Map<String, dynamic>.from(raw);
+    } catch (_) {}
+
+    final code = (jsonField(decoded, 'message') ?? response.body).toString();
+    final info = (jsonField(decoded, 'info') ?? '').toString();
+
+    if (response.statusCode == 200) {
+      globals.mustChangePin = jsonBool(decoded, 'mustChangePin');
+      return decoded;
+    }
+
+    if (code.startsWith('ERR_PIN_POLICY') && info.isNotEmpty) {
+      throw Exception(info);
+    }
+    throw Exception(code.isNotEmpty ? code : 'PIN güncellenemedi');
+  }
+
   Future<bool> updatePin(String tckn, String telNo, String yeniPin) async {
     final url = Uri.parse(
       '${ApiService.baseUrl}/api/school/update-pin?tckn=$tckn&telNo=$telNo&yeniPin=$yeniPin',
@@ -941,18 +1498,21 @@ await apiService.putRequest(
     }
   }
 
-  // Okul logosu getirme servisi
-  Future<Uint8List> getLogo(String tckn) async {
-    final url = Uri.parse('${ApiService.baseUrl}/api/school/get-logo?tckn=$tckn');
-
-    final response = await _http.get(url);
-
-    if (response.statusCode == 200) {
-      return response.bodyBytes;  // ← LOGO BYTE ARRAY
-    } else if (response.statusCode == 404) {
-      throw Exception('Logo bulunamadı');
-    } else {
-      throw Exception('Logo getirilemedi: ${response.statusCode}');
+  // Okul logosu getirme servisi. Yoksa / hata olursa null döner (ekran dönmez).
+  Future<Uint8List?> getLogo(String tckn) async {
+    try {
+      final url =
+          Uri.parse('${ApiService.baseUrl}/api/school/get-logo?tckn=$tckn');
+      final response = await _http.get(url).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      final bytes = response.bodyBytes;
+      if (bytes.isEmpty || bytes.length < 32) return null;
+      final ctype = response.headers['content-type'] ?? '';
+      if (ctype.contains('html') || ctype.contains('json')) return null;
+      return bytes;
+    } catch (e) {
+      logger.w('getLogo: $e');
+      return null;
     }
   }
 
@@ -1388,15 +1948,16 @@ await apiService.putRequest(
       return response.body;
     }
 
-    final decoded = jsonDecode(response.body);
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
 
-    // JWT token'ı secure storage'a kaydet
-    final token = decoded['Token'] as String?;
-    if (token != null && token.isNotEmpty) {
+    // JWT token'ı secure storage'a kaydet (PascalCase / camelCase)
+    final token = (jsonField(decoded, 'token') ?? '').toString();
+    if (token.isNotEmpty) {
       await _saveToken(token);
     }
 
-    final List persons = decoded["Persons"] ?? [];
+    final personsRaw = jsonField(decoded, 'persons');
+    final List persons = personsRaw is List ? personsRaw : [];
 
     if (persons.isEmpty) {
       return "Kullanıcı bulunamadı";
@@ -1404,15 +1965,33 @@ await apiService.putRequest(
 
     /// ✅ 1 OKUL → DEVAM
     if (persons.length == 1) {
-      parsePerson(persons[0]);
-      // Token zaten kaydedildi; sayaçları arka planda çek.
+      parsePerson(Map<String, dynamic>.from(persons[0] as Map));
+      _applyMustChangePin(decoded, Map<String, dynamic>.from(persons[0] as Map), pswd);
       unawaited(fetchLoginCounts());
+      if (globals.mustChangePin) return "MUST_CHANGE_PIN";
       return "OK";
     }
 
     /// ⚠️ 1'DEN FAZLA OKUL → SEÇİM GEREKİYOR
     globals.secilebilirOkullar = persons;
+    if (isDefaultPin(pswd) || jsonBool(decoded, 'mustChangePin')) {
+      globals.mustChangePin = true;
+    }
     return "SELECT_SCHOOL";
+  }
+
+  void _applyMustChangePin(
+    Map<String, dynamic> decoded,
+    Map<String, dynamic> person,
+    String pswd,
+  ) {
+    final fromPerson = jsonBool(person, 'mustChangePin');
+    final fromRoot = jsonBool(decoded, 'mustChangePin');
+    globals.mustChangePin = fromPerson || fromRoot || isDefaultPin(pswd);
+    logger.i(
+      'mustChangePin person=$fromPerson root=$fromRoot '
+      'defaultPin=${isDefaultPin(pswd)} keys=${person.keys.toList()}',
+    );
   }
 
   /// get-login-counts endpoint'inden bildirim sayaçlarını çeker ve
@@ -1457,19 +2036,18 @@ await apiService.putRequest(
     globals.meslek = p["Meslek"] ?? "";
     globals.hobi = p["Hobi"] ?? "";
     globals.kvkk = p["Kvkk"]?.toString() ?? "0";
+    globals.mustChangePin =
+        jsonBool(p, 'mustChangePin') || globals.mustChangePin;
 
     /// Öğrenciler
     globals.globalOgrenciListesi = [];
-    for (var e in (p["Students"] ?? [])) {
-      globals.globalOgrenciListesi.add({
-        "Name": e["Name"] ?? "",
-        "TCKN": e["TCKN"] ?? "",
-        "FotoVersion": e["FotoVersion"] ?? 0,
-        "Alerji": e["Alerji"] ?? "",
-        "Ilac": e["Ilac"] ?? "",
-        "ClassName": e["ClassName"] ?? "",
-        "SchoolNumber": e["SchoolNumber"] ?? "",
-      });
+    final studentsRaw = jsonField(p, 'students') ?? p['Students'] ?? [];
+    if (studentsRaw is List) {
+      for (var e in studentsRaw) {
+        if (e is! Map) continue;
+        final s = Map<String, dynamic>.from(e);
+        globals.globalOgrenciListesi.add(_normalizeStudent(s));
+      }
     }
 
     print("ogrenci listesi:"+globals.globalOgrenciListesi.toString());
@@ -1491,10 +2069,16 @@ await apiService.putRequest(
         .toList();
 
     /// Sınıflar
-    globals.globalSinifListesi = (p["Classes"] ?? []).map<Map<String, dynamic>>((e) => {
-      "Id": e["Id"],
-      "Ad": e["Ad"],
-    }).toList();
+    final classesRaw = jsonField(p, 'classes') ?? p['Classes'] ?? [];
+    globals.globalSinifListesi = (classesRaw is List)
+        ? classesRaw.whereType<Map>().map<Map<String, dynamic>>((e) {
+            final m = Map<String, dynamic>.from(e);
+            return {
+              'Id': jsonInt(m, 'id') ?? m['Id'],
+              'Ad': jsonString(m, 'ad') ?? m['Ad'] ?? '',
+            };
+          }).toList()
+        : [];
 
     print("sinif listesi:"+globals.globalSinifListesi.toString());
   }
@@ -1615,28 +2199,35 @@ await apiService.putRequest(
 
   /// Günlük yoklama listesini getirir
   Future<List<dynamic>> getYoklamaList(List<String> tcknList, String date) async {
+    if (tcknList.isEmpty) return [];
     try {
-      // TCKN listesini virgülle birleştir
       final tcknQuery = tcknList.join(',');
-
-      // API URL'sini oluştur
       final uri = Uri.parse(
         "${ApiService.baseUrl}/api/yoklama/bulk-has?tcknList=$tcknQuery&date=$date",
       );
       logger.i("getYoklamaList çağırıldı");
 
       final response = await _http.get(uri);
-
-      if (response.statusCode == 200) {
-        // API'den dönen JSON örneği artık List<dynamic>
-        List<dynamic> data = json.decode(response.body);
-        logger.i("data: $data");
-        return data;
-      } else {
-        throw Exception("Yoklama listesi alınamadı! StatusCode: ${response.statusCode}");
+      if (response.statusCode != 200) {
+        logger.w("Yoklama listesi alınamadı. StatusCode: ${response.statusCode}");
+        return [];
       }
+
+      final body = response.body.trim();
+      if (body.isEmpty || body.startsWith('<')) return [];
+
+      final decoded = json.decode(body);
+      if (decoded is List) return decoded;
+      if (decoded is Map) {
+        for (final key in ['data', 'items', 'result']) {
+          final inner = decoded[key];
+          if (inner is List) return inner;
+        }
+      }
+      return [];
     } catch (e) {
-      throw Exception("Hata getYoklamaList: $e");
+      logger.w("Hata getYoklamaList: $e");
+      return [];
     }
   }
 
@@ -2254,6 +2845,33 @@ await apiService.putRequest(
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getParents({
+    required String studentTckn,
+    String? schoolId,
+  }) async {
+    if (studentTckn.isEmpty) return [];
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/student/getParents',
+        queryParameters: {
+          'tckn': studentTckn,
+          if (schoolId != null && schoolId.isNotEmpty) 'schoolId': schoolId,
+        },
+      );
+      final data = response.data;
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      logger.w('getParents($studentTckn): $e');
+      return [];
+    }
+  }
+
   static Future<List<dynamic>> getConversationList(String tckn) async {
     if (tckn.isEmpty) throw Exception("TCKN boş olamaz");
 
@@ -2269,6 +2887,53 @@ await apiService.putRequest(
       logger.e("GetConversationList hatası: ${e.response?.statusCode} ${e.message}");
       throw Exception("GetConversationList hatası: ${e.response?.statusCode}");
     }
+  }
+
+  /// T/M için yazışılabilir veliler (tek istek; client N×getParents yerine).
+  static Future<List<ConversationItem>> getMessageableContacts(
+    String tckn,
+  ) async {
+    if (tckn.isEmpty) return [];
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/Mesaj/GetMessageableContacts',
+        queryParameters: {'tckn': tckn},
+      );
+      final data = response.data;
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((m) => ConversationItem.fromContactJson(
+                Map<String, dynamic>.from(m),
+              ))
+          .where((c) => (c.tckn ?? '').isNotEmpty)
+          .toList();
+    } on DioException catch (e) {
+      logger.w(
+        'GetMessageableContacts: ${e.response?.statusCode} ${e.message}',
+      );
+      return [];
+    } catch (e) {
+      logger.w('GetMessageableContacts: $e');
+      return [];
+    }
+  }
+
+  static List<dynamic> _normalizeMessageList(dynamic data) {
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((m) => normalizeChatMessage(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
+  static String _extractApiMessage(dynamic data) {
+    if (data == null) return '';
+    if (data is String) return data.trim();
+    if (data is Map) {
+      return (jsonField(data, 'message') ?? data['message'] ?? '').toString().trim();
+    }
+    return data.toString();
   }
 
   static Future<List<dynamic>> getConversationMessages({
@@ -2291,13 +2956,243 @@ await apiService.putRequest(
           'skip': skip,
         },
       );
-      return response.data as List<dynamic>;
+      return _normalizeMessageList(response.data);
     } on DioException catch (e) {
       logger.e("GetConversationMessages hatası: ${e.response?.statusCode} ${e.message}");
       if (e.response?.statusCode == 400) {
         throw Exception("Geçersiz parametreler gönderildi");
       }
       throw Exception("GetConversationMessages hatası: ${e.response?.statusCode}");
+    }
+  }
+
+  static Future<List<dynamic>> getGroupMessages({
+    required int grupId,
+    required String tckn,
+    int take = 50,
+    int skip = 0,
+  }) async {
+    if (tckn.isEmpty) throw Exception("TCKN boş olamaz");
+
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/Mesaj/GetGroupMessages',
+        queryParameters: {
+          'grupId': grupId,
+          'tckn': tckn,
+          'take': take.clamp(1, 100),
+          'skip': skip,
+        },
+      );
+      return _normalizeMessageList(response.data);
+    } on DioException catch (e) {
+      logger.e("GetGroupMessages hatası: ${e.response?.statusCode} ${e.message}");
+      throw Exception("GetGroupMessages hatası: ${e.response?.statusCode}");
+    }
+  }
+
+  static bool _isJsonBody(dynamic data) => data is List || data is Map;
+
+  static Future<dynamic> _getJsonOrNull(
+    String path,
+    Map<String, dynamic> query,
+  ) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        path,
+        queryParameters: query,
+      );
+      final ctype = response.headers.value('content-type') ?? '';
+      if (ctype.contains('html') || !_isJsonBody(response.data)) {
+        return null;
+      }
+      return response.data;
+    } on DioException catch (e) {
+      logger.w('$path → ${e.response?.statusCode}');
+      return null;
+    }
+  }
+
+  /// Grup üyeleri. Web ile aynı kaynak: GET /api/mesaj-grup/members
+  static Future<List<dynamic>> getGroupMembers({
+    required int grupId,
+    required String tckn,
+  }) async {
+    final query = {
+      'grupId': grupId,
+      'groupId': grupId,
+      'id': grupId,
+      'tckn': tckn,
+      'schoolId': globals.globalSchoolId,
+    };
+
+    final membersBody = await _getJsonOrNull('/api/mesaj-grup/members', query);
+    if (membersBody != null) {
+      final members = extractMemberList(membersBody);
+      if (members.isNotEmpty) {
+        logger.i('Grup üyeleri members endpoint: ${members.length}');
+        return members;
+      }
+      if (membersBody is List) return membersBody;
+    }
+
+    final listBody = await _getJsonOrNull('/api/mesaj-grup/list', query);
+    if (listBody != null) {
+      final fromList = extractMembersFromGroupList(listBody, grupId);
+      if (fromList.isNotEmpty) {
+        logger.i('Grup üyeleri list endpoint: ${fromList.length}');
+        return fromList;
+      }
+    }
+
+    throw Exception('Grup üyeleri alınamadı');
+  }
+
+  static final _chatUploadOptions = Options(
+    sendTimeout: const Duration(minutes: 5),
+    receiveTimeout: const Duration(minutes: 5),
+  );
+
+  static Future<MultipartFile> _chatMultipartFile(File file) async {
+    final filename = file.path.split(Platform.pathSeparator).last;
+    final mime = lookupMimeType(file.path);
+    return MultipartFile.fromFile(
+      file.path,
+      filename: filename,
+      contentType: mime == null ? null : MediaType.parse(mime),
+    );
+  }
+
+  static Future<Map<String, dynamic>> sendMesajWithFile({
+    required String gonderenTckn,
+    required String alanTckn,
+    String? data,
+    String baslik = 'SmartOkul',
+    File? file,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'gonderenTckn': gonderenTckn,
+        'alanTckn': alanTckn,
+        'baslik': baslik,
+        if (data != null && data.isNotEmpty) 'data': data,
+        if (file != null) 'file': await _chatMultipartFile(file),
+      });
+      final response = await DioClient.instance.dio.post(
+        '/api/Mesaj/SendMesajWithFile',
+        data: form,
+        options: _chatUploadOptions,
+      );
+      final body = response.data;
+      if (body is Map) return Map<String, dynamic>.from(body);
+      return {'message': body?.toString() ?? 'ERR_MESAJ_GONDERILDI'};
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_MESAJ_EK_YUKLENEMEDI');
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendGroupMesajWithFile({
+    required int grupId,
+    required String gonderenTckn,
+    String? data,
+    String baslik = 'SmartOkul',
+    File? file,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'grupId': grupId.toString(),
+        'gonderenTckn': gonderenTckn,
+        'baslik': baslik,
+        if (data != null && data.isNotEmpty) 'data': data,
+        if (file != null) 'file': await _chatMultipartFile(file),
+      });
+      final response = await DioClient.instance.dio.post(
+        '/api/Mesaj/SendGroupMesajWithFile',
+        data: form,
+        options: _chatUploadOptions,
+      );
+      final body = response.data;
+      if (body is Map) return Map<String, dynamic>.from(body);
+      return {'message': body?.toString() ?? 'ERR_MESAJ_GONDERILDI'};
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_MESAJ_EK_YUKLENEMEDI');
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getAttachmentUrl({
+    required int mesajId,
+    required String tckn,
+    required bool isGroup,
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/Mesaj/GetAttachmentUrl',
+        queryParameters: {
+          'mesajId': mesajId,
+          'tckn': tckn,
+          'isGroup': isGroup,
+        },
+      );
+      final data = response.data;
+      if (data is Map) {
+        final map = Map<String, dynamic>.from(data);
+        return {
+          'url': jsonString(map, 'url') ?? '',
+          'dosyaAdi': jsonString(map, 'dosyaAdi') ?? '',
+          'dosyaTipi': jsonString(map, 'dosyaTipi') ?? '',
+          'ekTuru': jsonString(map, 'ekTuru') ?? '',
+        };
+      }
+      return null;
+    } on DioException catch (e) {
+      logger.w('GetAttachmentUrl: ${e.response?.statusCode}');
+      return null;
+    }
+  }
+
+  Future<void> sendGroupMesaj({
+    required int grupId,
+    required String gonderenTckn,
+    required String data,
+    String baslik = 'SmartOkul',
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.post(
+        '/api/Mesaj/SendGroupMesaj',
+        data: {
+          'grupId': grupId,
+          'gonderenTckn': gonderenTckn,
+          'baslik': baslik,
+          'data': data,
+        },
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Grup mesajı gönderilemedi: ${response.data}');
+      }
+    } on DioException catch (e) {
+      logger.e("SendGroupMesaj hatası: ${e.response?.statusCode} ${e.response?.data}");
+      throw Exception('Grup mesajı gönderilemedi: ${e.response?.data ?? e.message}');
+    }
+  }
+
+  Future<bool> markGroupAsRead({
+    required int grupId,
+    required String tckn,
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.post(
+        '/api/Mesaj/MarkGroupAsRead',
+        queryParameters: {
+          'grupId': grupId,
+          'tckn': tckn,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      logger.e("MarkGroupAsRead hatası: ${e.response?.statusCode} ${e.message}");
+      return false;
     }
   }
 /*
@@ -2335,6 +3230,10 @@ await apiService.putRequest(
 */
 
   Future<bool> uploadGallery(String tckn, List<File> files) async {
+    if (anyFileOverMediaLimit(files)) {
+      logger.w('uploadGallery: 1 GB üzeri dosya, yükleme iptal');
+      return false;
+    }
     try {
       var uri = Uri.parse("${ApiService.baseUrl}/api/school/upload-gallery");
       var request = http.MultipartRequest('POST', uri);
@@ -2369,6 +3268,10 @@ await apiService.putRequest(
     required List<String> tcknOrigList,
     required List<File> files,
   }) async {
+    if (anyFileOverMediaLimit(files)) {
+      logger.w('uploadPersonGallery: 1 GB üzeri dosya, yükleme iptal');
+      return {"success": false, "message": mediaUploadLimitMessage};
+    }
     try {
       final uri = Uri.parse("${ApiService.baseUrl}/api/school/upload-person-gallery");
 
@@ -2881,6 +3784,242 @@ await apiService.putRequest(
       return jsonDecode(response.body);
     } else {
       throw Exception("Gelisim silinemedi");
+    }
+  }
+
+  static String fullStudentTckn(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty || t.contains('_')) return t;
+    var schoolId = globals.globalSchoolId.toString();
+    if (schoolId.isEmpty) {
+      final parts = globals.kullaniciTCKN.split('_');
+      if (parts.length >= 2) schoolId = parts[1];
+    }
+    return '${t}_${schoolId}_S';
+  }
+
+  static List<AcademicRecord> _parseAcademicList(dynamic data) {
+    List list;
+    if (data is List) {
+      list = data;
+    } else if (data is Map) {
+      dynamic inner;
+      for (final key in ['data', 'items', 'result', 'kayitlar']) {
+        inner = jsonField(data, key);
+        if (inner is List) break;
+      }
+      list = inner is List ? inner : const [];
+    } else {
+      list = const [];
+    }
+    final records = list
+        .whereType<Map>()
+        .map((m) => AcademicRecord.fromJson(Map<String, dynamic>.from(m)))
+        .toList();
+    records.sort((a, b) {
+      final ta = a.tarih ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final tb = b.tarih ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final byDate = tb.compareTo(ta);
+      if (byDate != 0) return byDate;
+      return b.saatYazi.compareTo(a.saatYazi);
+    });
+    return records;
+  }
+
+  static Future<List<AcademicRecord>> listOzelDers(
+    String tckn, {
+    int take = 20,
+    int skip = 0,
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/ozel-ders/list-by-tckn',
+        queryParameters: {
+          'tckn': tckn,
+          'take': take.clamp(1, 100),
+          'skip': skip < 0 ? 0 : skip,
+        },
+      );
+      return _parseAcademicList(response.data);
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_OZELDERS_ETUT_YETKI_YOK');
+    }
+  }
+
+  static Future<List<AcademicRecord>> listEtut(
+    String tckn, {
+    int take = 20,
+    int skip = 0,
+  }) async {
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/etut/list-by-tckn',
+        queryParameters: {
+          'tckn': tckn,
+          'take': take.clamp(1, 100),
+          'skip': skip < 0 ? 0 : skip,
+        },
+      );
+      return _parseAcademicList(response.data);
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_OZELDERS_ETUT_YETKI_YOK');
+    }
+  }
+
+  static Map<String, dynamic> _academicBody({
+    required String actorTckn,
+    required String studentTckn,
+    required String tarih,
+    required String saat,
+    String? ders,
+    String? konu,
+    String? aciklama,
+    int? id,
+    int? dersId,
+    int? temaId,
+    int? konuId,
+    int? soruSayisi,
+    int? dogruSayisi,
+    int? yanlisSayisi,
+    required bool etut,
+  }) {
+    return {
+      'actorTckn': actorTckn,
+      'studentTckn': fullStudentTckn(studentTckn),
+      'tarih': tarih,
+      'saat': saat,
+      if (dersId != null) 'dersId': dersId,
+      if (temaId != null) 'temaId': temaId,
+      if (konuId != null) 'konuId': konuId,
+      if (ders != null && ders.isNotEmpty) 'ders': ders,
+      if (konu != null && konu.isNotEmpty) 'konu': konu,
+      if (aciklama != null) 'aciklama': aciklama,
+      if (id != null) 'id': id,
+      if (etut) 'soruSayisi': soruSayisi ?? 0,
+      if (etut) 'dogruSayisi': dogruSayisi ?? 0,
+      if (etut) 'yanlisSayisi': yanlisSayisi ?? 0,
+    };
+  }
+
+  static Future<Map<String, dynamic>> saveOzelDers({
+    required String actorTckn,
+    required String studentTckn,
+    required String tarih,
+    required String saat,
+    String? ders,
+    String? konu,
+    String? aciklama,
+    int? id,
+    int? dersId,
+    int? temaId,
+    int? konuId,
+  }) async {
+    final path = id == null ? '/api/ozel-ders/add' : '/api/ozel-ders/update';
+    return _postAcademic(
+      path,
+      _academicBody(
+        actorTckn: actorTckn,
+        studentTckn: studentTckn,
+        tarih: tarih,
+        saat: saat,
+        ders: ders,
+        konu: konu,
+        aciklama: aciklama,
+        id: id,
+        dersId: dersId,
+        temaId: temaId,
+        konuId: konuId,
+        etut: false,
+      ),
+    );
+  }
+
+  static Future<Map<String, dynamic>> saveEtut({
+    required String actorTckn,
+    required String studentTckn,
+    required String tarih,
+    required String saat,
+    String? ders,
+    String? konu,
+    String? aciklama,
+    int? id,
+    int? dersId,
+    int? temaId,
+    int? konuId,
+    int? soruSayisi,
+    int? dogruSayisi,
+    int? yanlisSayisi,
+  }) async {
+    final path = id == null ? '/api/etut/add' : '/api/etut/update';
+    return _postAcademic(
+      path,
+      _academicBody(
+        actorTckn: actorTckn,
+        studentTckn: studentTckn,
+        tarih: tarih,
+        saat: saat,
+        ders: ders,
+        konu: konu,
+        aciklama: aciklama,
+        id: id,
+        dersId: dersId,
+        temaId: temaId,
+        konuId: konuId,
+        soruSayisi: soruSayisi,
+        dogruSayisi: dogruSayisi,
+        yanlisSayisi: yanlisSayisi,
+        etut: true,
+      ),
+    );
+  }
+
+  static Future<Map<String, dynamic>> _postAcademic(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final response = await DioClient.instance.dio.post(path, data: body);
+      final data = response.data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return {'message': data?.toString() ?? ''};
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_IC_SUNUCU_HATASI');
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteOzelDers({
+    required String actorTckn,
+    required int id,
+  }) async {
+    return _deleteAcademic('/api/ozel-ders/delete', actorTckn, id);
+  }
+
+  static Future<Map<String, dynamic>> deleteEtut({
+    required String actorTckn,
+    required int id,
+  }) async {
+    return _deleteAcademic('/api/etut/delete', actorTckn, id);
+  }
+
+  static Future<Map<String, dynamic>> _deleteAcademic(
+    String path,
+    String actorTckn,
+    int id,
+  ) async {
+    try {
+      final response = await DioClient.instance.dio.delete(
+        path,
+        queryParameters: {'actorTckn': actorTckn, 'id': id},
+      );
+      final data = response.data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return {'message': data?.toString() ?? ''};
+    } on DioException catch (e) {
+      final msg = _extractApiMessage(e.response?.data);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_OZELDERS_ETUT_YETKI_YOK');
     }
   }
 

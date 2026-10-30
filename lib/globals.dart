@@ -45,3 +45,4 @@ List<Map<String, dynamic>> globalOgretmenListesi = [];
 List<String> menuListesi= [];
 
 List secilebilirOkullar = [];
+bool mustChangePin = false;
