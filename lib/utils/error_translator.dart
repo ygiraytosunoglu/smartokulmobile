@@ -123,6 +123,16 @@ String translateError(String message, BuildContext context) {
       return 'Etüt kaydı güncellendi';
     case 'ERR_ETUT_SILINDI':
       return 'Etüt kaydı silindi';
+    case 'ERR_ODEV_ALICI_ZORUNLU':
+      return 'En az bir öğrenci veya sınıf seçiniz';
+    case 'ERR_ODEV_SINIF_YETKI_YOK':
+      return 'Seçilen sınıfa ödev atama yetkiniz yok';
+    case 'ERR_ODEV_DERS_ZORUNLU':
+      return 'Ders seçimi zorunludur';
+    case 'ERR_SINIFLARDA_OGRENCI_YOK':
+      return l.errSiniflardaOgrenciYok;
+    case 'ERR_ALAN_KISI_BULUNAMADI':
+      return l.errAlanKisiBulunamadi;
     default:                                 return message;
   }
 }

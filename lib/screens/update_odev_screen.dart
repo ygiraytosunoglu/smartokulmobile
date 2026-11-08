@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:smart_okul_mobile/constants.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import '../models/conversation_item.dart';
 import '../models/ders_catalog.dart';
 import '../services/api_service.dart';
@@ -238,7 +239,9 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
 
                   DropdownButtonFormField<int>(
                     value: _temalar.any((t) => t.id == _temaId) ? _temaId : null,
-                    decoration: _decoration('Öğrenme Alanı (opsiyonel)'),
+                    decoration: _decoration(
+                      AppLocalizations.of(context)!.learningAreaOptional,
+                    ),
                     items: _temalar
                         .map(
                           (t) => DropdownMenuItem(
@@ -263,7 +266,9 @@ class _UpdateOdevScreenState extends State<UpdateOdevScreen> {
 
                   DropdownButtonFormField<int>(
                     value: _konular.any((k) => k.id == _konuId) ? _konuId : null,
-                    decoration: _decoration('Konu (opsiyonel)'),
+                    decoration: _decoration(
+                      AppLocalizations.of(context)!.topicOptional,
+                    ),
                     items: _konular
                         .map(
                           (k) => DropdownMenuItem(

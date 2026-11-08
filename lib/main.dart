@@ -117,11 +117,18 @@ void main() async {
           AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 
-  // Sadece dikey yönlendirmeye izin ver
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // Android 15+ uçtan uca; SafeArea / AppBar inset'leri kullanılıyor
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+    ),
+  );
+
+  // Büyük ekran (Android 16+): global yön kilidi Play tarafından yok sayılıyor;
+  // kısıtı kaldırmak tablet/katlanabilir düzen sorunlarını azaltır.
+  await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
 
   runApp(const MyApp());
 }
@@ -231,8 +238,8 @@ class _MyAppState extends State<MyApp> {
 
     await flutterLocalNotificationsPlugin.show(
       0,
-      message.notification?.title ?? 'Smart Okul',
-      message.notification?.body ?? 'Smart Okul',
+      title.isEmpty ? 'Smart Okul' : title,
+      body,
       platformChannelSpecifics,
       payload: jsonEncode(message.data),
     );
@@ -243,14 +250,23 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       navigatorKey: navigatorKey,
       home: const LoginScreen(),
+      // Edge-to-edge: alt sistem çubuğu altında kalan butonları telefonda koru
+      builder: (context, child) {
+        return SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          bottom: true,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-
-      supportedLocales: AppLocalizations.supportedLocales
+      supportedLocales: AppLocalizations.supportedLocales,
     );
 
     /*return const MaterialApp(

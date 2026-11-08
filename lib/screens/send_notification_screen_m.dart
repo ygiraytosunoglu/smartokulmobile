@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
 import '../globals.dart' as globals;
@@ -73,11 +74,12 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
           _messageController.text,
         );
 
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Duyuru(ler) başarıyla gönderildi',
-              style: TextStyle(color: Colors.white),
+              l10n.announcementSentSuccess,
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.green,
           ),
@@ -104,7 +106,11 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen tüm alanları doldurun ve sınıf seçin')),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.fillFieldsSelectClass,
+          ),
+        ),
       );
     }
   }
@@ -147,10 +153,11 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
 */
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            'Duyuru Gönder',
+            l10n.sendAnnouncement,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -186,7 +193,7 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                       const Icon(Icons.campaign, size: 64, color: AppColors.primary),
                       const SizedBox(height: 24),
                       Text(
-                        'Yeni Duyuru',
+                        l10n.newAnnouncement,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -198,34 +205,34 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                       // Başlık alanı
                       TextFormField(
                         controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Duyuru Başlığı',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.title),
+                        decoration: InputDecoration(
+                          labelText: l10n.announcementTitleLabel,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.title),
                         ),
                         validator: (value) =>
-                        value == null || value.isEmpty ? 'Başlık gerekli' : null,
+                        value == null || value.isEmpty ? l10n.titleRequired : null,
                       ),
                       const SizedBox(height: 16),
 
                       // Mesaj alanı
                       TextFormField(
                         controller: _messageController,
-                        decoration: const InputDecoration(
-                          labelText: 'Duyuru Mesajı',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.message),
+                        decoration: InputDecoration(
+                          labelText: l10n.announcementMessageLabel,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.message),
                           alignLabelWithHint: true,
                         ),
                         maxLines: 5,
                         validator: (value) =>
-                        value == null || value.isEmpty ? 'Mesaj gerekli' : null,
+                        value == null || value.isEmpty ? l10n.messageRequired : null,
                       ),
                       const SizedBox(height: 20),
 
                       // Checkbox listesi
                       CheckboxListTile(
-                        title: Text('Hepsi'),
+                        title: Text(l10n.allOfThem),
                         value: isAllSelected,
                         onChanged: _isSending ? null : _toggleAll,
                         controlAffinity: ListTileControlAffinity.leading,
@@ -254,7 +261,9 @@ class _SendNotificationScreenStateM extends State<SendNotificationScreenM> {
                           foregroundColor: AppColors.onPrimary,
                         ),
                         child: Text(
-                          _isSending ? 'Duyuru Gönderiliyor...' : 'Duyuru Gönder',
+                          _isSending
+                              ? l10n.sendingAnnouncement
+                              : l10n.sendAnnouncement,
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),

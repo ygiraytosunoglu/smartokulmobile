@@ -6,6 +6,7 @@ import '../models/academic_record.dart';
 import '../models/conversation_item.dart';
 import '../services/api_service.dart';
 import '../utils/error_translator.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import 'academic_record_form_screen.dart';
 
 class AcademicRecordListScreen extends StatefulWidget {
@@ -170,8 +171,10 @@ class _AcademicRecordListScreenState extends State<AcademicRecordListScreen> {
                 if (k.sinifSeviye != null)
                   _satir('Sınıf', '${k.sinifSeviye}. Sınıf'),
                 _satir('Ders', k.ders),
-                if (k.tema.isNotEmpty) _satir('Öğrenme Alanı', k.tema),
-                if (k.konu.isNotEmpty) _satir('Konu', k.konu),
+                if (k.tema.isNotEmpty)
+                  _satir(AppLocalizations.of(context)!.learningArea, k.tema),
+                if (k.konu.isNotEmpty)
+                  _satir(AppLocalizations.of(context)!.topic, k.konu),
                 if (k.kazanim.isNotEmpty) _satir('Kazanım', k.kazanim),
                 if (k.aciklama.isNotEmpty) _satir('Açıklama', k.aciklama),
                 if (_etut && k.etutOzet.isNotEmpty) _satir('Özet', k.etutOzet),

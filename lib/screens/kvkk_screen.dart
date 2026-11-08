@@ -2,7 +2,7 @@
 import '../constants.dart';
 import '../globals.dart' as globals;
 import '../services/api_service.dart';
-import 'home_screen.dart';
+import '../utils/post_login_navigation.dart';
 import 'login_screen.dart';
 
 class KvkkScreen extends StatefulWidget {
@@ -22,15 +22,12 @@ class _KvkkScreenState extends State<KvkkScreen> {
     try {
       final response = await _apiService.kvkkEkle(globals.orjKullaniciTCKN);
 
-      if (response== "ok") {
-        // Başarılı yanıt
+      if (response == "ok") {
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        globals.kvkk = '1';
+        // Veli + Anons menüsü → anons; aksi halde ana sayfa
+        navigateParentOrHome(context);
       } else {
-        // Başarısız yanıt
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -60,54 +57,69 @@ class _KvkkScreenState extends State<KvkkScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            "KVKK Metni",
-            textAlign: TextAlign.center,
-            style: AppStyles.titleLarge
+          "KVKK Metni",
+          textAlign: TextAlign.center,
+          style: AppStyles.titleLarge,
         ),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Text(
-                  globals.kvkkMetni ?? "KVKK metni bulunamadı.",
-                  style: const TextStyle(fontSize: 16.0),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Text(
+                    globals.kvkkMetni.isNotEmpty
+                        ? globals.kvkkMetni
+                        : "KVKK metni bulunamadı.",
+                    style: const TextStyle(fontSize: 16.0),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            if (_loading)
-              const CircularProgressIndicator()
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: _onayla,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+              const SizedBox(height: 16),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: CircularProgressIndicator(),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _onayla,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      child: const Text(
+                        "Okudum, Anladım, Onaylıyorum",
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                      ),
                     ),
-                    child: Text(
-                      "Okudum, Anladım, Onaylıyorum",
-                      style: TextStyle(color: Colors.white),
+                    const SizedBox(height: 10),
+                    OutlinedButton(
+                      onPressed: _vazgec,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      child: const Text("Vazgeç"),
                     ),
-                  ),
-                  OutlinedButton(
-                    onPressed: _vazgec,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                    ),
-                    child: Text("Vazgeç"),
-                  ),
-                ],
-              ),
-          ],
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );

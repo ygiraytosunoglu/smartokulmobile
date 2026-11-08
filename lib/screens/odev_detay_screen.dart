@@ -12,6 +12,7 @@ import '../models/conversation_item.dart';
 import '../services/api_service.dart';
 import '../utils/chat_attachment.dart';
 import '../utils/error_translator.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class OdevDetayScreen extends StatefulWidget {
   final int odevId;
@@ -290,13 +291,60 @@ class _OdevDetayScreenState extends State<OdevDetayScreen> {
                                 jsonString(odev, 'dersAdi') ??
                                 '',
                           ),
-                          _satir('Öğrenme Alanı', jsonString(odev, 'tema') ?? ''),
-                          _satir('Konu', jsonString(odev, 'konu') ?? ''),
+                          _satir(
+                            AppLocalizations.of(context)!.learningArea,
+                            jsonString(odev, 'tema') ?? '',
+                          ),
+                          _satir(
+                            AppLocalizations.of(context)!.topic,
+                            jsonString(odev, 'konu') ?? '',
+                          ),
                           if (jsonInt(odev, 'sinifSeviye') != null)
                             _satir(
-                              'Sınıf',
+                              'Sınıf seviyesi',
                               '${jsonInt(odev, 'sinifSeviye')}. Sınıf',
                             ),
+                          Builder(
+                            builder: (_) {
+                              final raw = jsonField(odev, 'siniflar') ??
+                                  jsonField(odev, 'Siniflar');
+                              if (raw is! List || raw.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final names = raw
+                                  .whereType<Map>()
+                                  .map((e) =>
+                                      jsonString(Map<String, dynamic>.from(e),
+                                          'ad') ??
+                                      '')
+                                  .where((a) => a.isNotEmpty)
+                                  .toList();
+                              if (names.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    const Text(
+                                      'Sınıflar:',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    ...names.map(
+                                      (n) => Chip(
+                                        label: Text(n),
+                                        visualDensity: VisualDensity.compact,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                           _satir(
                             'Son tarih',
                             () {
@@ -370,6 +418,12 @@ class _OdevDetayScreenState extends State<OdevDetayScreen> {
                       const SizedBox(height: 8),
                       ..._alicilar.map((a) {
                         final name = jsonString(a, 'name') ?? '';
+                        final sinifAdi = (jsonString(a, 'className') ??
+                                jsonString(a, 'sinifAdi') ??
+                                jsonString(a, 'classAd') ??
+                                jsonString(a, 'sinifAd') ??
+                                '')
+                            .trim();
                         final durum =
                             jsonString(a, 'onayDurumText') ?? 'Bekliyor';
                         final cevap = jsonString(a, 'cevapAciklama') ?? '';
@@ -377,12 +431,16 @@ class _OdevDetayScreenState extends State<OdevDetayScreen> {
                           jsonField(a, 'cevapDocPaths') ??
                               jsonField(a, 'cevapdocpaths'),
                         );
+                        final alt = [
+                          if (sinifAdi.isNotEmpty) sinifAdi,
+                          durum,
+                        ].join(' · ');
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: AppStyles.listCardDecoration,
                           child: ExpansionTile(
                             title: Text(name),
-                            subtitle: Text(durum),
+                            subtitle: Text(alt),
                             children: [
                               if (cevap.isNotEmpty)
                                 ListTile(

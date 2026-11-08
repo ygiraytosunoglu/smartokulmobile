@@ -9,6 +9,7 @@ import '../models/conversation_item.dart';
 import '../models/ders_catalog.dart';
 import '../services/api_service.dart';
 import '../utils/error_translator.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 
 class AcademicRecordFormScreen extends StatefulWidget {
   final AcademicRecordType type;
@@ -572,7 +573,9 @@ class _AcademicRecordFormScreenState extends State<AcademicRecordFormScreen> {
                       value: _temalar.any((t) => t.id == _temaId)
                           ? _temaId
                           : null,
-                      decoration: _dec('Öğrenme Alanı *'),
+                      decoration: _dec(
+                        AppLocalizations.of(context)!.learningAreaRequired,
+                      ),
                       items: _temalar
                           .map(
                             (t) => DropdownMenuItem(
@@ -588,7 +591,9 @@ class _AcademicRecordFormScreenState extends State<AcademicRecordFormScreen> {
                       value: _konular.any((k) => k.id == _konuId)
                           ? _konuId
                           : null,
-                      decoration: _dec('Konu *'),
+                      decoration: _dec(
+                        AppLocalizations.of(context)!.topicRequired,
+                      ),
                       items: _konular
                           .map(
                             (k) => DropdownMenuItem(

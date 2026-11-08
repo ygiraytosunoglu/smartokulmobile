@@ -150,6 +150,58 @@ class AppLocalizationsRu extends AppLocalizations {
   String get notificationFailMsg => 'Не удалось отправить уведомление';
 
   @override
+  String get announcementListTitle => 'Объявления';
+
+  @override
+  String get announcementDetailTitle => 'Детали объявления';
+
+  @override
+  String get announcementCopied => 'Объявление скопировано';
+
+  @override
+  String get newAnnouncement => 'Новое объявление';
+
+  @override
+  String get sendAnnouncement => 'Отправить объявление';
+
+  @override
+  String get sendingAnnouncement => 'Отправка объявления...';
+
+  @override
+  String get announcementTitleLabel => 'Заголовок объявления';
+
+  @override
+  String get announcementMessageLabel => 'Текст объявления';
+
+  @override
+  String get titleRequired => 'Требуется заголовок';
+
+  @override
+  String get messageRequired => 'Требуется сообщение';
+
+  @override
+  String get announcementSentSuccess => 'Объявление(я) успешно отправлено';
+
+  @override
+  String get fillFieldsSelectStudent => 'Заполните все поля и выберите ученика';
+
+  @override
+  String get fillFieldsSelectClass => 'Заполните все поля и выберите класс';
+
+  @override
+  String get selectTeacherPlease => 'Пожалуйста, выберите учителя';
+
+  @override
+  String get enterTitleAndMessage => 'Введите заголовок и сообщение';
+
+  @override
+  String get senderLabel => 'Отправитель';
+
+  @override
+  String get onlyTeachersAdminsCanNotify =>
+      'Только учителя и администраторы могут отправлять уведомления родителям!';
+
+  @override
   String get teachersTitle => 'Учителя';
 
   @override
@@ -461,6 +513,30 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get lesson => 'Урок';
+
+  @override
+  String get search => 'Поиск';
+
+  @override
+  String get noStudentsFound => 'Ученики не найдены';
+
+  @override
+  String get learningArea => 'Область обучения';
+
+  @override
+  String get topic => 'Тема';
+
+  @override
+  String get learningAreaOptional => 'Область обучения (необязательно)';
+
+  @override
+  String get topicOptional => 'Тема (необязательно)';
+
+  @override
+  String get learningAreaRequired => 'Область обучения *';
+
+  @override
+  String get topicRequired => 'Тема *';
 
   @override
   String get dueDate => 'Срок сдачи';

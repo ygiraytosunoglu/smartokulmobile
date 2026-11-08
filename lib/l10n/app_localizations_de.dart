@@ -153,6 +153,60 @@ class AppLocalizationsDe extends AppLocalizations {
       'Benachrichtigung konnte nicht gesendet werden';
 
   @override
+  String get announcementListTitle => 'Ankündigungen';
+
+  @override
+  String get announcementDetailTitle => 'Ankündigungsdetails';
+
+  @override
+  String get announcementCopied => 'Ankündigung kopiert';
+
+  @override
+  String get newAnnouncement => 'Neue Ankündigung';
+
+  @override
+  String get sendAnnouncement => 'Ankündigung senden';
+
+  @override
+  String get sendingAnnouncement => 'Ankündigung wird gesendet...';
+
+  @override
+  String get announcementTitleLabel => 'Ankündigungstitel';
+
+  @override
+  String get announcementMessageLabel => 'Ankündigungstext';
+
+  @override
+  String get titleRequired => 'Titel erforderlich';
+
+  @override
+  String get messageRequired => 'Nachricht erforderlich';
+
+  @override
+  String get announcementSentSuccess => 'Ankündigung(en) erfolgreich gesendet';
+
+  @override
+  String get fillFieldsSelectStudent =>
+      'Bitte alle Felder ausfüllen und einen Schüler auswählen';
+
+  @override
+  String get fillFieldsSelectClass =>
+      'Bitte alle Felder ausfüllen und eine Klasse auswählen';
+
+  @override
+  String get selectTeacherPlease => 'Bitte einen Lehrer auswählen';
+
+  @override
+  String get enterTitleAndMessage => 'Bitte Titel und Nachricht eingeben';
+
+  @override
+  String get senderLabel => 'Absender';
+
+  @override
+  String get onlyTeachersAdminsCanNotify =>
+      'Nur Lehrer und Administratoren können Benachrichtigungen an Eltern senden!';
+
+  @override
   String get teachersTitle => 'Lehrer';
 
   @override
@@ -465,6 +519,30 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get lesson => 'Fach';
+
+  @override
+  String get search => 'Suchen';
+
+  @override
+  String get noStudentsFound => 'Keine Schüler gefunden';
+
+  @override
+  String get learningArea => 'Lernbereich';
+
+  @override
+  String get topic => 'Thema';
+
+  @override
+  String get learningAreaOptional => 'Lernbereich (optional)';
+
+  @override
+  String get topicOptional => 'Thema (optional)';
+
+  @override
+  String get learningAreaRequired => 'Lernbereich *';
+
+  @override
+  String get topicRequired => 'Thema *';
 
   @override
   String get dueDate => 'Abgabedatum';

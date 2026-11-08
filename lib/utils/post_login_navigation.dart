@@ -7,6 +7,29 @@ import 'package:smart_okul_mobile/screens/kvkk_screen.dart';
 import 'package:smart_okul_mobile/screens/student_notification_screen.dart';
 import 'package:smart_okul_mobile/utils/pin_policy.dart';
 
+/// Sadece veli: MenuTanim'da Anons varsa anons ekranı, yoksa ana sayfa.
+bool parentHasAnonsMenu() {
+  if (globals.globalKullaniciTipi != 'P') return false;
+  return globals.menuListesi.any(
+    (m) => m.trim().toLowerCase() == 'anons',
+  );
+}
+
+void navigateParentOrHome(BuildContext context) {
+  if (!context.mounted) return;
+  if (parentHasAnonsMenu()) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const StudentNotificationScreen()),
+    );
+  } else {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+  }
+}
+
 Future<void> navigateAfterSuccessfulLogin(
   BuildContext context, {
   String? currentPin,
@@ -35,18 +58,8 @@ Future<void> navigateAfterSuccessfulLogin(
   }
 
   if (globals.kvkk == '1') {
-    if (globals.globalKullaniciTipi == 'P' &&
-        globals.menuListesi.contains('Anons')) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const StudentNotificationScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    }
+    // Veli: Anons menüsü varsa anons, yoksa ana sayfa. Diğer roller: ana sayfa.
+    navigateParentOrHome(context);
   } else {
     Navigator.pushReplacement(
       context,

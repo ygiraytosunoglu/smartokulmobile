@@ -1,4 +1,6 @@
-﻿import 'package:firebase_messaging/firebase_messaging.dart';
+﻿import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:smart_okul_mobile/screens/forgot_password_screen.dart';
@@ -54,39 +56,18 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  Future<void> _initializeFirebaseMessaging() async {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-    var _token = await messaging.getToken();
-    print("FirebaseMessaging Token: $_token");
-
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
-    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-      print('User granted provisional permission');
-    } else {
-      print('User declined or has not accepted permission');
-    }
-
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Got a message whilst in the foreground!');
-      print('Message data: ${message.data}');
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('A new onMessageOpenedApp event was published!');
-      print('Message data: ${message.data}');
-    });
+  /// Girişi bloklamaz; FCM emülatörde AUTHENTICATION_FAILED verebilir.
+  void _registerFcmInBackground() {
+    unawaited(() async {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null && globals.kullaniciTCKN.isNotEmpty) {
+          await ApiService().registerFcmToken(globals.kullaniciTCKN, token);
+        }
+      } catch (e) {
+        Logger().w('FCM token atlandı (giriş etkilenmez)', error: e);
+      }
+    }());
   }
 
 
@@ -423,11 +404,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      /// 🔐 FCM TOKEN
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) {
-        await ApiService().registerFcmToken(globals.kullaniciTCKN, token);
-      }
+      // FCM girişten bağımsız — beklenmez, hata login'i düşürmez
+      _registerFcmInBackground();
 
       /// 🟡 1'DEN FAZLA OKUL → OKUL SEÇ
       if (sonuc == "SELECT_SCHOOL") {

@@ -1010,129 +1010,73 @@ await apiService.putRequest(
     return _asStudentMaps(response.data);
   }
 
-  /// Öğretmenin tüm sınıflarındaki öğrenciler (ödev / gelişim seçimi).
+  /// Öğretmenin SinifPerson ile bağlı sınıflarındaki öğrenciler.
+  /// Kaynak: GET /api/Teacher/getStudents (okul geneli getAll kullanılmaz).
   static Future<List<Map<String, dynamic>>> loadHomeworkStudents() async {
     final schoolId = int.tryParse(globals.globalSchoolId.toString());
-    final merged = <String, Map<String, dynamic>>{};
-
-    void upsert(
-      Map<String, dynamic> s, {
-      int? forceClassId,
-      String? forceClassName,
-    }) {
-      final tckn = s['TCKN']?.toString() ?? '';
-      if (tckn.isEmpty) return;
-      final prev = merged[tckn];
-      var classId = forceClassId ?? s['ClassId'] ?? prev?['ClassId'];
-      var className = (forceClassName ?? '').trim();
-      if (className.isEmpty) {
-        className = _classNameForId(classId);
-      }
-      if (className.isEmpty) {
-        className = (s['ClassName'] ?? prev?['ClassName'] ?? '').toString().trim();
-      }
-      merged[tckn] = {
-        ...?prev,
-        ...s,
-        'ClassId': classId,
-        'ClassName': className,
-      };
-    }
-
-    for (final s in globals.globalOgrenciListesi) {
-      upsert(s);
-    }
-
     try {
-      final fromTeacher = await getTeacherStudents(
+      final list = await getTeacherStudents(
         tckn: globals.kullaniciTCKN,
         schoolId: schoolId,
       );
-      for (final s in fromTeacher) {
-        upsert(s);
-      }
+      list.sort((a, b) {
+        final c = (a['ClassName'] ?? '')
+            .toString()
+            .compareTo((b['ClassName'] ?? '').toString());
+        if (c != 0) return c;
+        return (a['Name'] ?? '')
+            .toString()
+            .compareTo((b['Name'] ?? '').toString());
+      });
+      return list;
     } catch (e) {
       logger.w('getTeacherStudents: $e');
+      return [];
     }
+  }
 
-    if (schoolId != null && globals.globalSinifListesi.isNotEmpty) {
-      final perClass = <int, List<Map<String, dynamic>>>{};
-      for (final sinif in globals.globalSinifListesi) {
-        final classId = _parseClassId(sinif['Id']);
-        if (classId == null) continue;
-        try {
-          perClass[classId] = await getStudentsByClass(
-            schoolId: schoolId,
-            classId: classId,
-            className: (sinif['Ad'] ?? '').toString(),
-          );
-        } catch (e) {
-          logger.w('getStudentsByClass($classId): $e');
-        }
-      }
-
-      var leaky = false;
-      if (perClass.length >= 2) {
-        final sets = perClass.values
-            .map((l) => l
-                .map((s) => s['TCKN']?.toString() ?? '')
-                .where((t) => t.isNotEmpty)
-                .toSet())
-            .toList();
-        final union = <String>{};
-        for (final s in sets) {
-          union.addAll(s);
-        }
-        leaky = sets.every(
-              (s) => s.length == sets.first.length && s.containsAll(sets.first),
-            ) ||
-            (union.isNotEmpty &&
-                sets.any((s) => s.length >= union.length));
-      }
-
-      if (leaky) {
-        for (final list in perClass.values) {
-          for (final s in list) {
-            upsert(s);
-          }
-        }
-      } else {
-        for (final sinif in globals.globalSinifListesi) {
-          final classId = _parseClassId(sinif['Id']);
-          if (classId == null) continue;
-          final className = (sinif['Ad'] ?? '').toString().trim();
-          for (final s in perClass[classId] ?? const []) {
-            upsert(s, forceClassId: classId, forceClassName: className);
-          }
-        }
-      }
+  /// Öğretmenin ödev atayabileceği sınıflar.
+  static Future<List<Map<String, dynamic>>> getAssignableClasses({
+    String? tckn,
+  }) async {
+    final actor = (tckn ?? globals.kullaniciTCKN).trim();
+    try {
+      final response = await DioClient.instance.dio.get(
+        '/api/odev/assignable-classes',
+        queryParameters: {'tckn': actor},
+      );
+      final data = response.data;
+      if (data is! List) return [];
+      return data.whereType<Map>().map((e) {
+        final m = Map<String, dynamic>.from(e);
+        return {
+          'Id': jsonInt(m, 'id') ?? 0,
+          'Ad': jsonString(m, 'ad') ?? '',
+          'StudentCount': jsonInt(m, 'studentCount') ?? 0,
+        };
+      }).where((e) => (e['Id'] as int) > 0).toList();
+    } on DioException catch (e) {
+      logger.w('assignable-classes: ${e.response?.statusCode}');
+      // Fallback: login Classes
+      return globals.globalSinifListesi
+          .map((s) => {
+                'Id': jsonInt(s, 'id') ??
+                    int.tryParse(s['Id']?.toString() ?? '') ??
+                    0,
+                'Ad': (s['Ad'] ?? s['ad'] ?? '').toString(),
+                'StudentCount': 0,
+              })
+          .where((e) => (e['Id'] as int) > 0)
+          .toList();
     }
-
-    for (final s in merged.values) {
-      final fromId = _classNameForId(s['ClassId']);
-      if (fromId.isNotEmpty) {
-        s['ClassName'] = fromId;
-      }
-    }
-
-    final list = merged.values.toList();
-    list.sort((a, b) {
-      final c = (a['ClassName'] ?? '')
-          .toString()
-          .compareTo((b['ClassName'] ?? '').toString());
-      if (c != 0) return c;
-      return (a['Name'] ?? '')
-          .toString()
-          .compareTo((b['Name'] ?? '').toString());
-    });
-    return list;
   }
 
   Future<int?> addOdev({
     required String gonderenTckn,
-    required List<String> alanTcknList,
     required int dersId,
     required int schoolId,
+    List<String>? alanTcknList,
+    String? sinifIds,
     String? data,
     DateTime? expireDate,
     List<File>? files,
@@ -1144,17 +1088,18 @@ await apiService.putRequest(
 
       final request = http.MultipartRequest("POST", uri);
 
-      // 🔹 Zorunlu alanlar
       request.fields['gonderenTckn'] = gonderenTckn;
       request.fields['dersId'] = dersId.toString();
       request.fields['schoolId'] = schoolId.toString();
 
-      // 🔹 Liste alanı (alanTcknList)
-      for (int i = 0; i < alanTcknList.length; i++) {
-        request.fields['alanTcknList[$i]'] = alanTcknList[i];
+      final tckns = alanTcknList ?? const <String>[];
+      for (int i = 0; i < tckns.length; i++) {
+        request.fields['alanTcknList[$i]'] = tckns[i];
+      }
+      if (sinifIds != null && sinifIds.trim().isNotEmpty) {
+        request.fields['sinifIds'] = sinifIds.trim();
       }
 
-      // 🔹 Opsiyonel alanlar
       if (data != null) {
         request.fields['data'] = data;
       }
@@ -1169,7 +1114,6 @@ await apiService.putRequest(
         request.fields['konuId'] = konuId.toString();
       }
 
-      // 🔹 Dosyalar
       if (files != null && files.isNotEmpty) {
         for (var file in files) {
           request.files.add(
@@ -1183,17 +1127,19 @@ await apiService.putRequest(
       }
 
       final streamedResponse = await ApiService._http.send(request);
-      final response =
-      await http.Response.fromStream(streamedResponse);
+      final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        return body['id'] ?? jsonInt(body is Map ? body : {}, 'id');
-      } else {
-        throw Exception(
-            "addOdev başarısız. StatusCode: ${response.statusCode} Body: ${response.body}");
+        if (body is Map) {
+          return body['id'] ?? jsonInt(body, 'id');
+        }
+        return null;
       }
+      final msg = _extractApiMessage(response.body);
+      throw Exception(msg.isNotEmpty ? msg : 'ERR_IC_SUNUCU_HATASI');
     } catch (e) {
-      throw Exception("addOdev hatası: $e");
+      if (e is Exception) rethrow;
+      throw Exception('addOdev hatası: $e');
     }
   }
 
@@ -2929,7 +2875,17 @@ await apiService.putRequest(
 
   static String _extractApiMessage(dynamic data) {
     if (data == null) return '';
-    if (data is String) return data.trim();
+    if (data is String) {
+      final s = data.trim();
+      if (s.startsWith('{') || s.startsWith('[')) {
+        try {
+          return _extractApiMessage(jsonDecode(s));
+        } catch (_) {
+          return s;
+        }
+      }
+      return s;
+    }
     if (data is Map) {
       return (jsonField(data, 'message') ?? data['message'] ?? '').toString().trim();
     }

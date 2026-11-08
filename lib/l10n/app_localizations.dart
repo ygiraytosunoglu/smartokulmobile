@@ -384,6 +384,108 @@ abstract class AppLocalizations {
   /// **'Bildirim gönderilemedi'**
   String get notificationFailMsg;
 
+  /// No description provided for @announcementListTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru Listesi'**
+  String get announcementListTitle;
+
+  /// No description provided for @announcementDetailTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru Detayı'**
+  String get announcementDetailTitle;
+
+  /// No description provided for @announcementCopied.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru kopyalandı'**
+  String get announcementCopied;
+
+  /// No description provided for @newAnnouncement.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeni Duyuru'**
+  String get newAnnouncement;
+
+  /// No description provided for @sendAnnouncement.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru Gönder'**
+  String get sendAnnouncement;
+
+  /// No description provided for @sendingAnnouncement.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru Gönderiliyor...'**
+  String get sendingAnnouncement;
+
+  /// No description provided for @announcementTitleLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru Başlığı'**
+  String get announcementTitleLabel;
+
+  /// No description provided for @announcementMessageLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru Mesajı'**
+  String get announcementMessageLabel;
+
+  /// No description provided for @titleRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Başlık gerekli'**
+  String get titleRequired;
+
+  /// No description provided for @messageRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Mesaj gerekli'**
+  String get messageRequired;
+
+  /// No description provided for @announcementSentSuccess.
+  ///
+  /// In tr, this message translates to:
+  /// **'Duyuru(lar) başarıyla gönderildi'**
+  String get announcementSentSuccess;
+
+  /// No description provided for @fillFieldsSelectStudent.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen tüm alanları doldurun ve öğrenci seçin'**
+  String get fillFieldsSelectStudent;
+
+  /// No description provided for @fillFieldsSelectClass.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen tüm alanları doldurun ve sınıf seçin'**
+  String get fillFieldsSelectClass;
+
+  /// No description provided for @selectTeacherPlease.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen bir öğretmen seçin'**
+  String get selectTeacherPlease;
+
+  /// No description provided for @enterTitleAndMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Lütfen başlık ve mesaj girin'**
+  String get enterTitleAndMessage;
+
+  /// No description provided for @senderLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Gönderen'**
+  String get senderLabel;
+
+  /// No description provided for @onlyTeachersAdminsCanNotify.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!'**
+  String get onlyTeachersAdminsCanNotify;
+
   /// No description provided for @teachersTitle.
   ///
   /// In tr, this message translates to:
@@ -983,6 +1085,54 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Ders'**
   String get lesson;
+
+  /// No description provided for @search.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ara'**
+  String get search;
+
+  /// No description provided for @noStudentsFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğrenci bulunamadı'**
+  String get noStudentsFound;
+
+  /// No description provided for @learningArea.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğrenme Alanı'**
+  String get learningArea;
+
+  /// No description provided for @topic.
+  ///
+  /// In tr, this message translates to:
+  /// **'Konu'**
+  String get topic;
+
+  /// No description provided for @learningAreaOptional.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğrenme Alanı (opsiyonel)'**
+  String get learningAreaOptional;
+
+  /// No description provided for @topicOptional.
+  ///
+  /// In tr, this message translates to:
+  /// **'Konu (opsiyonel)'**
+  String get topicOptional;
+
+  /// No description provided for @learningAreaRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Öğrenme Alanı *'**
+  String get learningAreaRequired;
+
+  /// No description provided for @topicRequired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Konu *'**
+  String get topicRequired;
 
   /// No description provided for @dueDate.
   ///

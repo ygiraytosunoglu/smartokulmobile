@@ -11,6 +11,7 @@ import '../models/ders_catalog.dart';
 import '../services/api_service.dart';
 import '../globals.dart' as globals;
 import '../utils/chat_attachment.dart';
+import '../utils/error_translator.dart';
 
 class YeniOdevScreen extends StatefulWidget {
   const YeniOdevScreen({Key? key}) : super(key: key);
@@ -35,11 +36,22 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
   final TextEditingController aciklamaCtrl = TextEditingController();
   final TextEditingController expireCtrl = TextEditingController();
 
+  /// 0 = Öğrenciler, 1 = Sınıflar
+  int _aliciTab = 0;
+
   /// 👨‍🎓 Öğrenciler
   List<Map<String, dynamic>> ogrenciler = [];
   late Map<String, bool> ogrenciSecim;
   bool hepsiSecili = true;
   bool ogrenciLoading = true;
+  final TextEditingController _ogrenciAramaCtrl = TextEditingController();
+  String _ogrenciArama = '';
+
+  /// 🏫 Sınıflar (assignable-classes)
+  List<Map<String, dynamic>> _siniflar = [];
+  final Map<int, bool> _sinifSecim = {};
+  bool _sinifLoading = true;
+  bool _sinifHepsi = false;
 
   /// 📎 Dosyalar
   List<File> selectedFiles = [];
@@ -51,23 +63,44 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
     ogrenciSecim = {};
     _loadDersler();
     _loadOgrenciler();
+    _loadSiniflar();
   }
+
+  List<String> get _secilenOgrenciTcknleri => ogrenciSecim.entries
+      .where((e) => e.value)
+      .map((e) => ApiService.fullStudentTckn(e.key))
+      .toList();
+
+  List<int> get _secilenSinifIdleri => _sinifSecim.entries
+      .where((e) => e.value)
+      .map((e) => e.key)
+      .toList();
+
+  String? get _sinifIdsParam {
+    final ids = _secilenSinifIdleri;
+    if (ids.isEmpty) return null;
+    return ids.join(',');
+  }
+
+  bool get _aliciVar =>
+      _secilenOgrenciTcknleri.isNotEmpty || _secilenSinifIdleri.isNotEmpty;
 
   Future<void> _kaydet() async {
     if (_kaydediliyor) return;
-    final List<String> secilenOgrenciler = ogrenciSecim.entries
-        .where((e) => e.value)
-        .map((e) => e.key)
-        .toList();
 
     if (seciliDers == null ||
         aciklamaCtrl.text.trim().isEmpty ||
-        expireCtrl.text.isEmpty ||
-        secilenOgrenciler.isEmpty) {
+        expireCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.fillRequiredFields),
         ),
+      );
+      return;
+    }
+    if (!_aliciVar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('En az bir öğrenci veya sınıf seçiniz')),
       );
       return;
     }
@@ -77,7 +110,9 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
       final expireDate = DateFormat('dd-MM-yyyy').parse(expireCtrl.text);
       await ApiService().addOdev(
         gonderenTckn: globals.kullaniciTCKN,
-        alanTcknList: secilenOgrenciler,
+        alanTcknList:
+            _secilenOgrenciTcknleri.isEmpty ? null : _secilenOgrenciTcknleri,
+        sinifIds: _sinifIdsParam,
         dersId: seciliDers['Id'],
         schoolId: int.parse(globals.globalSchoolId.toString()),
         data: jsonEncode({
@@ -95,10 +130,31 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
       setState(() => _kaydediliyor = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(translateError(e.toString(), context)),
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _loadSiniflar() async {
+    try {
+      final list = await ApiService.getAssignableClasses();
+      if (!mounted) return;
+      setState(() {
+        _siniflar = list;
+        _sinifSecim
+          ..clear()
+          ..addEntries(list.map((s) => MapEntry(s['Id'] as int, false)));
+        _sinifHepsi = false;
+        _sinifLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _siniflar = [];
+        _sinifLoading = false;
+      });
     }
   }
 
@@ -146,6 +202,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
   Future<void> _loadOgrenciler() async {
     try {
+      // Sadece öğretmenin öğrencileri: /api/Teacher/getStudents
       final data = await ApiService.loadHomeworkStudents();
       if (!mounted) return;
       setState(() {
@@ -159,13 +216,9 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        ogrenciler = List<Map<String, dynamic>>.from(
-          globals.globalOgrenciListesi,
-        );
-        ogrenciSecim = {
-          for (var o in ogrenciler) o['TCKN'].toString(): true,
-        };
-        hepsiSecili = ogrenciler.isNotEmpty;
+        ogrenciler = [];
+        ogrenciSecim = {};
+        hepsiSecili = false;
         ogrenciLoading = false;
       });
     }
@@ -189,64 +242,332 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
     }
   }
 
-  void _hepsiDurumunuGuncelle() {
-    hepsiSecili = ogrenciSecim.values.every((v) => v);
+  String _ogrenciSinifAdi(Map ogr) {
+    final direct = (ogr['ClassName'] ??
+            ogr['className'] ??
+            ogr['SinifAdi'] ??
+            ogr['sinifAdi'] ??
+            ogr['sinifAd'] ??
+            '')
+        .toString()
+        .trim();
+    if (direct.isNotEmpty) return direct;
+
+    final classId = ogr['ClassId'] ?? ogr['classId'] ?? ogr['SinifId'];
+    final cid = classId is int
+        ? classId
+        : int.tryParse(classId?.toString().split('.').first ?? '');
+    if (cid == null) return '';
+    for (final s in globals.globalSinifListesi) {
+      final sid = s['Id'] ?? s['id'];
+      final parsed = sid is int
+          ? sid
+          : int.tryParse(sid?.toString().split('.').first ?? '');
+      if (parsed == cid) {
+        return (s['Ad'] ?? s['ad'] ?? '').toString().trim();
+      }
+    }
+    return '';
   }
 
-  List<Widget> _ogrenciCheckboxlari() {
-    final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final ogr in ogrenciler) {
-      final sinif = (ogr['ClassName'] ?? '').toString().trim();
-      final key = sinif.isEmpty ? 'Diğer' : sinif;
-      grouped.putIfAbsent(key, () => []).add(ogr);
-    }
+  int? _ogrenciSinifId(Map ogr) {
+    final classId = ogr['ClassId'] ?? ogr['classId'] ?? ogr['SinifId'];
+    if (classId is int) return classId;
+    if (classId is num) return classId.toInt();
+    return int.tryParse(classId?.toString().split('.').first ?? '');
+  }
 
-    final widgets = <Widget>[];
-    for (final entry in grouped.entries) {
-      if (grouped.length > 1) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                entry.key,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+  List<Map<String, dynamic>> get _filtrelenmisOgrenciler {
+    final q = _ogrenciArama.trim().toLowerCase();
+    if (q.isEmpty) return ogrenciler;
+    return ogrenciler.where((o) {
+      final name = (o['Name'] ?? '').toString().toLowerCase();
+      final sinif = _ogrenciSinifAdi(o).toLowerCase();
+      final tckn = (o['TCKN'] ?? '').toString().toLowerCase();
+      return name.contains(q) || sinif.contains(q) || tckn.contains(q);
+    }).toList();
+  }
+
+  /// Filtrelenmiş öğrenciler — classId / className kırılımı
+  List<MapEntry<String, List<Map<String, dynamic>>>> get _ogrenciSinifKirilim {
+    final byKey = <String, List<Map<String, dynamic>>>{};
+    final titles = <String, String>{};
+    for (final o in _filtrelenmisOgrenciler) {
+      final id = _ogrenciSinifId(o);
+      final ad = _ogrenciSinifAdi(o);
+      final key = id != null
+          ? 'id_$id'
+          : (ad.isNotEmpty ? 'ad_${ad.toLowerCase()}' : 'none');
+      titles.putIfAbsent(key, () => ad.isNotEmpty ? ad : '—');
+      byKey.putIfAbsent(key, () => []).add(o);
+    }
+    final entries = byKey.entries.toList()
+      ..sort((a, b) {
+        if (a.key == 'none') return 1;
+        if (b.key == 'none') return -1;
+        return (titles[a.key] ?? '')
+            .toLowerCase()
+            .compareTo((titles[b.key] ?? '').toLowerCase());
+      });
+    return [
+      for (final e in entries) MapEntry(titles[e.key] ?? e.key, e.value),
+    ];
+  }
+
+  void _hepsiDurumunuGuncelle() {
+    final list = _filtrelenmisOgrenciler;
+    hepsiSecili = list.isNotEmpty &&
+        list.every((o) => ogrenciSecim[o['TCKN'].toString()] == true);
+  }
+
+  void _sinifHepsiDurumunuGuncelle() {
+    _sinifHepsi =
+        _sinifSecim.isNotEmpty && _sinifSecim.values.every((v) => v);
+  }
+
+  void _toggleSinifOgrencileri(
+    List<Map<String, dynamic>> liste,
+    bool? value,
+  ) {
+    final sec = value ?? false;
+    setState(() {
+      for (final o in liste) {
+        ogrenciSecim[o['TCKN'].toString()] = sec;
+      }
+      _hepsiDurumunuGuncelle();
+    });
+  }
+
+  List<Widget> _ogrenciSinifGruplari() {
+    final l10n = AppLocalizations.of(context)!;
+    return _ogrenciSinifKirilim.map((entry) {
+      final sinifAdi = entry.key;
+      final liste = entry.value;
+      final hepsi = liste.isNotEmpty &&
+          liste.every((o) => ogrenciSecim[o['TCKN'].toString()] == true);
+      final kismi = !hepsi &&
+          liste.any((o) => ogrenciSecim[o['TCKN'].toString()] == true);
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          title: Text(
+            '$sinifAdi  (${liste.length})',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          children: [
+            CheckboxListTile(
+              dense: true,
+              title: Text(l10n.allOfThem),
+              tristate: true,
+              value: hepsi ? true : (kismi ? null : false),
+              onChanged: (v) => _toggleSinifOgrencileri(liste, v ?? false),
+            ),
+            ...liste.map((ogr) {
+              final tckn = ogr['TCKN'].toString();
+              return CheckboxListTile(
+                dense: true,
+                title: Text(ogr['Name']?.toString() ?? ''),
+                value: ogrenciSecim[tckn] ?? false,
+                onChanged: (v) {
+                  setState(() {
+                    ogrenciSecim[tckn] = v ?? false;
+                    _hepsiDurumunuGuncelle();
+                  });
+                },
+              );
+            }),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _sinifCheckboxlari() {
+    return _siniflar.map((s) {
+      final id = s['Id'] as int;
+      final ad = (s['Ad'] ?? '').toString();
+      final count = s['StudentCount'] as int? ?? 0;
+      return CheckboxListTile(
+        dense: true,
+        title: Text(ad),
+        subtitle: Text(
+          count > 0 ? '$count öğrenci' : 'Öğrenci sayısı bilinmiyor',
+        ),
+        value: _sinifSecim[id] ?? false,
+        onChanged: (v) {
+          setState(() {
+            _sinifSecim[id] = v ?? false;
+            _sinifHepsiDurumunuGuncelle();
+          });
+        },
+      );
+    }).toList();
+  }
+
+  Widget _aliciBolumu() {
+    final loading = _aliciTab == 0 ? ogrenciLoading : _sinifLoading;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Alıcılar',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 0, label: Text('Öğrenciler'), icon: Icon(Icons.person)),
+            ButtonSegment(value: 1, label: Text('Sınıflar'), icon: Icon(Icons.groups)),
+          ],
+          selected: {_aliciTab},
+          onSelectionChanged: (s) => setState(() => _aliciTab = s.first),
+        ),
+        const SizedBox(height: 8),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_aliciTab == 0) ...[
+          if (ogrenciler.isEmpty)
+            Text(
+              AppLocalizations.of(context)!.noStudentsFound,
+              style: const TextStyle(color: Colors.white70),
+            )
+          else ...[
+            TextField(
+              controller: _ogrenciAramaCtrl,
+              onChanged: (v) {
+                setState(() {
+                  _ogrenciArama = v;
+                  _hepsiDurumunuGuncelle();
+                });
+              },
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context)!.search,
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _ogrenciArama.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _ogrenciAramaCtrl.clear();
+                          setState(() {
+                            _ogrenciArama = '';
+                            _hepsiDurumunuGuncelle();
+                          });
+                        },
+                      ),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              title: Text(AppLocalizations.of(context)!.allOfThem),
+              subtitle: Text(
+                '${_filtrelenmisOgrenciler.length} / ${ogrenciler.length} öğrenci',
+              ),
+              value: hepsiSecili,
+              tileColor: Colors.white.withValues(alpha: 0.9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onChanged: _filtrelenmisOgrenciler.isEmpty
+                  ? null
+                  : (v) {
+                      setState(() {
+                        hepsiSecili = v ?? false;
+                        for (final o in _filtrelenmisOgrenciler) {
+                          ogrenciSecim[o['TCKN'].toString()] = hepsiSecili;
+                        }
+                      });
+                    },
+            ),
+            const SizedBox(height: 4),
+            if (_filtrelenmisOgrenciler.isEmpty)
+              Text(
+                AppLocalizations.of(context)!.noStudentsFound,
+                style: const TextStyle(color: Colors.white70),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(children: _ogrenciSinifGruplari()),
+              ),
+          ],
+        ] else ...[
+          if (_siniflar.isEmpty)
+            const Text('Atanabilir sınıf bulunamadı',
+                style: TextStyle(color: Colors.white70))
+          else ...[
+            CheckboxListTile(
+              title: Text(AppLocalizations.of(context)!.allOfThem),
+              subtitle: Text('${_siniflar.length} sınıf'),
+              value: _sinifHepsi,
+              tileColor: Colors.white.withValues(alpha: 0.9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onChanged: (v) {
+                setState(() {
+                  _sinifHepsi = v ?? false;
+                  for (final id in _sinifSecim.keys) {
+                    _sinifSecim[id] = _sinifHepsi;
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 4),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(children: _sinifCheckboxlari()),
+            ),
+          ],
+        ],
+        if (_aliciVar)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              [
+                if (_secilenOgrenciTcknleri.isNotEmpty)
+                  '${_secilenOgrenciTcknleri.length} öğrenci',
+                if (_secilenSinifIdleri.isNotEmpty)
+                  '${_secilenSinifIdleri.length} sınıf',
+              ].join(' · '),
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
           ),
-        );
-      }
-      for (final ogr in entry.value) {
-        final tckn = ogr['TCKN'].toString();
-        widgets.add(
-          CheckboxListTile(
-            title: Text(ogr['Name'] ?? ''),
-            subtitle: grouped.length == 1 &&
-                    (ogr['ClassName'] ?? '').toString().isNotEmpty
-                ? Text(ogr['ClassName'].toString())
-                : null,
-            value: ogrenciSecim[tckn] ?? false,
-            onChanged: (v) {
-              setState(() {
-                ogrenciSecim[tckn] = v!;
-                _hepsiDurumunuGuncelle();
-              });
-            },
-          ),
-        );
-      }
-    }
-    return widgets;
+      ],
+    );
   }
 
   @override
   void dispose() {
     aciklamaCtrl.dispose();
     expireCtrl.dispose();
+    _ogrenciAramaCtrl.dispose();
     super.dispose();
   }
 
@@ -271,8 +592,10 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
         ),
         child: dersLoading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+            : SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
             children: [
               /// 📘 Ders
@@ -296,9 +619,9 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
               DropdownButtonFormField<int>(
                 value: _temalar.any((t) => t.id == _temaId) ? _temaId : null,
-                decoration: const InputDecoration(
-                  labelText: 'Öğrenme Alanı (opsiyonel)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.learningAreaOptional,
+                  border: const OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
                 ),
@@ -317,9 +640,9 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
               DropdownButtonFormField<int>(
                 value: _konular.any((k) => k.id == _konuId) ? _konuId : null,
-                decoration: const InputDecoration(
-                  labelText: 'Konu (opsiyonel)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.topicOptional,
+                  border: const OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
                 ),
@@ -422,25 +745,8 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
 
               const SizedBox(height: 16),
 
-              /// 👥 Öğrenciler
-              if (ogrenciLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else ...[
-                CheckboxListTile(
-                  title: Text(AppLocalizations.of(context)!.allOfThem),
-                  value: hepsiSecili,
-                  onChanged: (v) {
-                    setState(() {
-                      hepsiSecili = v!;
-                      ogrenciSecim.updateAll((key, value) => hepsiSecili);
-                    });
-                  },
-                ),
-                ..._ogrenciCheckboxlari(),
-              ],
+              /// 👥 Alıcılar: Öğrenciler | Sınıflar
+              _aliciBolumu(),
 
               const SizedBox(height: 24),
 
@@ -449,7 +755,8 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: AppStyles.buttonStyle,
-                  onPressed: _kaydediliyor ? null : _kaydet,
+                  onPressed:
+                      (_kaydediliyor || !_aliciVar) ? null : _kaydet,
                   child: Text(
                     _kaydediliyor
                         ? 'Kaydediliyor...'
@@ -459,6 +766,7 @@ class _YeniOdevScreenState extends State<YeniOdevScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

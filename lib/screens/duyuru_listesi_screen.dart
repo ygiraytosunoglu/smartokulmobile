@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen_m.dart';
 import 'package:smart_okul_mobile/screens/send_notification_screen_p.dart';
@@ -173,16 +174,17 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
       });
     }
 
+    final l10n = AppLocalizations.of(context)!;
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Duyuru Detayı'),
+        title: Text(l10n.announcementDetailTitle),
         content: SingleChildScrollView(
           child: GestureDetector(
             onLongPress: () {
               Clipboard.setData(ClipboardData(text: duyuru['Data']));
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Duyuru kopyalandı')),
+                SnackBar(content: Text(l10n.announcementCopied)),
               );
             },
             child: Linkify(
@@ -204,7 +206,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Tamam'),
+            child: Text(l10n.ok),
           ),
         ],
       ),
@@ -213,11 +215,12 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title:
         Text(
-            'Duyuru Listesi',
+            l10n.announcementListTitle,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -251,7 +254,7 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
                   style: AppStyles.buttonStyle,
                   icon: Icon(Icons.send),
                   label: Text(
-                    "Yeni Duyuru",
+                    l10n.newAnnouncement,
                     style: AppStyles.buttonTextStyle,
                   ),
                   onPressed: () {
@@ -315,9 +318,9 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Gönderen: ${duyuru['GonderenAdi']}',
+                            Text('${l10n.senderLabel}: ${duyuru['GonderenAdi']}',
                                 style: TextStyle(color: renk)),
-                            Text('Tarih: $tarih',
+                            Text('${l10n.date}: $tarih',
                                 style: TextStyle(color: renk)),
                           ],
                         ),
@@ -351,7 +354,10 @@ class _DuyuruListesiScreenState extends State<DuyuruListesiScreen> {
             MaterialPageRoute(builder: (context) => SendNotificationScreenP()));
       }
     } else {
-      _pencereAc(context, "Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!");
+      _pencereAc(
+        context,
+        AppLocalizations.of(context)!.onlyTeachersAdminsCanNotify,
+      );
     }
   }
 

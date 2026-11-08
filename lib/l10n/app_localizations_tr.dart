@@ -150,6 +150,60 @@ class AppLocalizationsTr extends AppLocalizations {
   String get notificationFailMsg => 'Bildirim gönderilemedi';
 
   @override
+  String get announcementListTitle => 'Duyuru Listesi';
+
+  @override
+  String get announcementDetailTitle => 'Duyuru Detayı';
+
+  @override
+  String get announcementCopied => 'Duyuru kopyalandı';
+
+  @override
+  String get newAnnouncement => 'Yeni Duyuru';
+
+  @override
+  String get sendAnnouncement => 'Duyuru Gönder';
+
+  @override
+  String get sendingAnnouncement => 'Duyuru Gönderiliyor...';
+
+  @override
+  String get announcementTitleLabel => 'Duyuru Başlığı';
+
+  @override
+  String get announcementMessageLabel => 'Duyuru Mesajı';
+
+  @override
+  String get titleRequired => 'Başlık gerekli';
+
+  @override
+  String get messageRequired => 'Mesaj gerekli';
+
+  @override
+  String get announcementSentSuccess => 'Duyuru(lar) başarıyla gönderildi';
+
+  @override
+  String get fillFieldsSelectStudent =>
+      'Lütfen tüm alanları doldurun ve öğrenci seçin';
+
+  @override
+  String get fillFieldsSelectClass =>
+      'Lütfen tüm alanları doldurun ve sınıf seçin';
+
+  @override
+  String get selectTeacherPlease => 'Lütfen bir öğretmen seçin';
+
+  @override
+  String get enterTitleAndMessage => 'Lütfen başlık ve mesaj girin';
+
+  @override
+  String get senderLabel => 'Gönderen';
+
+  @override
+  String get onlyTeachersAdminsCanNotify =>
+      'Sadece öğretmenler ve yöneticiler velilere bildirim gönderebilir!';
+
+  @override
   String get teachersTitle => 'Öğretmenler';
 
   @override
@@ -460,6 +514,30 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get lesson => 'Ders';
+
+  @override
+  String get search => 'Ara';
+
+  @override
+  String get noStudentsFound => 'Öğrenci bulunamadı';
+
+  @override
+  String get learningArea => 'Öğrenme Alanı';
+
+  @override
+  String get topic => 'Konu';
+
+  @override
+  String get learningAreaOptional => 'Öğrenme Alanı (opsiyonel)';
+
+  @override
+  String get topicOptional => 'Konu (opsiyonel)';
+
+  @override
+  String get learningAreaRequired => 'Öğrenme Alanı *';
+
+  @override
+  String get topicRequired => 'Konu *';
 
   @override
   String get dueDate => 'Son Teslim Tarihi';

@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
@@ -57,9 +58,10 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     if (_isSending) return; // 🔹 Çift tıklamayı engelle
     setState(() => _isSending = true); // 🔹 butonu devre dışı yap
 
+    final l10n = AppLocalizations.of(context)!;
     if (selectedOgretmen == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen bir öğretmen seçin')),
+        SnackBar(content: Text(l10n.selectTeacherPlease)),
       );
       setState(() => _isSending = false);
       return;
@@ -67,7 +69,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen başlık ve mesaj girin')),
+        SnackBar(content: Text(l10n.enterTitleAndMessage)),
       );
       setState(() => _isSending = false);
       return;
@@ -82,13 +84,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Bilidirim başarıyla gönderildi',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text(l10n.announcementSentSuccess, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.green),
       );
 
       _titleController.clear();
@@ -117,10 +113,11 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            'Duyuru Gönder',
+            l10n.sendAnnouncement,
             textAlign: TextAlign.center,
             style: AppStyles.titleLarge
         ),
@@ -162,7 +159,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                             size: 64, color: AppColors.primary),
                         const SizedBox(height: 24),
                         Text(
-                          'Yeni Duyuru',
+                          l10n.newAnnouncement,
                           style: Theme.of(context)
                               .textTheme
                               .titleLarge
@@ -176,22 +173,22 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
                         TextFormField(
                           controller: _titleController,
-                          decoration: const InputDecoration(
-                            labelText: 'Duyuru Başlığı',
+                          decoration: InputDecoration(
+                            labelText: l10n.announcementTitleLabel,
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.title),
                           ),
                           validator: (value) =>
                           value == null || value.isEmpty
-                              ? 'Başlık gerekli'
+                              ? l10n.titleRequired
                               : null,
                         ),
                         const SizedBox(height: 16),
 
                         TextFormField(
                           controller: _messageController,
-                          decoration: const InputDecoration(
-                            labelText: 'Duyuru Mesajı',
+                          decoration: InputDecoration(
+                            labelText: l10n.announcementMessageLabel,
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.message),
                             alignLabelWithHint: true,
@@ -199,15 +196,15 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           maxLines: 5,
                           validator: (value) =>
                           value == null || value.isEmpty
-                              ? 'Mesaj gerekli'
+                              ? l10n.messageRequired
                               : null,
                         ),
                         const SizedBox(height: 20),
 
                         if (uniqueOgretmenList.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Text('Öğretmen bulunamadı.'),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(l10n.teacherNotFound),
                           )
                         else
                           ...uniqueOgretmenList.map((ogrenci) {
@@ -236,8 +233,8 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           ),
                           child: Text(
                             _isSending
-                                ? 'Duyuru Gönderiliyor...' // 🔹 Buton metni değişiyor
-                                : 'Duyuru Gönder',
+                                ? l10n.sendingAnnouncement
+                                : l10n.sendAnnouncement,
                             style: const TextStyle(fontSize: 16),
                           ),
                         ),
@@ -262,6 +259,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 }
 
 /*import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
@@ -318,14 +316,14 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   Future<void> _sendNotification() async {
     if (selectedOgretmen == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen bir öğretmen seçin')),
+        SnackBar(content: Text(l10n.selectTeacherPlease)),
       );
       return;
     }
 
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen başlık ve mesaj girin')),
+        SnackBar(content: Text(l10n.enterTitleAndMessage)),
       );
       return;
     }
@@ -372,6 +370,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text('Mesaj Gönder'),
@@ -430,36 +429,36 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
                         TextFormField(
                           controller: _titleController,
-                          decoration: const InputDecoration(
-                            labelText: 'Duyuru Başlığı',
+                          decoration: InputDecoration(
+                            labelText: l10n.announcementTitleLabel,
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.title),
                           ),
                           validator: (value) => value == null || value.isEmpty
-                              ? 'Başlık gerekli'
+                              ? l10n.titleRequired
                               : null,
                         ),
                         const SizedBox(height: 16),
 
                         TextFormField(
                           controller: _messageController,
-                          decoration: const InputDecoration(
-                            labelText: 'Duyuru Mesajı',
+                          decoration: InputDecoration(
+                            labelText: l10n.announcementMessageLabel,
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.message),
                             alignLabelWithHint: true,
                           ),
                           maxLines: 5,
                           validator: (value) => value == null || value.isEmpty
-                              ? 'Mesaj gerekli'
+                              ? l10n.messageRequired
                               : null,
                         ),
                         const SizedBox(height: 20),
 
                         if (uniqueOgretmenList.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Text('Öğretmen bulunamadı.'),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(l10n.teacherNotFound),
                           )
                         else
                           ...uniqueOgretmenList.map((ogrenci) {
@@ -513,6 +512,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 }*/
 
 /*import 'package:flutter/material.dart';
+import 'package:smart_okul_mobile/l10n/app_localizations.dart';
 import 'package:smart_okul_mobile/screens/home_screen.dart';
 import '../services/api_service.dart';
 import '../constants.dart';
@@ -585,14 +585,14 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
     if (selectedOgretmen == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen bir öğretmen seçin')),
+        SnackBar(content: Text(l10n.selectTeacherPlease)),
       );
       return;
     }
 
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen başlık ve mesaj girin')),
+        SnackBar(content: Text(l10n.enterTitleAndMessage)),
       );
       return;
     }
@@ -640,6 +640,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text('Mesaj Gönder'),
@@ -692,13 +693,13 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Duyuru Başlığı',
+                          labelText: l10n.announcementTitleLabel,
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.title),
                         ),
                         validator: (value) =>
                         value == null || value.isEmpty
-                            ? 'Başlık gerekli'
+                            ? l10n.titleRequired
                             : null,
                       ),
                       const SizedBox(height: 16),
@@ -707,7 +708,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
-                          labelText: 'Duyuru Mesajı',
+                          labelText: l10n.announcementMessageLabel,
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.message),
                           alignLabelWithHint: true,
@@ -715,7 +716,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                         maxLines: 5,
                         validator: (value) =>
                         value == null || value.isEmpty
-                            ? 'Mesaj gerekli'
+                            ? l10n.messageRequired
                             : null,
                       ),
                       const SizedBox(height: 20),
@@ -724,7 +725,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       if (uniqueOgretmenList.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Öğretmen bulunamadı.'),
+                          child: Text(l10n.teacherNotFound),
                         )
                       else
                       // Radio buton listesi (sadece TeacherName, tekrarsız)
@@ -909,7 +910,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           size: 64, color: AppColors.primary),
                       const SizedBox(height: 24),
                       Text(
-                        'Yeni Duyuru',
+                        l10n.newAnnouncement,
                         style: Theme.of(context)
                             .textTheme
                             .titleLarge
@@ -925,13 +926,13 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Duyuru Başlığı',
+                          labelText: l10n.announcementTitleLabel,
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.title),
                         ),
                         validator: (value) =>
                         value == null || value.isEmpty
-                            ? 'Başlık gerekli'
+                            ? l10n.titleRequired
                             : null,
                       ),
                       const SizedBox(height: 16),
@@ -940,7 +941,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
-                          labelText: 'Duyuru Mesajı',
+                          labelText: l10n.announcementMessageLabel,
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.message),
                           alignLabelWithHint: true,
@@ -948,7 +949,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                         maxLines: 5,
                         validator: (value) =>
                         value == null || value.isEmpty
-                            ? 'Mesaj gerekli'
+                            ? l10n.messageRequired
                             : null,
                       ),
                       const SizedBox(height: 20),

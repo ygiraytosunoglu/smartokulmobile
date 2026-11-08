@@ -355,6 +355,19 @@ class _OdevScreenState extends State<OdevScreen> {
     return raw.trim();
   }
 
+  String getOdevSinifAdlari(Map odev) {
+    final raw = jsonField(odev, 'siniflar') ?? jsonField(odev, 'Siniflar');
+    if (raw is! List || raw.isEmpty) return '';
+    final names = <String>[];
+    for (final e in raw) {
+      if (e is! Map) continue;
+      final m = Map<String, dynamic>.from(e);
+      final ad = jsonString(m, 'ad') ?? '';
+      if (ad.isNotEmpty) names.add(ad);
+    }
+    return names.join(', ');
+  }
+
   Future<void> _odevDetayAc(Map odev) async {
     final id = jsonInt(odev, 'id');
     if (id == null) return;
@@ -576,7 +589,9 @@ class _OdevScreenState extends State<OdevScreen> {
             ],
           ),
         ),
-        child: Column(
+        child: SafeArea(
+          top: false,
+          child: Column(
           children: [
             // ✅ YENİ ÖDEV EKLE BUTONU
             if (globals.globalKullaniciTipi == "T")
@@ -588,8 +603,6 @@ class _OdevScreenState extends State<OdevScreen> {
                     onPressed: dersLoading
                         ? null
                         : () async {
-                      /*await _showYeniOdevDialog();
-                      _loadOdevler();*/
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -598,7 +611,7 @@ class _OdevScreenState extends State<OdevScreen> {
                       );
 
                       if (result == true) {
-                        _loadOdevler(); // geri dönünce listeyi yenile
+                        _loadOdevler();
                       }
                     },
                     icon: const Icon(Icons.add, color: AppColors.onPrimary),
@@ -683,6 +696,22 @@ class _OdevScreenState extends State<OdevScreen> {
                                 jsonString(odev, 'konu')!,
                                 style: const TextStyle(fontSize: 12),
                               ),
+                            if (getOdevSinifAdlari(odev).isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  'Sınıf: ${getOdevSinifAdlari(odev)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            else if (jsonInt(odev, 'aliciSayisi') != null)
+                              Text(
+                                'Alıcı: ${jsonInt(odev, 'aliciSayisi')}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             if ((jsonString(odev, 'onayDurumText') ?? '')
                                 .isNotEmpty)
                               Text(
@@ -728,6 +757,7 @@ class _OdevScreenState extends State<OdevScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
