@@ -28,11 +28,7 @@ class _DevamDurumuScreenState extends State<DevamDurumuScreen> {
     _getDevamDurumu();
   }
 
-  String _plainTckn(String raw) {
-    final t = raw.trim();
-    if (t.isEmpty) return t;
-    return t.contains('_') ? t.split('_').first : t;
-  }
+  String _plainTckn(String raw) => raw.trim();
 
   void _getOgrenciAdi() {
     final hedef = _plainTckn(widget.tckn);

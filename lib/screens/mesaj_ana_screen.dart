@@ -59,7 +59,7 @@ class _MesajAnaScreenState extends State<MesajAnaScreen> {
 
   String _tcknKey(String? tckn) {
     if (tckn == null || tckn.isEmpty) return '';
-    return tckn.split('_').first;
+    return tckn.trim();
   }
 
   List<ConversationItem> _contactsIleBirles(

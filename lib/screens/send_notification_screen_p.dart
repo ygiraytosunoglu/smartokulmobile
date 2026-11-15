@@ -22,7 +22,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
   String? selectedOgretmen;
   List<Map<String, dynamic>> uniqueOgretmenList = [];
-  bool _isSending = false; // 🔹 butonun aktiflik durumunu kontrol etmek için eklendi
+  bool _isSending = false; // ð¹ butonun aktiflik durumunu kontrol etmek iÃ§in eklendi
 
   @override
   void initState() {
@@ -44,7 +44,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     final seen = <String>{};
     uniqueOgretmenList = globals.globalOgretmenListesi
         .where((ogrenci) {
-      final tckn = '${ogrenci['TeacherTCKN'] ?? ''+'_'+globals.globalSchoolId+'_T'}';
+      final tckn = '${ogrenci['TeacherTCKN'] ?? ''}'.trim();
       if (tckn.isEmpty) return false;
       if (seen.contains(tckn)) return false;
       seen.add(tckn);
@@ -55,8 +55,8 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   }
 
   Future<void> _sendNotification() async {
-    if (_isSending) return; // 🔹 Çift tıklamayı engelle
-    setState(() => _isSending = true); // 🔹 butonu devre dışı yap
+    if (_isSending) return; // ð¹ Ãift tÄ±klamayÄ± engelle
+    setState(() => _isSending = true); // ð¹ butonu devre dÄ±ÅÄ± yap
 
     final l10n = AppLocalizations.of(context)!;
     if (selectedOgretmen == null) {
@@ -225,7 +225,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                         const SizedBox(height: 16),
 
                         ElevatedButton(
-                          onPressed: _isSending ? null : _sendNotification, // 🔹 Buton devre dışı
+                          onPressed: _isSending ? null : _sendNotification, // ð¹ Buton devre dÄ±ÅÄ±
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: AppColors.primary,
@@ -280,7 +280,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   final _messageController = TextEditingController();
   final _apiService = ApiService();
 
-  String? selectedOgretmen; // sadece 1 kişi seçilecek
+  String? selectedOgretmen; // sadece 1 kiÅi seÃ§ilecek
   List<Map<String, dynamic>> uniqueOgretmenList = [];
 
   @override
@@ -339,7 +339,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Mesaj başarıyla gönderildi',
+            'Mesaj baÅarÄ±yla gÃ¶nderildi',
             style: TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.green,
@@ -373,13 +373,13 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mesaj Gönder'),
+        title: Text('Mesaj GÃ¶nder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
       body: Stack(
         children: [
-          // 🔹 Ekranın tamamını kaplayan gradient arka plan
+          // ð¹ EkranÄ±n tamamÄ±nÄ± kaplayan gradient arka plan
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -395,7 +395,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
             ),
           ),
 
-          // 🔹 İçerik
+          // ð¹ Ä°Ã§erik
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
@@ -487,7 +487,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                             foregroundColor: AppColors.onPrimary,
                           ),
                           child: Text(
-                            'Mesaj Gönder',
+                            'Mesaj GÃ¶nder',
                             style: TextStyle(fontSize: 16),
                           ),
                         ),
@@ -533,7 +533,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   final _messageController = TextEditingController();
   final _apiService = ApiService();
 
-  String? selectedOgretmen; // sadece 1 kişi seçilecek
+  String? selectedOgretmen; // sadece 1 kiÅi seÃ§ilecek
   List<Map<String, dynamic>> uniqueOgretmenList =  [];
 
   @override
@@ -541,7 +541,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     super.initState();
     _prepareOgretmenList();
 
-    // İlk frame çizildikten sonra otomatik seçim yap (build içinde setState yapmak yerine)
+    // Ä°lk frame Ã§izildikten sonra otomatik seÃ§im yap (build iÃ§inde setState yapmak yerine)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (uniqueOgretmenList.isNotEmpty && selectedOgretmen == null) {
@@ -600,7 +600,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     try {
       await _apiService.sendNotificationToKisiler(
         globals.kullaniciTCKN,
-        [selectedOgretmen!], // tek seçim olduğu için listeye sarıyoruz
+        [selectedOgretmen!], // tek seÃ§im olduÄu iÃ§in listeye sarÄ±yoruz
         _titleController.text,
         _messageController.text,
       );
@@ -608,8 +608,8 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Mesaj başarıyla gönderildi',
-            style: TextStyle(color: Colors.white), // Beyaz yazı
+            'Mesaj baÅarÄ±yla gÃ¶nderildi',
+            style: TextStyle(color: Colors.white), // Beyaz yazÄ±
           ),
           backgroundColor: Colors.green,
         ),
@@ -619,7 +619,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
       _messageController.clear();
       if (mounted) {
         setState(() {
-          // Eğer birden fazla öğretmen varsa gönderim sonrası seçim temizlenir
+          // EÄer birden fazla Ã¶Äretmen varsa gÃ¶nderim sonrasÄ± seÃ§im temizlenir
           if (uniqueOgretmenList.length > 1) {
             selectedOgretmen = null;
           }
@@ -643,7 +643,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mesaj Gönder'),
+        title: Text('Mesaj GÃ¶nder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -689,7 +689,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Başlık alanı
+                      // BaÅlÄ±k alanÄ±
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
@@ -704,7 +704,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Mesaj alanı
+                      // Mesaj alanÄ±
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
@@ -721,14 +721,14 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Eğer liste boşsa gösterilecek mesaj
+                      // EÄer liste boÅsa gÃ¶sterilecek mesaj
                       if (uniqueOgretmenList.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Text(l10n.teacherNotFound),
                         )
                       else
-                      // Radio buton listesi (sadece TeacherName, tekrarsız)
+                      // Radio buton listesi (sadece TeacherName, tekrarsÄ±z)
                         ...uniqueOgretmenList.map((ogrenci) {
                           final tckn = '${ogrenci['TeacherTCKN'] ?? ''}';
                           final teacherName = ogrenci['TeacherName'] ?? "";
@@ -741,7 +741,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                               setState(() {
                                 selectedOgretmen = value;
                                 debugPrint(
-                                    'Radio seçildi -> $selectedOgretmen (stateHash: ${hashCode})');
+                                    'Radio seÃ§ildi -> $selectedOgretmen (stateHash: ${hashCode})');
                               });
                             },
                           );
@@ -749,7 +749,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
                       const SizedBox(height: 16),
 
-                      // Duyuru Gönder butonu
+                      // Duyuru GÃ¶nder butonu
                       ElevatedButton(
                         onPressed: _sendNotification,
                         style: ElevatedButton.styleFrom(
@@ -758,7 +758,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           foregroundColor: AppColors.onPrimary,
                         ),
                         child: Text(
-                          'Mesaj Gönder',
+                          'Mesaj GÃ¶nder',
                           style: TextStyle(fontSize: 16),
                         ),
                       ),
@@ -801,13 +801,13 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   final _messageController = TextEditingController();
   final _apiService = ApiService();
 
-  String? selectedOgretmen; // sadece 1 kişi seçilecek
+  String? selectedOgretmen; // sadece 1 kiÅi seÃ§ilecek
   List<Map<String, dynamic>> uniqueOgretmenList = [];
 
   @override
   void initState() {
     super.initState();
-    // Tekrarlayan öğretmenleri kaldır
+    // Tekrarlayan Ã¶Äretmenleri kaldÄ±r
     final seen = <String>{};
     uniqueOgretmenList = globals.globalOgretmenListesi.where((ogrenci) {
       final tckn = ogrenci['TeacherTCKN'].toString();
@@ -819,7 +819,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
       }
     }).toList();
 
-    // Eğer listede sadece 1 öğretmen varsa otomatik seçili yap
+    // EÄer listede sadece 1 Ã¶Äretmen varsa otomatik seÃ§ili yap
    // if (uniqueOgretmenList.length == 1) {
       selectedOgretmen = uniqueOgretmenList.first['TeacherTCKN'].toString();
     //}
@@ -829,25 +829,25 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
   }
 
   Future<void> _sendNotification() async {
-    print('API çağrısı öncesi selectedOgretmen: $selectedOgretmen');
+    print('API Ã§aÄrÄ±sÄ± Ã¶ncesi selectedOgretmen: $selectedOgretmen');
 
     if (_formKey.currentState!.validate() && selectedOgretmen != null) {
       try {
         await _apiService.sendNotificationToKisiler(
           globals.kullaniciTCKN,
-          [selectedOgretmen!], // tek seçim olduğu için listeye sarıyoruz
+          [selectedOgretmen!], // tek seÃ§im olduÄu iÃ§in listeye sarÄ±yoruz
           _titleController.text,
           _messageController.text,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Duyuru başarıyla gönderildi')),
+          const SnackBar(content: Text('Duyuru baÅarÄ±yla gÃ¶nderildi')),
         );
 
         _titleController.clear();
         _messageController.clear();
         setState(() {
-          // Eğer tek öğretmen varsa seçili kalsın, diğer durumda sıfırlansın
+          // EÄer tek Ã¶Äretmen varsa seÃ§ili kalsÄ±n, diÄer durumda sÄ±fÄ±rlansÄ±n
           if (uniqueOgretmenList.length > 1) {
             selectedOgretmen = null;
           }
@@ -860,23 +860,23 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Lütfen tüm alanları doldurun ve bir öğretmen seçin')),
+            content: Text('LÃ¼tfen tÃ¼m alanlarÄ± doldurun ve bir Ã¶Äretmen seÃ§in')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Eğer tek öğretmen varsa ve selectedOgretmen boşsa otomatik set et
+    // EÄer tek Ã¶Äretmen varsa ve selectedOgretmen boÅsa otomatik set et
     if (//uniqueOgretmenList.length == 1 &&
         selectedOgretmen == null) {
       selectedOgretmen = uniqueOgretmenList.first['TeacherTCKN'].toString();
-      print("build -> Tek öğretmen bulundu, otomatik seçildi: $selectedOgretmen");
+      print("build -> Tek Ã¶Äretmen bulundu, otomatik seÃ§ildi: $selectedOgretmen");
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Duyuru Gönder'),
+        title: Text('Duyuru GÃ¶nder'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -922,7 +922,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Başlık alanı
+                      // BaÅlÄ±k alanÄ±
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
@@ -937,7 +937,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Mesaj alanı
+                      // Mesaj alanÄ±
                       TextFormField(
                         controller: _messageController,
                         decoration: const InputDecoration(
@@ -954,7 +954,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Radio buton listesi (sadece TeacherName, tekrarsız)
+                      // Radio buton listesi (sadece TeacherName, tekrarsÄ±z)
                       ...uniqueOgretmenList.map((ogrenci) {
                         final tckn = ogrenci['TeacherTCKN'].toString();
                         final teacherName = ogrenci['TeacherName'] ?? "";
@@ -966,7 +966,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           onChanged: (value) {
                             setState(() {
                               selectedOgretmen = value;
-                              print("Radio seçildi -> $selectedOgretmen");
+                              print("Radio seÃ§ildi -> $selectedOgretmen");
                             });
                           },
                         );
@@ -974,7 +974,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
 
                       const SizedBox(height: 16),
 
-                      // Duyuru Gönder butonu
+                      // Duyuru GÃ¶nder butonu
                       ElevatedButton(
                         onPressed: _sendNotification,
                         style: ElevatedButton.styleFrom(
@@ -983,7 +983,7 @@ class _SendNotificationScreenStateP extends State<SendNotificationScreenP> {
                           foregroundColor: AppColors.onPrimary,
                         ),
                         child: Text(
-                          'Duyuru Gönder',
+                          'Duyuru GÃ¶nder',
                           style: TextStyle(fontSize: 16),
                         ),
                       ),

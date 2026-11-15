@@ -49,9 +49,7 @@ class _GrupMesajDetayScreenState extends State<GrupMesajDetayScreen> {
 
   String _normalizeTckn(dynamic v) {
     if (v == null) return '';
-    final t = v.toString().trim();
-    if (t.contains('_')) return t.split('_').first;
-    return t;
+    return v.toString().trim();
   }
 
   bool _benimMesajim(Map<String, dynamic> m) {

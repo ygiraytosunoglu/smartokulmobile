@@ -160,14 +160,11 @@ class GroupMember {
         jsonString(merged, 'gonderenTCKNFull') ??
         jsonString(merged, 'gonderenTckn') ??
         jsonString(merged, 'tcknOrig');
-    var type = jsonString(merged, 'type') ??
+    final type = jsonString(merged, 'type') ??
         jsonString(merged, 'tip') ??
         jsonString(merged, 'kullaniciTipi') ??
         jsonString(merged, 'role') ??
         jsonString(merged, 'personType');
-    if ((type == null || type.isEmpty) && tckn != null && tckn.contains('_')) {
-      type = tckn.split('_').last;
-    }
     return GroupMember(
       name: name.trim().isEmpty ? 'Üye' : name.trim(),
       tckn: tckn,

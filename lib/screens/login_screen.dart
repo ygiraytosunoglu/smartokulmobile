@@ -2,6 +2,7 @@
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:smart_okul_mobile/screens/forgot_password_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -144,6 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _tcNoController,
                             keyboardType: TextInputType.number,
                             maxLength: 11,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             decoration: InputDecoration(
                               labelText: AppLocalizations.of(context)!.userCode,
                               hintText: AppLocalizations.of(context)!.userHint,
@@ -158,7 +162,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               if (value == null || value.isEmpty) {
                                 return AppLocalizations.of(context)!.userEmpty;
                               }
-                              if (value.length != 11) {
+                              if (value.length != 11 ||
+                                  !RegExp(r'^\d{11}$').hasMatch(value)) {
                                 return AppLocalizations.of(context)!.userLength;
                               }
                               return null;

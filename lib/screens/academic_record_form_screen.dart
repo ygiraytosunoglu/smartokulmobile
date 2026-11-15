@@ -56,11 +56,7 @@ class _AcademicRecordFormScreenState extends State<AcademicRecordFormScreen> {
       ? (_duzenleme ? 'Etüt Düzenle' : 'Yeni Etüt')
       : (_duzenleme ? 'Özel Ders Düzenle' : 'Yeni Özel Ders');
 
-  String _orig(String tckn) {
-    final t = tckn.trim();
-    if (t.contains('_')) return t.split('_').first;
-    return t;
-  }
+  String _orig(String tckn) => tckn.trim();
 
   String _ogrenciAdi(Map o) => (o['Name'] ?? '').toString();
 

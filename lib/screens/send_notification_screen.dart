@@ -31,8 +31,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     _loadOgrenciler();
   }
 
-  String _fullTckn(Map ogr) =>
-      '${ogr['TCKN']}_${globals.globalSchoolId}_S';
+  String _fullTckn(Map ogr) => (ogr['TCKN'] ?? '').toString().trim();
 
   int? _sinifId(Map ogr) {
     final v = ogr['ClassId'] ?? ogr['classId'] ?? ogr['SinifId'];

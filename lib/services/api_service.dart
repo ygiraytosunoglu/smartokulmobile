@@ -843,11 +843,10 @@ await apiService.putRequest(
     }
   }
 
+  /// Kişi kimliği: 11 haneli kullanici_no (birleşik anahtar yok).
   static String? _plainStudentTckn(String? tckn) {
     if (tckn == null || tckn.isEmpty) return tckn;
-    final parts = tckn.split('_');
-    if (parts.length >= 3) return parts.first;
-    return tckn;
+    return tckn.trim();
   }
 
   static Map<String, dynamic>? _nestedClass(Map map) {
@@ -870,8 +869,8 @@ await apiService.putRequest(
           jsonString(map, 'ad') ??
           jsonString(map, 'adi') ??
           '',
-      'TCKN': jsonString(map, 'tcknOrig') ??
-          _plainStudentTckn(jsonString(map, 'tckn')) ??
+      'TCKN': _plainStudentTckn(jsonString(map, 'tckn')) ??
+          _plainStudentTckn(jsonString(map, 'tcknOrig')) ??
           '',
       'FotoVersion': jsonInt(map, 'fotoVersion') ?? 0,
       'Alerji': jsonString(map, 'alerji') ?? '',
@@ -1974,7 +1973,8 @@ await apiService.putRequest(
     // fetchLoginCounts() ile ayrıca alınıyor.
 
     globals.globalSchoolId = p["SchoolId"]?.toString() ?? "";
-    globals.kullaniciTCKN = globals.orjKullaniciTCKN+"_"+globals.globalSchoolId+"_"+globals.globalKullaniciTipi;
+    // Kullanıcı kimliği: login TCKN = 11 haneli kullanici_no (birleşik anahtar yok)
+    globals.kullaniciTCKN = globals.orjKullaniciTCKN;
 
     globals.globalKonumEnlem = p["KonumEnlem"]?.toString() ?? "";
     globals.globalKonumBoylam = p["KonumBoylam"]?.toString() ?? "";
@@ -3743,15 +3743,9 @@ await apiService.putRequest(
     }
   }
 
+  /// Öğrenci kimliği: 11 hane. Okul/tip eki üretilmez.
   static String fullStudentTckn(String raw) {
-    final t = raw.trim();
-    if (t.isEmpty || t.contains('_')) return t;
-    var schoolId = globals.globalSchoolId.toString();
-    if (schoolId.isEmpty) {
-      final parts = globals.kullaniciTCKN.split('_');
-      if (parts.length >= 2) schoolId = parts[1];
-    }
-    return '${t}_${schoolId}_S';
+    return _plainStudentTckn(raw) ?? '';
   }
 
   static List<AcademicRecord> _parseAcademicList(dynamic data) {

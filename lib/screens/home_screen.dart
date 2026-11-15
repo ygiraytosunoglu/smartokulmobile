@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Öğrenci kendi kaydı — devam/ödev vb. studentTckn bekler
       globals.studentTckn = globals.orjKullaniciTCKN.isNotEmpty
           ? globals.orjKullaniciTCKN
-          : globals.kullaniciTCKN.split('_').first;
+          : globals.kullaniciTCKN;
     }
   }
 
@@ -816,9 +816,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String? _aktifOgrenciTckn() {
     if (globals.globalKullaniciTipi == 'S') {
-      if (globals.orjKullaniciTCKN.isNotEmpty) return globals.orjKullaniciTCKN;
-      final parts = globals.kullaniciTCKN.split('_');
-      return parts.isNotEmpty ? parts.first : null;
+      final t = globals.orjKullaniciTCKN.isNotEmpty
+          ? globals.orjKullaniciTCKN
+          : globals.kullaniciTCKN;
+      return t.trim().isEmpty ? null : t.trim();
     }
     final t = (globals.studentTckn ?? '').trim();
     return t.isEmpty ? null : t;

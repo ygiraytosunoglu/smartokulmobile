@@ -58,9 +58,7 @@ class _MesajDetayScreenState extends State<MesajDetayScreen> {
 
   String normalizeTckn(dynamic v) {
     if (v == null) return "";
-    String t = v.toString().trim();
-    if (t.contains('_')) t = t.split('_').first;
-    return t;
+    return v.toString().trim();
   }
 
   bool _mesajZatenVar(Map<String, dynamic> m) {
